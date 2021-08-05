@@ -1,7 +1,8 @@
 let routing = false
-const routeState = {}
 
-function cleanSlash(x) {
+export const routeState = {}
+
+export function cleanSlash(x) {
   return String(x).replace(/\/+/g, '/').replace(/(.)\/$/, '$1')
 }
 
@@ -30,7 +31,7 @@ function params(path, current) {
   }, {})
 }
 
-function reroute(path, options = {}) {
+function reroute(s, path, options = {}) {
   s.pathmode[0] === '#'
     ? window.location.hash = s.pathmode + path
     : s.pathmode[0] === '?'
@@ -40,7 +41,7 @@ function reroute(path, options = {}) {
   s.redraw()
 }
 
-function getPath(location, x = 0) {
+function getPath(s, location, x = 0) {
   return (s.pathmode[0] === '#'
     ? location.hash.slice(s.pathmode.length + x)
     : s.pathmode[0] === '?'
@@ -49,16 +50,16 @@ function getPath(location, x = 0) {
   ).replace(/(.)\/$/, '$1')
 }
 
-export default function router(root, attrs) {
+export default function router(s, root, attrs) {
   Object.assign(route, attrs)
   route.toString = route
   route.has = x => x === '/'
-    ? (getPath(route.url) === root || (getPath(route.url) === '/' && root === ''))
-    : getPath(route.url).indexOf(cleanSlash(root + '/' + x)) === 0
+    ? (getPath(s, route.url) === root || (getPath(s, route.url) === '/' && root === ''))
+    : getPath(s, route.url).indexOf(cleanSlash(root + '/' + x)) === 0
 
   Object.defineProperty(route, 'current', {
     get() {
-      const path = getPath(route.url)
+      const path = getPath(s, route.url)
           , idx = path.indexOf('/', root.length + 1)
 
       return idx === -1 ? path : path.slice(0, idx)
@@ -72,7 +73,7 @@ export default function router(root, attrs) {
       return root + '/'
 
     if (typeof routes === 'string')
-      return reroute(cleanSlash(routes[0] === '/' ? routes : '/' + routes), options)
+      return reroute(s, cleanSlash(routes[0] === '/' ? routes : '/' + routes), options)
 
     if (!routing) {
       routing = true
@@ -101,7 +102,7 @@ export default function router(root, attrs) {
     if (view === undefined || options.notFound)
       route.notFound(true)
 
-    const subRoute = router(current.replace(/\/$/, ''), attrs)
+    const subRoute = router(s, current.replace(/\/$/, ''), attrs)
     subRoute.parent = route
 
     return typeof view === 'function'

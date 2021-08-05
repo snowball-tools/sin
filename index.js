@@ -1,4 +1,5 @@
 import parse from './parse.js'
+import router, { routeState, cleanSlash } from './router.js'
 
 const components = new WeakMap()
     , removing = new WeakSet()
@@ -36,7 +37,8 @@ s.pathmode = ''
 s.redraw = redraw
 s.mount = mount
 
-s.route = router('', {
+
+s.route = router(s, '', {
   url: window.location,
   notFound: () => {},
   title: () => {},

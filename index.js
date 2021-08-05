@@ -81,7 +81,13 @@ function execute(x, parent) {
     parent.tag,
     parent ? parent.level + 1 : 0,
     hasAttrs ? x[0] : {},
-    hasAttrs ? x.slice(1) : x
+    hasAttrs
+      ? Array.isArray(x[1]) && x.length === 2
+        ? x[1]
+        : x.slice(1)
+      : Array.isArray(x[0]) && x.length === 1
+        ? x[0]
+        : x
   )
 }
 
@@ -114,7 +120,7 @@ function globalRedraw() {
 }
 
 function diffs(parent, b, first, prev) {
-  const oldKeyed = keys.has(first)
+  const oldKeyed = keys.has(first || parent.firstChild)
       , newKeyed = b[0] instanceof View && b[0].key != null
 
   return oldKeyed && newKeyed
@@ -133,7 +139,7 @@ function nonKeyed(parent, view, first, oldKeyed, newKeyed, prev) {
       dom = last = (!prev || i < prev.length)
         ? diff(dom, view[i++], parent)
         : parent.insertBefore(diff(null, view[i++], null), dom)
-      i === 1 && (newKeyed = dom)
+      i === 1 && newKeyed && (newKeyed = dom)
     }
     dom && (dom = dom.nextSibling)
   }
@@ -152,7 +158,7 @@ function nonKeyed(parent, view, first, oldKeyed, newKeyed, prev) {
 }
 
 function keyed(parent, b, first, oldKeyed, newKeyed) {
-  const a = keys.get(first)
+  const a = keys.get(first || parent.firstChild)
       , bLength = b.length
       , aLength = a.length
 
@@ -236,21 +242,22 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
   if (b.length) {
     keys.set(b[0].dom, b)
     return b[b.length - 1].dom
-  } else {
-    keys.delete(a[0].dom)
   }
+
+  keys.delete(a[0].dom)
+  return
 }
 
 function diff(dom, view, parent, tree, keyChange) {
   return typeof view === 'function'
     ? diff(dom, view(), parent, tree, keyChange)
     : view instanceof View
-    ? view.component
-      ? diffComponent(dom, view, parent, tree, keyChange)
-      : diffView(dom, view, parent, keyChange)
-    : Array.isArray(view)
-    ? diffArray(dom, view, parent, keyChange)
-    : diffValue(dom, view, parent, keyChange)
+      ? view.component
+        ? diffComponent(dom, view, parent, tree, keyChange)
+        : diffView(dom, view, parent, keyChange)
+      : Array.isArray(view)
+        ? diffArray(dom, view, parent, keyChange)
+        : diffValue(dom, view, parent, keyChange)
 }
 
 function isSingleText(xs) {
@@ -287,7 +294,7 @@ function diffView(dom, view, parent, keyChange) {
 }
 
 function Tree() {
-  let xs = []
+  const xs = []
   const tree = {
     xs,
     i: 0,
@@ -444,11 +451,6 @@ function updateAttribute(dom, attrs, attr, old, value) { // eslint-disable-line
   const on = attr.charCodeAt(0) === 111 && attr.charCodeAt(1) === 110
   if (on && typeof old === typeof value)
     return
-
-  if (attr === 'href') {
-    value = s.pathmode + cleanSlash(value)
-    link(dom)
-  }
 
   on
     ? value

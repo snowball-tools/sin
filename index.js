@@ -119,27 +119,30 @@ function globalRedraw() {
     : (redrawing = false)
 }
 
-function diffs(parent, b, first, prev) {
+function diffs(parent, views, first, prev) {
   const oldKeyed = keys.has(first || parent.firstChild)
-      , newKeyed = b[0] instanceof View && b[0].key != null
+      , newKeyed = views[0] instanceof View && views[0].key != null
 
   return oldKeyed && newKeyed
-    ? keyed(parent, b, first, oldKeyed, newKeyed, prev)
-    : nonKeyed(parent, b, first, oldKeyed, newKeyed, prev)
+    ? keyed(parent, views, first, oldKeyed, newKeyed, prev)
+    : nonKeyed(parent, views, first, oldKeyed, newKeyed, prev)
 }
 
-function nonKeyed(parent, view, first, oldKeyed, newKeyed, prev) {
+function nonKeyed(parent, views, first, oldKeyed, newKeyed, prev) {
   let i = 0
     , dom = first === undefined ? parent.firstChild : first
     , last = dom && dom.previousSibling
     , next
+  const newKeys = newKeyed && new Array(views.length)
 
-  while (i < view.length) {
+  while (i < views.length) {
     if (!removing.has(dom)) {
       dom = last = (!prev || i < prev.length)
-        ? diff(dom, view[i++], parent)
-        : parent.insertBefore(diff(null, view[i++], null), dom)
+        ? diff(dom, views[i], parent)
+        : parent.insertBefore(diff(null, views[i], null), dom)
+      newKeys && (newKeys[i] = { dom, key: views[i].key })
       i === 1 && newKeyed && (newKeyed = dom)
+      i++
     }
     dom && (dom = dom.nextSibling)
   }
@@ -151,8 +154,8 @@ function nonKeyed(parent, view, first, oldKeyed, newKeyed, prev) {
   }
 
   newKeyed
-    ? keys.set(newKeyed, view)
-    : oldKeyed && keys.delete(first)
+    ? keys.set(newKeyed, newKeys)
+    : oldKeyed && keys.delete(first || parent.firstChild)
 
   return last
 }

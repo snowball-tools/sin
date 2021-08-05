@@ -1,4 +1,4 @@
-import parseTag from './parse.js'
+import parse from './parse.js'
 
 const components = new WeakMap()
     , removing = new WeakSet()
@@ -69,7 +69,7 @@ function S(...x) {
 function tagged(x, parent) {
   return new View(
     parent && parent.component,
-    parseTag(x, parent ? parent.tag : defaults, parent ? parent.level + 1 : 0),
+    parse(x, parent ? parent.tag : defaults, parent ? parent.level + 1 : 0),
     parent ? parent.level + 1 : 0
   )
 }

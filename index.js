@@ -10,7 +10,6 @@ const components = new WeakMap()
 
 let idle = true
 let redrawing = false
-let guid = 0
 
 class View {
   constructor(component, tag, level = 0, attrs, children) {
@@ -25,7 +24,7 @@ class View {
   }
 }
 
-function s(...x) {
+export default function s(...x) {
   return S.bind(
     typeof x[0] === 'function'
       ? new View(x)

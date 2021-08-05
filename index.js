@@ -1,6 +1,14 @@
 import parse from './parse.js'
 import router, { routeState, cleanSlash } from './router.js'
 
+export default function s(...x) {
+  return S.bind(
+    typeof x[0] === 'function'
+      ? new View(x)
+      : tagged(x)
+  )
+}
+
 const components = new WeakMap()
     , removing = new WeakSet()
     , lives = new WeakMap()
@@ -23,14 +31,6 @@ class View {
     this.dom = null
     this.children = children
   }
-}
-
-export default function s(...x) {
-  return S.bind(
-    typeof x[0] === 'function'
-      ? new View(x)
-      : tagged(x)
-  )
 }
 
 s.pathmode = ''

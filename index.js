@@ -258,14 +258,14 @@ function isSingleText(xs) {
 }
 
 function diffArray(dom, view, parent) {
-  const prev = dom && dom.nodeType === 3 && dom.nodeValue.slice(1, -1)
-  const comment = diffValue(dom, '[' + view.length + ']', parent)
+  const prev = dom && dom.nodeType === 8 && dom.nodeValue.slice(1, -1)
+  const comment = diffValue(dom, '[' + view.length + ']', parent, false, true)
   return diffs(parent, view, comment.nextSibling, prev && { length: parseInt(prev) })
 }
 
-function diffValue(dom, view, parent, keyChange) {
+function diffValue(dom, view, parent, keyChange, comment) {
   const nodeChange = keyChange || changed(dom, view)
-  nodeChange && (replace(dom, dom = create(view), parent))
+  nodeChange && (replace(dom, dom = create(view, comment), parent))
   dom.nodeValue != view && (dom.nodeValue = '' + view)
 
   return dom
@@ -530,10 +530,10 @@ function changed(dom, view) {
       || (view instanceof View ? dom.nodeName !== view.tag.name : dom)
 }
 
-function create(x) {
+function create(x, comment) {
   return x instanceof View
     ? document.createElement(x.tag.name)
-    : typeof x === 'string' || typeof x === 'number' || x instanceof Date
+    : !comment && (typeof x === 'string' || typeof x === 'number' || x instanceof Date)
       ? document.createTextNode(x)
       : document.createComment(x)
 }

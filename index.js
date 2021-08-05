@@ -422,8 +422,11 @@ function attributes(dom, view, init) {
 }
 
 function giveLife(dom, view) {
-  const life = view.attrs.life(dom)
-  typeof life === 'function' && lives.set(dom, life)
+  const life = [].concat(view.attrs.life)
+    .map(x => x(dom))
+    .filter(x => typeof x === 'function')
+
+  life.length && lives.set(dom, life)
 }
 
 function updateAttribute(dom, attrs, attr, old, value) { // eslint-disable-line
@@ -486,34 +489,44 @@ function replace(old, dom, parent) {
   !old
     ? parent.appendChild(dom)
     : !dom
-    ? parent.removeChild(old)
-    : defer(old, parent)
-    ? parent.insertBefore(dom, old)
-    : parent.replaceChild(dom, old)
+      ? parent.removeChild(old)
+      : removeChild(old, parent, false)
+        ? parent.insertBefore(dom, old)
+        : parent.replaceChild(dom, old)
 }
 
-function defer(dom, parent) {
+function defer(dom, parent, children) {
   if (!lives.has(dom))
-    return false
+    return children && children.length ? Promise.allSettled(children) : false
 
-  const life = lives.get(dom)()
+  const life = lives.get(dom).map(x => x())
+  lives.delete(dom)
 
   if (!life || typeof life.then !== 'function')
-    return false
+    return children && children.length ? Promise.allSettled(children) : false
 
   removing.add(dom)
-  life.then(() => {
-    removeChild(dom, parent)
-    removing.delete(dom)
-  })
-  return true
+  return children && children.length
+    ? Promise.allSettled([life].concat(children)).then(() => {
+      removing.delete(dom)
+      removeChild(dom, parent)
+    })
+    : life
 }
 
-function removeChild(dom, parent) {
-  components.delete(dom)
-  lives.delete(dom)
-  attrs.delete(dom)
-  parent && parent.removeChild(dom)
+function removeChild(dom, parent, remove = true) {
+  if (!parent)
+    return
+
+  let lives = []
+  let child = dom.firstChild
+  while (child) {
+    const life = removeChild(child, dom, false)
+    life && lives.push(life)
+    child = child.nextSibling
+  }
+
+  return defer(dom, parent, lives) || (remove && parent.removeChild(dom) && false)
 }
 
 function changed(dom, view) {

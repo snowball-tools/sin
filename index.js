@@ -25,7 +25,6 @@ s.pathmode = ''
 s.redraw = redraw
 s.mount = mount
 
-
 s.route = router(s, '', {
   url: window.location,
   notFound: () => {},
@@ -275,7 +274,6 @@ function diffView(dom, view, parent, keyChange) {
   const nodeChange = keyChange || changed(dom, view)
   nodeChange && (replace(dom, dom = create(view), parent))
 
-  view.dom = dom
   view.children && (
     isSingleText(view.children)
       ? dom.textContent = '' + view.children[0]
@@ -509,7 +507,7 @@ function remove(dom, parent) {
   const life = lives.get(dom)()
 
   if (!life || typeof life.then !== 'function')
-    return
+    return false
 
   removing.add(dom)
   life.then(() => {

@@ -231,13 +231,9 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
     }
   }
 
-  if (b.length) {
-    keys.set(b[0].dom, b)
-    return b[b.length - 1].dom
-  }
-
-  keys.delete(a[0].dom)
-  return
+  keys.set(b[0].dom, b)
+  a[0].dom !== b[0].dom && keys.delete(a[0].dom)
+  return b[b.length - 1].dom
 }
 
 function diff(dom, view, parent, tree, keyChange) {

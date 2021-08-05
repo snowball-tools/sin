@@ -10,6 +10,7 @@ const components = new WeakMap()
 
 let idle = true
 let redrawing = false
+let guid = 0
 
 class View {
   constructor(component, tag, level = 0, attrs, children) {
@@ -24,7 +25,7 @@ class View {
   }
 }
 
-export default function s(...x) {
+function s(...x) {
   return S.bind(
     typeof x[0] === 'function'
       ? new View(x)
@@ -113,38 +114,51 @@ function globalRedraw() {
     : (redrawing = false)
 }
 
-function diffs(parent, b) {
-  const oldKeyed = keys.has(parent)
-      , newKeyed = b[0] instanceof View && b[0].key
+function diffs(parent, b, first, prev) {
+  const oldKeyed = keys.has(first)
+      , newKeyed = b[0] instanceof View && b[0].key != null
 
-  oldKeyed && newKeyed
-    ? keyed(parent, b)
-    : nonKeyed(parent, b, oldKeyed, newKeyed)
+  return oldKeyed && newKeyed
+    ? keyed(parent, b, first, oldKeyed, newKeyed, prev)
+    : nonKeyed(parent, b, first, oldKeyed, newKeyed, prev)
 }
 
-function nonKeyed(parent, b, oldKeyed, newKeyed) {
+function nonKeyed(parent, view, first, oldKeyed, newKeyed, prev) {
   let i = 0
-    , dom = parent.firstChild
+    , dom = first === undefined ? parent.firstChild : first
+    , last = dom && dom.previousSibling
+    , next
 
-  while (i < b.length) {
-    if (!removing.has(dom))
-      dom = diff(dom, b[i++], parent)
+  while (i < view.length) {
+    if (!removing.has(dom)) {
+      dom = last = (!prev || i < prev.length)
+        ? diff(dom, view[i], parent)
+        : parent.insertBefore(diff(null, view[i], null), dom)
+      i++
+      i === 1 && (newKeyed = dom)
+    }
     dom && (dom = dom.nextSibling)
   }
 
-  while (dom)
-    dom = diff(dom, null, parent).nextSibling
+  while (dom && (!prev || i++ < prev.length)) {
+    next = dom.nextSibling
+    parent.removeChild(dom)
+    dom = next
+  }
 
   newKeyed
-    ? keys.set(parent, b)
-    : oldKeyed && keys.delete(parent)
+    ? keys.set(newKeyed, view)
+    : oldKeyed && keys.delete(first)
+
+  return last
 }
 
-function keyed(parent, b) {
-  const a = keys.get(parent)
+function keyed(parent, b, first, oldKeyed, newKeyed) {
+  const a = keys.get(first)
       , bLength = b.length
+      , aLength = a.length
 
-  let aEnd = a.length
+  let aEnd = aLength
     , bEnd = bLength
     , aStart = 0
     , bStart = 0
@@ -159,7 +173,7 @@ function keyed(parent, b) {
         ? bStart
           ? b[bStart - 1].dom.nextSibling
           : b[bEnd - bStart].dom
-        : null // if before other node
+        : a[aLength - 1].dom.nextSibling
 
       while (bStart < bEnd) {
         view = b[bStart++]
@@ -221,36 +235,55 @@ function keyed(parent, b) {
     }
   }
 
-  keys.set(parent, b)
+  if (b.length) {
+    keys.set(b[0].dom, b)
+    return b[b.length - 1].dom
+  } else {
+    keys.delete(a[0].dom)
+  }
 }
 
 function diff(dom, view, parent, i, keyChange) {
   return typeof view === 'function'
     ? diff(dom, view(), parent, i, keyChange)
-    : view instanceof View && view.component
+    : view instanceof View
+    ? view.component
       ? diffComponent(dom, view, parent, i, keyChange)
       : diffView(dom, view, parent, keyChange)
+    : Array.isArray(view)
+    ? diffArray(dom, view, parent, keyChange)
+    : diffValue(dom, view, parent, keyChange)
 }
 
 function isSingleText(xs) {
   return xs && xs.length === 1 && (typeof xs[0] === 'string' || typeof xs[0] === 'number')
 }
 
+function diffArray(dom, view, parent) {
+  const prev = dom && dom.nodeType === 3 && dom.nodeValue.slice(1, -1)
+  const comment = diffValue(dom, '[' + view.length + ']', parent)
+  return diffs(parent, view, comment.nextSibling, prev && { length: parseInt(prev) })
+}
+
+function diffValue(dom, view, parent, keyChange) {
+  const nodeChange = keyChange || changed(dom, view)
+  nodeChange && (replace(dom, dom = create(view), parent))
+  dom.nodeValue != view && (dom.nodeValue = '' + view)
+
+  return dom
+}
+
 function diffView(dom, view, parent, keyChange) {
   const nodeChange = keyChange || changed(dom, view)
   nodeChange && (replace(dom, dom = create(view), parent))
 
-  if (view instanceof View) {
-    view.dom = dom
-    view.children && (
-      isSingleText(view.children)
-        ? dom.textContent = '' + view.children[0]
-        : diffs(dom, view.children)
-    )
-    attributes(dom, view, nodeChange)
-  } else if (!nodeChange) {
-    dom.nodeValue != view && (dom.nodeValue = view)
-  }
+  view.dom = dom
+  view.children && (
+    isSingleText(view.children)
+      ? dom.textContent = '' + view.children[0]
+      : diffs(dom, view.children)
+  )
+  attributes(dom, view, nodeChange)
 
   return dom
 }

@@ -138,7 +138,7 @@ function nonKeyed(parent, views, first, oldKeyed, newKeyed, prev) {
 
   while (dom && (!prev || i++ < prev.length)) {
     next = dom.nextSibling
-    parent.removeChild(dom)
+    removeChild(dom, parent)
     dom = next
   }
 
@@ -179,7 +179,7 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
       while (aStart < aEnd) {
         view = a[aStart++]
         if (!map || !map.has(view.key))
-          parent.removeChild(view.dom)
+          removeChild(view.dom, parent)
       }
     } else if (a[aStart].key === b[bStart].key) {
       diff(a[aStart].dom, b[bStart])
@@ -226,7 +226,7 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
         }
       } else {
         view = a[aStart++]
-        view && parent.removeChild(view.dom)
+        view && removeChild(view.dom, parent)
       }
     }
   }
@@ -485,22 +485,18 @@ function handleEvent(dom) {
 
 function replace(old, dom, parent) {
   if (!parent)
-    return dom
+    return
 
-  if (!old)
-    return parent.appendChild(dom)
-
-  if (!dom)
-    return parent.removeChild(old)
-
-  remove(old, parent)
+  !old
+    ? parent.appendChild(dom)
+    : !dom
+    ? parent.removeChild(old)
+    : defer(old, parent)
     ? parent.insertBefore(dom, old)
     : parent.replaceChild(dom, old)
 }
 
-function remove(dom, parent) {
-  components.delete(dom)
-
+function defer(dom, parent) {
   if (!lives.has(dom))
     return false
 
@@ -511,10 +507,17 @@ function remove(dom, parent) {
 
   removing.add(dom)
   life.then(() => {
-    parent.removeChild(dom)
+    removeChild(dom, parent)
     removing.delete(dom)
   })
   return true
+}
+
+function removeChild(dom, parent) {
+  components.delete(dom)
+  lives.delete(dom)
+  attrs.delete(dom)
+  parent && parent.removeChild(dom)
 }
 
 function changed(dom, view) {

@@ -14,7 +14,7 @@ let redrawing = false
 class View {
   constructor(component, tag, level = 0, attrs, children) {
     this.level = level
-    this.fn = null
+    this.instance = null
     this.component = component
     this.tag = tag
     this.attrs = attrs
@@ -131,9 +131,8 @@ function nonKeyed(parent, view, first, oldKeyed, newKeyed, prev) {
   while (i < view.length) {
     if (!removing.has(dom)) {
       dom = last = (!prev || i < prev.length)
-        ? diff(dom, view[i], parent)
-        : parent.insertBefore(diff(null, view[i], null), dom)
-      i++
+        ? diff(dom, view[i++], parent)
+        : parent.insertBefore(diff(null, view[i++], null), dom)
       i === 1 && (newKeyed = dom)
     }
     dom && (dom = dom.nextSibling)
@@ -242,12 +241,12 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
   }
 }
 
-function diff(dom, view, parent, i, keyChange) {
+function diff(dom, view, parent, tree, keyChange) {
   return typeof view === 'function'
-    ? diff(dom, view(), parent, i, keyChange)
+    ? diff(dom, view(), parent, tree, keyChange)
     : view instanceof View
     ? view.component
-      ? diffComponent(dom, view, parent, i, keyChange)
+      ? diffComponent(dom, view, parent, tree, keyChange)
       : diffView(dom, view, parent, keyChange)
     : Array.isArray(view)
     ? diffArray(dom, view, parent, keyChange)
@@ -287,55 +286,77 @@ function diffView(dom, view, parent, keyChange) {
   return dom
 }
 
-function diffComponent(dom, view, parent, i, keyChange) {
-  return components.has(dom) && !keyChange
-    ? updateComponent(dom, view, parent, i)
-    : createComponent(dom, view, parent, i, keyChange)
+function Tree() {
+  let xs = []
+  const tree = {
+    xs,
+    i: 0,
+    max: 0,
+    peek: () => xs[tree.i],
+    prev: () => {
+      tree.i--
+    },
+    next: () => {
+      tree.i++
+      tree.max = tree.i
+      return tree
+    },
+    add: (x) => xs.push(x)
+  }
+
+  return tree
 }
 
-function updateComponent(dom, view, parent, i = 0) {
-  const tree = components.get(dom)
-      , prev = tree[i]
+function diffComponent(dom, view, parent, tree, keyChange) {
+  return !keyChange && (tree || components.has(dom))
+    ? updateComponent(dom, view, parent, tree || components.get(dom))
+    : createComponent(dom, view, parent, tree, keyChange)
+}
+
+function updateComponent(dom, view, parent, tree) {
+  const prev = tree && tree.peek()
 
   if (!prev)
-    return createComponent(dom, view, parent, tree, i)
+    return createComponent(dom, view, parent, tree)
 
-  if (typeof prev.fn === 'function') {
-    const newDom = diff(dom, mergeTag(prev.fn(view.attrs, view.children), view), parent, i + 1)
+  if (typeof prev.instance === 'function') {
+    const newDom = diff(dom, mergeTag(tree.peek().instance(view.attrs, view.children), view), parent, tree.next())
+    tree.prev()
+    tree.i === 0 && (tree.xs.length = tree.max)
     newDom !== dom && (components.set(newDom, tree), components.delete(dom))
     return newDom
-  } else if (prev.fn && typeof prev.fn.then === 'function') {
+  } else if (prev.instance && typeof prev.instance.then === 'function') {
+    tree.i === 0 && (tree.xs.length = tree.max)
     return dom
   }
 
-  return diff(dom, prev.fn, parent, i + 1)
+  return diff(dom, prev.instance, parent, tree.next())
 }
 
-function createComponent(dom, view, parent, i, keyChange) {
+function createComponent(dom, view, parent, tree = Tree(), keyChange) {
   const x = view.component[0](view.attrs, view.children)
 
   if (typeof x === 'function') {
-    const newDom = diff(dom, mergeTag(x(view.attrs, view.children), view), parent, i, keyChange)
-        , tree = components.get(newDom) || []
-    view.fn = x
-    tree.unshift(view)
+    tree.add(view)
+    const newDom = diff(dom, mergeTag(x(view.attrs, view.children), view), parent, tree.next(), keyChange)
+    tree.prev()
+    view.instance = x
     newDom !== dom && (components.set(newDom, tree), components.delete(dom))
     return newDom
   } else if (x && typeof x.then === 'function') {
     const newDom = document.createComment('pending')
-        , tree = components.get(newDom) || []
-    view.fn = x
-    tree.unshift(view)
+    view.instance = x
+    tree.add(view)
     newDom !== dom && (components.set(newDom, tree), components.delete(dom))
     x.then(result => {
-      view.fn = result
+      view.instance = result
       redraw()
     })
     replace(dom, newDom, parent)
     return newDom
   }
 
-  return diff(dom, mergeTag(x, view), parent, i, keyChange)
+  return diff(dom, mergeTag(x, view), parent, tree, keyChange)
 }
 
 function mergeTag(a, b) {

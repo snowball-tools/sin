@@ -503,14 +503,14 @@ function replace(old, dom, parent) {
 
 function defer(dom, parent, children) {
   if (!lives.has(dom))
-    return children && children.length ? Promise.allSettled(children) : false
+    return children && children.length ? (removing.add(dom), Promise.allSettled(children)) : false
 
   const life = lives.get(dom).map(x => x()).filter(x => x && typeof x.then === 'function')
 
   lives.delete(dom)
 
   if (life.length === 0)
-    return children && children.length ? Promise.allSettled(children) : false
+    return children && children.length ? (removing.add(dom), Promise.allSettled(children)) : false
 
   removing.add(dom)
   return Promise.allSettled(life.concat(children || [])).then(() => {
@@ -520,6 +520,9 @@ function defer(dom, parent, children) {
 }
 
 function removeChild(dom, parent, remove = true) {
+  if (dom.nodeType !== 1)
+    return
+
   if (!parent)
     return
 

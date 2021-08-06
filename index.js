@@ -1,6 +1,7 @@
 import parse from './parse.js'
 import router, { routeState, cleanSlash } from './router.js'
 import View from './view.js'
+import http from './http.js'
 
 export default function s(...x) {
   return S.bind(
@@ -22,8 +23,9 @@ let idle = true
 let redrawing = false
 
 s.pathmode = ''
-s.redraw = redraw
 s.mount = mount
+s.http = http
+s.redraw = s.http.redraw = redraw
 
 s.route = router(s, '', {
   url: window.location,

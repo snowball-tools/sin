@@ -48,7 +48,7 @@ function propValue(x, v) {
 }
 
 function splitSelector(x) {
-  return x.replace(/,\s*:?/g, x => x[x.length - 1] === ':' ? ',&:' : ',& ')
+  return x.replace(/,\s*[\:\[]?/g, x => noSpace(x.charCodeAt(x.length - 1)) ? ',&' + x[x.length - 1] : ',& ')
 }
 
 function insert(rule, index) {

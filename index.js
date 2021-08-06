@@ -130,7 +130,7 @@ function nonKeyed(parent, views, first, oldKeyed, newKeyed, prev) {
         ? diff(dom, views[i], parent)
         : parent.insertBefore(diff(null, views[i], null), dom)
       newKeys && (newKeys[i] = { dom, key: views[i].key })
-      i === 1 && newKeyed && (newKeyed = dom)
+      i === 0 && newKeyed && (newKeyed = dom)
       i++
     }
     dom && (dom = dom.nextSibling)
@@ -270,6 +270,7 @@ function diffView(dom, view, parent, keyChange) {
   const nodeChange = keyChange || changed(dom, view)
   nodeChange && (replace(dom, dom = create(view), parent))
 
+  view.dom = dom
   view.children && (
     isSingleText(view.children)
       ? dom.textContent = '' + view.children[0]
@@ -518,7 +519,7 @@ function removeChild(dom, parent, remove = true) {
   if (!parent)
     return
 
-  let lives = []
+  const lives = []
   let child = dom.firstChild
   while (child) {
     const life = removeChild(child, dom, false)

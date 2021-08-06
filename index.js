@@ -120,11 +120,12 @@ function diffs(parent, views, first, prev) {
 }
 
 function nonKeyed(parent, views, first, oldKeyed, newKeyed, prev) {
+  const newKeys = newKeyed && new Array(views.length)
+
   let i = 0
     , dom = first === undefined ? parent.firstChild : first
     , last = dom && dom.previousSibling
     , next
-  const newKeys = newKeyed && new Array(views.length)
 
   while (i < views.length) {
     if (!removing.has(dom)) {
@@ -138,7 +139,7 @@ function nonKeyed(parent, views, first, oldKeyed, newKeyed, prev) {
     dom && (dom = dom.nextSibling)
   }
 
-  while (dom && (!prev || i++ < prev.length)) {
+  while (dom && !removing.has(dom) && (!prev || i++ < prev.length)) {
     next = dom.nextSibling
     removeChild(dom, parent)
     dom = next
@@ -502,19 +503,18 @@ function defer(dom, parent, children) {
   if (!lives.has(dom))
     return children && children.length ? Promise.allSettled(children) : false
 
-  const life = lives.get(dom).map(x => x())
+  const life = lives.get(dom).map(x => x()).filter(x => x && typeof x.then === 'function')
+
   lives.delete(dom)
 
-  if (!life || typeof life.then !== 'function')
+  if (life.length === 0)
     return children && children.length ? Promise.allSettled(children) : false
 
   removing.add(dom)
-  return children && children.length
-    ? Promise.allSettled([life].concat(children)).then(() => {
-      removing.delete(dom)
-      removeChild(dom, parent)
-    })
-    : life
+  return Promise.allSettled(life.concat(children || [])).then(() => {
+    removing.delete(dom)
+    removeChild(dom, parent)
+  })
 }
 
 function removeChild(dom, parent, remove = true) {

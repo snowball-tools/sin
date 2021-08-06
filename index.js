@@ -416,8 +416,10 @@ function attributes(dom, view, init) {
         dom.removeAttribute('class')
       }
     }
-    for (let i = 0; i < (view.tag ? view.tag.vars.length : 0); i++)
-      dom.style.setProperty('--uid' + (i + 1), view.tag.args[i])
+    for (let i = 0; i < (view.tag ? view.tag.vars.length : 0); i++) {
+      const arg = view.tag.args[i]
+      dom.style.setProperty('--uid' + (i + 1), typeof arg === 'function' ? arg(dom) : arg)
+    }
   }
 
   has

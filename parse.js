@@ -1,3 +1,5 @@
+export default parse
+
 const doc = typeof document !== 'undefined' && window.document
     , style = doc.createElement('style')
 
@@ -67,7 +69,7 @@ function insert(rule, index) {
   }
 }
 
-export default function parse([xs, ...args], parent, nesting = 0) {
+function parse([xs, ...args], parent, nesting = 0) {
   if (cache.has(xs)) {
     const prev = cache.get(xs)
     prev.args = args
@@ -95,7 +97,8 @@ export default function parse([xs, ...args], parent, nesting = 0) {
 
   if (rules) {
     className = prefix + ++uid
-    classes += ' ' + className
+    classes ? classes += ' ' + className : classes = className
+
     for (let i = 0; i < nesting; i++)
       className += '.' + className
 
@@ -183,7 +186,7 @@ function parseStyles(idx, end) {
         keyframe = rule = ''
       } else if (animation) {
         insert('@keyframes ' + prefix + uid + '{' + keyframes + '}')
-        rule = rules[path || '&'] + propValue('animation', animation + ' ' + prefix + uid)
+        rule = (rules[path || '&'] || '') + propValue('animation', animation + ' ' + prefix + uid)
         animation = ''
       } else {
         rule && (rules[path || '&'] = rule)

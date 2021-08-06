@@ -185,7 +185,7 @@ function parseStyles(idx, end) {
         keyframes += keyframe + '{' + rule + '}'
         keyframe = rule = ''
       } else if (animation) {
-        insert('@keyframes ' + prefix + uid + '{' + keyframes + '}')
+        insert('@keyframes ' + prefix + ++uid + '{' + keyframes + '}')
         rule = (rules[path || '&'] || '') + propValue('animation', animation + ' ' + prefix + uid)
         animation = ''
       } else {

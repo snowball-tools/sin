@@ -406,7 +406,7 @@ function attributes(dom, view, init) {
   }
 
   if (view instanceof View) {
-    const className = (view.attrs.class || '') + (view.tag.classes ? ' ' + view.tag.classes : '')
+    const className = (view.attrs.class ? view.attrs.class + ' ' : '') + view.tag.classes
     if (className !== (dom.getAttribute('class') || '')) {
       if (className) {
         !has && (has = true)

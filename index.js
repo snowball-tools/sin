@@ -13,6 +13,8 @@ export default function s(...x) {
 
 const components = new WeakMap()
     , removing = new WeakSet()
+    , streams = new WeakMap()
+    , arrays = new WeakMap()
     , lives = new WeakMap()
     , attrs = new WeakMap()
     , keys = new WeakMap()
@@ -23,9 +25,8 @@ let idle = true
 let redrawing = false
 
 s.pathmode = ''
+s.redraw = redraw
 s.mount = mount
-s.http = http
-s.redraw = s.http.redraw = redraw
 
 s.route = router(s, '', {
   url: window.location,
@@ -240,7 +241,9 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
 }
 
 function diff(dom, view, parent, tree, keyChange) {
-  return typeof view === 'function'
+  return isStream(view)
+    ? diffStream(dom, view, parent, tree, keyChange)
+    : typeof view === 'function'
     ? diff(dom, view(), parent, tree, keyChange)
     : view instanceof View
       ? view.component
@@ -251,18 +254,43 @@ function diff(dom, view, parent, tree, keyChange) {
         : diffValue(dom, view, parent, keyChange)
 }
 
+function isStream(view) {
+  return view && view.constructor === Stream
+}
+
+function diffStream(dom, view, parent, tree, keyChange) {
+  if (streams.has(dom))
+    return streams.get(dom)
+
+  let newDom
+    , first
+
+  view.map(x => {
+    newDom = diff(dom, x, parent)
+    first = arrays.has(newDom) ? arrays.get(newDom) : newDom
+    dom !== first && (dom && streams.delete(dom), streams.set(first, newDom))
+    dom = first
+  })
+
+  return newDom
+}
+
 function isSingleText(xs) {
   return xs && xs.length === 1 && (typeof xs[0] === 'string' || typeof xs[0] === 'number')
 }
 
 function diffArray(dom, view, parent) {
   const prev = dom && dom.nodeType === 8 && dom.nodeValue.slice(1, -1)
-  const comment = diffValue(dom, '[' + view.length + ']', parent, false, true)
-  return diffs(parent, view, comment.nextSibling, prev && { length: parseInt(prev) })
+      , comment = diffValue(dom, '[' + view.length + ']', parent, false, true)
+
+  dom = diffs(parent, view, comment.nextSibling, prev && { length: parseInt(prev) })
+  arrays.set(dom, comment)
+
+  return dom
 }
 
 function diffValue(dom, view, parent, keyChange, comment) {
-  const nodeChange = keyChange || changed(dom, view)
+  const nodeChange = keyChange || !dom || !view
   nodeChange && (replace(dom, dom = create(view, comment), parent))
   dom.nodeValue != view && (dom.nodeValue = '' + view)
 
@@ -270,7 +298,7 @@ function diffValue(dom, view, parent, keyChange, comment) {
 }
 
 function diffView(dom, view, parent, keyChange) {
-  const nodeChange = keyChange || changed(dom, view)
+  const nodeChange = keyChange || !dom || !view || dom.nodeName !== view.tag.name
   nodeChange && (replace(dom, dom = create(view), parent))
 
   view.dom = dom
@@ -406,20 +434,21 @@ function attributes(dom, view, init) {
     }
   }
 
-  if (view instanceof View) {
-    const className = (view.attrs.class ? view.attrs.class + ' ' : '') + view.tag.classes
-    if (className !== (dom.getAttribute('class') || '')) {
-      if (className) {
-        !has && (has = true)
-        dom.setAttribute('class', className)
-      } else {
-        dom.removeAttribute('class')
-      }
+  const className = (view.attrs.class ? view.attrs.class + ' ' : '') + view.tag.classes
+  if (className !== (dom.getAttribute('class') || '')) {
+    if (className) {
+      !has && (has = true)
+      dom.setAttribute('class', className)
+    } else {
+      dom.removeAttribute('class')
     }
-    for (let i = 0; i < (view.tag ? view.tag.vars.length : 0); i++) {
-      const arg = view.tag.args[i]
-      dom.style.setProperty('--uid' + (i + 1), typeof arg === 'function' ? arg(dom) : arg)
-    }
+  }
+  for (let i = 0; i < (view.tag ? view.tag.vars.length : 0); i++) {
+    const arg = view.tag.args[i]
+        , id = '--uid' + (i + 1)
+
+    init && arg && typeof arg.map === 'function' && arg.map(x => dom.style.setProperty(id, x), true)
+    dom.style.setProperty(id, typeof arg === 'function' ? arg() : arg)
   }
 
   has
@@ -519,11 +548,23 @@ function defer(dom, parent, children) {
   })
 }
 
+function removeArray(dom, parent, count) {
+  let next
+  while (count && dom) {
+    next = dom.nextSibling
+    !removing.has(dom) && (removeChild(dom, parent) || parent.removeChild(dom), count--)
+    dom = next
+  }
+}
+
 function removeChild(dom, parent, remove = true) {
-  if (dom.nodeType !== 1)
+  if (!parent)
     return
 
-  if (!parent)
+  if (dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91)
+    return removeArray(dom.nextSibling, parent, parseInt(dom.nodeValue.slice(1, -1)))
+
+  if (dom.nodeType !== 1)
     return
 
   const lives = []
@@ -535,12 +576,6 @@ function removeChild(dom, parent, remove = true) {
   }
 
   return defer(dom, parent, lives) || (remove && parent.removeChild(dom) && false)
-}
-
-function changed(dom, view) {
-  return !dom
-      || !view
-      || (view instanceof View ? dom.nodeName !== view.tag.name : dom)
 }
 
 function create(x, comment) {

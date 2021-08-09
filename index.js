@@ -28,6 +28,7 @@ let redrawing = false
 s.pathmode = ''
 s.redraw = redraw
 s.mount = mount
+s.stream = Stream
 
 s.route = router(s, '', {
   url: window.location,
@@ -467,8 +468,9 @@ function attributes(dom, view, init) {
     const arg = view.tag.args[i]
         , id = '--uid' + (i + 1)
 
-    init && arg && typeof arg.map === 'function' && arg.map(x => dom.style.setProperty(id, x), true)
-    dom.style.setProperty(id, typeof arg === 'function' ? arg() : arg)
+    arg && arg.constructor === Stream
+      ? init && arg.map(x => dom.style.setProperty(id, x))
+      : dom.style.setProperty(id, typeof arg === 'function' ? arg(dom) : arg)
   }
 
   has

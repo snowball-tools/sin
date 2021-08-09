@@ -298,11 +298,11 @@ function diffArray(dom, view, parent) {
   return dom
 }
 
-function diffValue(dom, view, parent, keyChange, comment) {
-  const nodeChange = keyChange || !dom || !view
+function diffValue(dom, view, parent, keyChange, array) {
+  const nodeChange = keyChange || !dom || !view || (array !== (dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91))
   nodeChange && replace(
     dom,
-    dom = !comment && (typeof view === 'string' || typeof view === 'number' || view instanceof Date)
+    dom = !array && (typeof view === 'string' || typeof view === 'number' || view instanceof Date)
       ? document.createTextNode(view)
       : document.createComment(view),
     parent

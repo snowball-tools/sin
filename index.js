@@ -466,7 +466,7 @@ function attributes(dom, view, init) {
   }
   for (let i = 0; i < (view.tag ? view.tag.vars.length : 0); i++) {
     const arg = view.tag.args[i]
-        , id = '--uid' + (i + 1)
+        , id = '--' + parse.prefix + (i + 1)
 
     arg && arg.constructor === Stream
       ? init && arg.map(x => dom.style.setProperty(id, x))

@@ -1,10 +1,54 @@
 export default parse
 
 const doc = typeof document !== 'undefined' && window.document
-    , style = doc.createElement('style')
+    , style = doc && doc.querySelector && (doc.querySelector('.sin') || doc.createElement('style'))
+    , prefix = style && style.getAttribute('id') || 'sin-' + ('000000' + (Math.random() * Math.pow(36, 6) | 0).toString(36)).slice(-6)
+    , dom = doc && document.createElement('div')
+    , vendorRegex = /^(o|O|ms|MS|Ms|moz|Moz|webkit|Webkit|WebKit)([A-Z])/
+    , snake = x => x.replace(/(\B[A-Z])/g, '-$1').toLowerCase()
+    , findWidth = x => x ? x.hasOwnProperty('width') ? x : findWidth(Object.getPrototypeOf(x)) : {}
+    , initials = (acc, x) => (acc[x.split('-').map(x => x[0]).join('')] = x, acc)
+    , propCache = {}
 
-const prefix = 'uid'
-    , cache = new WeakMap()
+parse.prefix = prefix
+
+const pxCache = {
+  flex: 0,
+  border: 1,
+  transform: 1,
+  'line-height': 0,
+  'box-shadow': 1,
+  'border-top': 1,
+  'border-left': 1,
+  'border-right': 1,
+  'border-bottom': 1
+}
+
+const properties = ['float']
+  .concat(Object.keys(
+    typeof doc ? findWidth(document.documentElement.style) : {}
+  ))
+  .filter((x, i, xs) => x.indexOf('-') === -1 && x !== 'length' && xs.indexOf(x) === i)
+  .map(x => x.match(vendorRegex) ? '-' + snake(x) : snake(x))
+  .sort()
+
+const vendorMap = properties.reduce((acc, x) => {
+  const vendor = x.match(/-(ms|o|webkit|moz)-/g)
+  if (vendor) {
+    const unprefixed = x.replace(/-(ms|o|webkit|moz)-/, '')
+    if (properties.indexOf(unprefixed) === -1) {
+      if (unprefixed === 'flexDirection')
+        vendorValuePrefix.flex = '-' + vendor[1].toLowerCase() + '-flex'
+      acc[unprefixed] = x
+    }
+  }
+  return acc
+}, {})
+
+const popular = ['align-items','bottom','background-color','border-radius','box-shadow','background-image','color','display','float','flex-direction','font-family','font-size','height','justify-content','left','line-height','letter-spacing','margin','margin-bottom','margin-left','margin-right','margin-top','opacity','padding','padding-bottom','padding-left','padding-right','padding-top','right','top','text-align','text-decoration','text-transform','width']
+const shorthands = Object.assign(properties.reduce(initials, {}), popular.reduce(initials, {}))
+
+const cache = new WeakMap()
     , cssVars = window.CSS && CSS.supports('color', 'var(--support-test)')
     , isStartChar = x => x !== 32 && x !== 9 && x !== 10 && x !== 13 && x !== 59
     , quoteChar = x => x === 34 || x === 39
@@ -42,9 +86,27 @@ let start = -1
   , append = true
   , at = false
   , styles = false
+  , cacheable = true
+
+function shorthand(x) {
+  return shorthands[x] || x
+}
 
 function propValue(x, v) {
-  return x + ':' + v + ';'
+  x = colon ? x : renderProp(x)
+
+  return x
+    + ':' +
+   (colon ? v : renderValue(v, x))
+    + ';'
+}
+
+function renderProp(x) {
+  return propCache[x] || (propCache[x] = vendor(shorthand(x)))
+}
+
+function renderValue(v, x) {
+  return (!colon && px(x) ? v.replace(/(^|[( ,])([-0-9.]+)([ ,)]|$)/g, '$1$2px$3').trim() : v)
 }
 
 function splitSelector(x) {
@@ -82,23 +144,29 @@ function parse([xs, ...args], parent, nesting = 0) {
   valueStart = -1
   rules = null
   styles = false
+  cacheable = true
 
+  x = xs[0]
   for (let j = 0; j < xs.length; j++) {
-    x = xs[j]
     rules
       ? parseStyles(0, j === xs.length - 1)
       : parseSelector(xs, j, args, parent)
 
-    if (j < args.length && valueStart >= 0) {
-      value += xs[j].slice(valueStart) + arg(j, vars, args)
-      valueStart = 0
+    x = xs[j + 1]
+    if (j < args.length) {
+      if (valueStart >= 0) {
+        value += xs[j].slice(valueStart) + arg(j, vars, args)
+        valueStart = 0
+      } else {
+        x += args[j] + ';'
+        cacheable = false
+      }
     }
   }
 
   if (rules) {
     className = prefix + ++uid
-    classes ? classes += ' ' + className : classes = className
-
+    classes += ' ' + className
     for (let i = 0; i < nesting; i++)
       className += '.' + className
 
@@ -108,7 +176,7 @@ function parse([xs, ...args], parent, nesting = 0) {
   }
 
   const result = { name, id, classes, args, vars }
-  cache.set(xs, result)
+  cacheable && cache.set(xs, result)
 
   return result
 }
@@ -122,7 +190,7 @@ function parseSelector(xs, j, args, parent) {
         parseStyles(i++, j === xs.length - 1)
         break
       }
-    } else if (!isStartChar(char) || Number.isNaN(char)) {
+    } else if (!isStartChar(char) || i === x.length) {
       classes = (classIdx !== -1 ? x.slice(classIdx + 1, i).replace(/\./g, ' ') : '') + classes
       id = (idIdx !== -1 ? x.slice(idIdx, classIdx || i) : '') || parent?.id
       name = x.slice(0, id
@@ -140,7 +208,7 @@ function parseSelector(xs, j, args, parent) {
 }
 
 function parseStyles(idx, end) {
-  for (let i = idx;i <= x.length; i++) {
+  for (let i = idx; i <= x.length; i++) {
     char = x.charCodeAt(i)
 
     if (quote === -1 && valueStart >= 0 && (colon ? char === 59 : valueEndChar(char))) {
@@ -180,7 +248,7 @@ function parseStyles(idx, end) {
       }
       start = valueStart = -1
       prop = ''
-    } else if (char === 125 || (Number.isNaN(char) && end)) { // }
+    } else if (char === 125 || (i === x.length && end)) { // }
       if (keyframe) {
         keyframes += keyframe + '{' + rule + '}'
         keyframe = rule = ''
@@ -196,7 +264,7 @@ function parseStyles(idx, end) {
       }
       start = valueStart = -1
       prop = ''
-    } else if (start === -1 && isStartChar(char)) {
+    } else if (i !== x.length && start === -1 && isStartChar(char)) {
       start = i
       startChar = char
     } else if (!prop && start >= 0 && propEndChar(char)) {
@@ -206,4 +274,28 @@ function parseStyles(idx, end) {
       valueStart = i
     }
   }
+}
+
+function px(x) {
+  if ((x[0] === '-' && x[1] === '-') || x in pxCache)
+    return pxCache[x]
+
+  try {
+    dom.style[x] = '1px'
+    dom.style.setProperty(x, '1px')
+    return pxCache[x] = dom.style[x].slice(-3) === '1px'
+  } catch (err) {
+    return pxCache[x] = false
+  }
+}
+
+function vendor(x) {
+  if (properties.indexOf(x) === -1) {
+    if (vendorMap[x]) {
+      console.log(x, 'prefixed to', vendorMap[x]) // eslint-disable-line
+      return vendorMap[x]
+    }
+    x.indexOf('--') !== 0 && console.log(x, 'not found') // eslint-disable-line
+  }
+  return x
 }

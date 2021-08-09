@@ -380,7 +380,7 @@ function updateComponent(dom, view, parent, tree) {
 }
 
 function createComponent(dom, view, parent, tree = Tree(), keyChange) {
-  const x = view.component[0](view.attrs, view.children)
+  const x = view.component[0](view.attrs, view.children, () => diff(dom, view))
 
   if (typeof x === 'function') {
     tree.add(view)
@@ -388,7 +388,7 @@ function createComponent(dom, view, parent, tree = Tree(), keyChange) {
     tree.prev()
     view.instance = x
     newDom !== dom && (components.set(newDom, tree), components.delete(dom))
-    return newDom
+    return dom = newDom
   } else if (x && typeof x.then === 'function') {
     const newDom = document.createComment('pending')
     view.instance = x
@@ -399,7 +399,7 @@ function createComponent(dom, view, parent, tree = Tree(), keyChange) {
       redraw()
     })
     replace(dom, newDom, parent)
-    return newDom
+    return dom = newDom
   }
 
   return diff(dom, mergeTag(x, view), parent, tree, keyChange)
@@ -478,7 +478,7 @@ function attributes(dom, view, init) {
 
 function giveLife(dom, view) {
   const life = [].concat(view.attrs.life)
-    .map(x => x(dom))
+    .map(x => x(dom, () => diff(dom, view)))
     .filter(x => typeof x === 'function')
 
   life.length && lives.set(dom, life)

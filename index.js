@@ -158,13 +158,15 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
   const a = keys.get(first || parent.firstChild)
       , bLength = b.length
       , aLength = a.length
+      , before = a[aLength - 1].dom.nextSibling
 
   let aEnd = aLength
     , bEnd = bLength
     , aStart = 0
     , bStart = 0
     , i = 0
-    , map = null
+    , bx = null
+    , ax = null
     , dom
     , view
 
@@ -174,16 +176,16 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
         ? bStart
           ? b[bStart - 1].dom.nextSibling
           : b[bEnd - bStart].dom
-        : a[aLength - 1].dom.nextSibling
+        : before
 
       while (bStart < bEnd) {
         view = b[bStart++]
-        parent.insertBefore(diff(null, view, null, 0, true), dom)
+        parent.insertBefore(diff(ax && ax.has(view.key) ? ax.get(view.key).dom : null, view), dom)
       }
     } else if (bEnd === bStart) {
       while (aStart < aEnd) {
         view = a[aStart++]
-        if (!map || !map.has(view.key))
+        if (!bx || !bx.has(view.key))
           removeChild(view.dom, parent)
       }
     } else if (a[aStart].key === b[bStart].key) {
@@ -203,28 +205,33 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
       parent.insertBefore(b[--bEnd].dom, dom)
       a[aEnd] = b[bEnd]
     } else {
-      if (!map) {
-        map = new Map()
+      if (!bx) {
+        bx = new Map()
         i = bStart
         while (i < bEnd)
-          map.set(b[i].key, i++)
+          bx.set(b[i].key, i++)
       }
 
       view = a[aStart]
-      if (map.has(view.key)) {
-        const index = map.get(view.key)
+      if (bx.has(view.key)) {
+        const index = bx.get(view.key)
         if (bStart < index && index < bEnd) {
           i = aStart
           let sequence = 1
-          while (++i < aEnd && i < bEnd && map.get(a[i].key) === index + sequence)
+          while (++i < aEnd && i < bEnd && bx.get(a[i].key) === index + sequence)
             sequence++
 
+          if (!ax)
+            ax = a.reduce((acc, x) => (acc.set(x.key, x), acc), new Map())
+
           if (sequence > index - bStart) {
-            while (bStart < index)
-              parent.insertBefore(diff(null, b[bStart++]), view.dom)
+            while (bStart < index) {
+              view = b[bStart++]
+              parent.insertBefore(diff(ax.has(view.key) ? ax.get(view.key).dom : null, view), a[aStart].dom)
+            }
           } else {
             view = b[bStart++]
-            parent.replaceChild(diff(null, view), a[aStart++].dom)
+            parent.replaceChild(diff(ax.has(view.key) ? ax.get(view.key).dom : null, view), a[aStart++].dom)
           }
         } else {
           aStart++
@@ -241,18 +248,19 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
   return b[b.length - 1].dom
 }
 
+
 function diff(dom, view, parent, tree, keyChange) {
   return isStream(view)
     ? diffStream(dom, view, parent, tree, keyChange)
     : typeof view === 'function'
-    ? diff(dom, view(), parent, tree, keyChange)
-    : view instanceof View
-      ? view.component
-        ? diffComponent(dom, view, parent, tree, keyChange)
-        : diffView(dom, view, parent, keyChange)
-      : Array.isArray(view)
-        ? diffArray(dom, view, parent, keyChange)
-        : diffValue(dom, view, parent, keyChange)
+      ? diff(dom, view(), parent, tree, keyChange)
+      : view instanceof View
+        ? view.component
+          ? diffComponent(dom, view, parent, tree, keyChange)
+          : diffView(dom, view, parent, keyChange)
+        : Array.isArray(view)
+          ? diffArray(dom, view, parent, keyChange)
+          : diffValue(dom, view, parent, keyChange)
 }
 
 function isStream(view) {
@@ -292,7 +300,14 @@ function diffArray(dom, view, parent) {
 
 function diffValue(dom, view, parent, keyChange, comment) {
   const nodeChange = keyChange || !dom || !view
-  nodeChange && (replace(dom, dom = create(view, comment), parent))
+  nodeChange && replace(
+    dom,
+    dom = !comment && (typeof view === 'string' || typeof view === 'number' || view instanceof Date)
+      ? document.createTextNode(view)
+      : document.createComment(view),
+    parent
+  )
+
   dom.nodeValue != view && (dom.nodeValue = '' + view)
 
   return dom
@@ -300,7 +315,11 @@ function diffValue(dom, view, parent, keyChange, comment) {
 
 function diffView(dom, view, parent, keyChange) {
   const nodeChange = keyChange || !dom || !view || dom.nodeName !== view.tag.name
-  nodeChange && (replace(dom, dom = create(view), parent))
+  nodeChange && replace(
+    dom,
+    dom = document.createElement(view.tag.name),
+    parent
+  )
 
   view.dom = dom
   view.children && (
@@ -577,12 +596,4 @@ function removeChild(dom, parent, remove = true) {
   }
 
   return defer(dom, parent, lives) || (remove && parent.removeChild(dom) && false)
-}
-
-function create(x, comment) {
-  return x instanceof View
-    ? document.createElement(x.tag.name)
-    : !comment && (typeof x === 'string' || typeof x === 'number' || x instanceof Date)
-      ? document.createTextNode(x)
-      : document.createComment(x)
 }

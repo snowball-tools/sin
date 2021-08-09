@@ -2,6 +2,7 @@ import parse from './parse.js'
 import router, { routeState, cleanSlash } from './router.js'
 import View from './view.js'
 import http from './http.js'
+import Stream from './stream.js'
 
 export default function s(...x) {
   return S.bind(

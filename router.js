@@ -82,7 +82,7 @@ export default function router(s, root, attrs) {
         : typeof window.history.pushState === 'function' && window.addEventListener('popstate', s.redraw)
     }
 
-    const path = getPath(route.url, root.length)
+    const path = getPath(s, route.url, root.length)
     const pathTokens = tokenizePath(path)
 
     const [_, match, view = options.notFound] = Object

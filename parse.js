@@ -248,7 +248,7 @@ function parseStyles(idx, end) {
         selector.indexOf(',') !== -1 && (selector = splitSelector(selector))
         selectors.push(
           (noSpace(startChar) ? '' : ' ') + selector
-          + (startChar === 64 ? '{' : '')
+          + (startChar === 64 && x.charCodeAt(start + 1) !== 102 ? '{' : '')
           + (x.slice(start, start + 6) === '@media' ? '&' : '')
         )
         path = (at ? '' : '&') + selectors.join('')

@@ -11,7 +11,7 @@ export default function http(url, {
   body = null,
   user,
   pass,
-  headers,
+  headers = {},
   config,
   raw
 } = {}) {
@@ -41,9 +41,9 @@ export default function http(url, {
     }
     xhr.onerror = xhr.onabort = event => reject(xhr, { event })
     xhr.open(method.toUpperCase(), url, true, user, pass)
-    headers && Object.keys(headers).forEach(x => headers[x] && xhr.setRequestHeader(x, headers[x]))
-    !headers || 'Content-Type' in headers === false && xhr.setRequestHeader('Content-Type', 'application/json; charset=utf-8')
-    !headers || 'Accept' in headers === false && xhr.setRequestHeader('Accept', 'application/json, text/*')
+    Object.keys(headers).forEach(x => headers[x] && xhr.setRequestHeader(x, headers[x]))
+    'Content-Type' in headers === false && xhr.setRequestHeader('Content-Type', 'application/json; charset=utf-8')
+    'Accept' in headers === false && xhr.setRequestHeader('Accept', 'application/json, text/*')
     config && config(xhr)
     body === null
       ? xhr.send()

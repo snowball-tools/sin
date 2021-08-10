@@ -23,7 +23,6 @@ const components = new WeakMap()
     , defaults = { name: 'DIV', classes: '', i: 0 }
 
 let idle = true
-let redrawing = false
 
 s.pathmode = ''
 s.redraw = redraw
@@ -100,18 +99,12 @@ function mount(dom, view) {
 }
 
 function redraw() {
-  redrawing && (redrawing = false)
-  idle && Promise.resolve().then(globalRedraw)
-  idle = false
+  idle && (requestAnimationFrame(globalRedraw), idle = false)
 }
 
 function globalRedraw() {
-  redrawing = true
   mounts.forEach((view, dom) => diffs(dom, [].concat(view({ route: s.route }))))
   idle = true
-  redrawing === false
-    ? redraw()
-    : (redrawing = false)
 }
 
 function diffs(parent, views, first, prev) {

@@ -106,7 +106,9 @@ function renderProp(x) {
 }
 
 function renderValue(v, x) {
-  return (!colon && px(x) ? v.replace(/(^|[( ,])([-0-9.]+)([ ,)]|$)/g, '$1$2px$3').trim() : v)
+  return px(x)
+    ? v.replace(/(^| )?([-0-9.]+)( |$)/g, '$1$2px$3')
+    : v
 }
 
 function splitSelector(x) {

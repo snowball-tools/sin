@@ -29,6 +29,7 @@ s.pathmode = ''
 s.redraw = redraw
 s.mount = mount
 s.stream = Stream
+s.css = (xs, ...args) => parse([xs, args], null, 0, true)
 
 s.route = router(s, '', {
   url: window.location,

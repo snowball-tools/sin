@@ -131,7 +131,7 @@ function insert(rule, index) {
   }
 }
 
-function parse([xs, ...args], parent, nesting = 0) {
+function parse([xs, ...args], parent, nesting = 0, root) {
   if (cache.has(xs)) {
     const prev = cache.get(xs)
     prev.args = args
@@ -165,6 +165,12 @@ function parse([xs, ...args], parent, nesting = 0) {
   }
 
   if (rules) {
+    if (root) {
+      Object.entries(rules).forEach(([k, v]) =>
+        insert(k.replace(/&/g, '') + '{' + v)
+      )
+      return
+    }
     className = prefix + ++uid
     classes += ' ' + className
     for (let i = 0; i < nesting; i++)

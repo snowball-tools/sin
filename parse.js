@@ -26,7 +26,7 @@ const pxCache = {
 
 const properties = ['float']
   .concat(Object.keys(
-    typeof doc ? findWidth(document.documentElement.style) : {}
+    doc ? findWidth(document.documentElement.style) : {}
   ))
   .filter((x, i, xs) => x.indexOf('-') === -1 && x !== 'length' && xs.indexOf(x) === i)
   .map(x => x.match(vendorRegex) ? '-' + snake(x) : snake(x))
@@ -38,7 +38,7 @@ const vendorMap = properties.reduce((acc, x) => {
     const unprefixed = x.replace(/-(ms|o|webkit|moz)-/, '')
     if (properties.indexOf(unprefixed) === -1) {
       if (unprefixed === 'flexDirection')
-        vendorValuePrefix.flex = '-' + vendor[1].toLowerCase() + '-flex'
+        acc.flex = '-' + vendor[1].toLowerCase() + '-flex'
       acc[unprefixed] = x
     }
   }

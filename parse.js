@@ -218,7 +218,9 @@ function parseStyles(idx, end) {
     char = x.charCodeAt(i)
 
     if (quote === -1 && valueStart >= 0 && (colon ? char === 59 : valueEndChar(char))) {
-      rule += propValue(prop, value + x.slice(valueStart, i))
+      prop === '@import'
+        ? insert(prop + ' ' + x.slice(valueStart, i) + ';', 0)
+        : rule += propValue(prop, value + x.slice(valueStart, i))
       start = valueStart = colon = -1
       prop = value = ''
     }

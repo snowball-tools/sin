@@ -3,6 +3,11 @@ import router, { routeState, cleanSlash } from './router.js'
 import View from './view.js'
 import http from './http.js'
 import Stream from './stream.js'
+import pws from 'pws'
+
+s.pws = pws
+s.http = http
+s.request = (url, o) => (o ? http(url, o) : http(o.url, o)).then(({ body }) => body)
 
 export default function s(...x) {
   return S.bind(
@@ -568,7 +573,7 @@ function removeArray(dom, parent, count) {
   let next
   while (count && dom) {
     next = dom.nextSibling
-    !removing.has(dom) && (removeChild(dom, parent) || parent.removeChild(dom), count--)
+    !removing.has(dom) && (removeChild(dom, parent), count--)
     dom = next
   }
 }

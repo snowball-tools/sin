@@ -301,7 +301,7 @@ function diffArray(dom, view, parent) {
   return dom
 }
 
-function diffValue(dom, view, parent, keyChange, array) {
+function diffValue(dom, view, parent, keyChange, array = false) {
   const nodeChange = keyChange || !dom || !view || (array !== (dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91))
 
   nodeChange && replace(

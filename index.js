@@ -7,8 +7,10 @@ import pws from 'pws'
 
 s.pws = pws
 s.http = http
-s.request = (url, o) => (o ? http(url, o) : http(o.url, o)).then(({ body }) => body)
 s.http.redraw = redraw
+s.request = (url, o) => (o ? http(url, o) : http(url.url, url))
+  .then(({ body }) => body)
+  .catch(x => (x.response = x.body, Promise.reject(x)))
 
 export default function s(...x) {
   return S.bind(

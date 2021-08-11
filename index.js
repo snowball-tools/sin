@@ -303,11 +303,12 @@ function diffArray(dom, view, parent) {
 
 function diffValue(dom, view, parent, keyChange, array) {
   const nodeChange = keyChange || !dom || !view || (array !== (dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91))
+
   nodeChange && replace(
     dom,
-    dom = !array && (typeof view === 'string' || typeof view === 'number' || view instanceof Date)
-      ? document.createTextNode(view)
-      : document.createComment(view),
+    dom = array || typeof view === 'boolean' || view == null
+      ? document.createComment(view)
+      : document.createTextNode(view),
     parent
   )
 

@@ -192,16 +192,16 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
           removeChild(view.dom, parent)
       }
     } else if (a[aStart].key === b[bStart].key) {
-      diff(a[aStart].dom, b[bStart])
+      diff(a[aStart].dom, b[bStart], parent)
       aStart++
       bStart++
     } else if (a[aEnd - 1].key === b[bEnd - 1].key) {
-      diff(a[aEnd - 1].dom, b[bEnd - 1])
+      diff(a[aEnd - 1].dom, b[bEnd - 1], parent)
       aEnd--
       bEnd--
     } else if (a[aStart].key === b[bEnd - 1].key && b[bStart].key === a[aEnd - 1].key) {
-      diff(a[aStart].dom, b[bEnd - 1])
-      diff(a[aEnd - 1].dom, b[bStart])
+      diff(a[aStart].dom, b[bEnd - 1], parent)
+      diff(a[aEnd - 1].dom, b[bStart], parent)
       view = a[--aEnd]
       dom = view.dom.nextSibling
       parent.insertBefore(b[bStart++].dom, a[aStart++].dom.nextSibling)

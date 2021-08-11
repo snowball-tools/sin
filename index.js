@@ -347,8 +347,7 @@ function Tree() {
       tree.i--
     },
     next: () => {
-      tree.i++
-      tree.max = tree.i
+      tree.i <= tree.xs.length && (tree.max = ++tree.i)
       return tree
     },
     add: (x) => xs.push(x)
@@ -370,17 +369,18 @@ function updateComponent(dom, view, parent, tree) {
     return createComponent(dom, view, parent, tree)
 
   if (typeof prev.instance === 'function') {
-    const newDom = diff(dom, mergeTag(tree.peek().instance(view.attrs, view.children), view), parent, tree.next())
+    const next = diff(dom, mergeTag(prev.instance(view.attrs, view.children), view), parent, tree.next())
+    prev.dom = next // arrays.has(next) ? arrays.get(next) : next
     tree.prev()
-    tree.i === 0 && (tree.xs.length = tree.max)
-    newDom !== dom && (components.set(newDom, tree), components.delete(dom))
-    return newDom
+    tree.i === 0 && (tree.xs.length = tree.max, tree.max = 0)
+    prev.dom !== dom && (components.set(prev.dom, tree), components.delete(dom))
+    return next
   } else if (prev.instance && typeof prev.instance.then === 'function') {
-    tree.i === 0 && (tree.xs.length = tree.max)
+    tree.max++
     return dom
   }
 
-  return diff(dom, prev.instance, parent, tree.next())
+  return diff(dom, prev.instance, parent, tree)
 }
 
 function createComponent(dom, view, parent, tree = Tree(), keyChange) {
@@ -388,22 +388,28 @@ function createComponent(dom, view, parent, tree = Tree(), keyChange) {
 
   if (typeof x === 'function') {
     tree.add(view)
-    const newDom = diff(dom, mergeTag(x(view.attrs, view.children), view), parent, tree.next(), keyChange)
+    const next = diff(dom, mergeTag(x(view.attrs, view.children), view), parent, tree.next(), keyChange)
     tree.prev()
+    view.dom = next // arrays.has(next) ? arrays.get(next) : next
     view.instance = x
-    newDom !== dom && (components.set(newDom, tree), components.delete(dom))
-    return dom = newDom
+    view.dom !== dom && (components.set(view.dom, tree), components.delete(dom))
+    return next
   } else if (x && typeof x.then === 'function') {
-    const newDom = document.createComment('pending')
+    const next = document.createComment('pending')
+    view.dom = next
     view.instance = x
     tree.add(view)
-    newDom !== dom && (components.set(newDom, tree), components.delete(dom))
-    x.then(result => {
+    tree.max++
+    next !== dom && (components.set(next, tree), components.delete(dom))
+    x.catch(x => console.error(x) || x).then(result => {
+      if (!components.has(next))
+        return
+
       view.instance = result
       redraw()
     })
-    replace(dom, newDom, parent)
-    return dom = newDom
+    replace(dom, next, parent)
+    return next
   }
 
   return diff(dom, mergeTag(x, view), parent, tree, keyChange)

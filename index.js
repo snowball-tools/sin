@@ -311,7 +311,7 @@ function diffValue(dom, view, parent, keyChange, array) {
     parent
   )
 
-  dom.nodeValue != view && (dom.nodeValue = '' + view)
+  !nodeChange && dom.nodeValue != view && (dom.nodeValue = '' + view)
 
   return dom
 }

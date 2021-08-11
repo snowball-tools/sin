@@ -94,7 +94,7 @@ function execute(x, parent) {
 }
 
 function isAttrs(x) {
-  return !(x instanceof View) && typeof x === 'object' && !(x instanceof Date) && !Array.isArray(x)
+  return !(x instanceof View) && x && typeof x === 'object' && !(x instanceof Date) && !Array.isArray(x)
 }
 
 function mount(dom, view) {

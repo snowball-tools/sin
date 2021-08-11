@@ -326,7 +326,7 @@ function diffView(dom, view, parent, keyChange) {
 
   view.dom = dom
   view.children && (
-    isSingleText(view.children)
+    nodeChange && isSingleText(view.children)
       ? dom.textContent = '' + view.children[0]
       : diffs(dom, view.children)
   )

@@ -87,6 +87,7 @@ let start = -1
   , at = false
   , styles = false
   , cacheable = true
+  , fontFaces = -1
 
 function shorthand(x) {
   return shorthands[x] || x
@@ -125,7 +126,7 @@ function insert(rule, index) {
     try {
       style.sheet.insertRule(
         rule,
-        index || style.sheet.cssRules.length
+        index != null ? index : style.sheet.cssRules.length
       )
     } catch (e) {
       console.error('Insert rule error:', e, rule)
@@ -143,8 +144,8 @@ function parse([xs, ...args], parent, nesting = 0, root) {
   const vars = []
   name = id = classes = rule = value = ''
   selectors.length = 0
-  valueStart = -1
-  rules = null
+  valueStart = fontFaces = -1
+  rules = root ? {} : null
   styles = false
   cacheable = true
 
@@ -169,18 +170,18 @@ function parse([xs, ...args], parent, nesting = 0, root) {
   if (rules) {
     if (root) {
       Object.entries(rules).forEach(([k, v]) =>
-        insert(k.replace(/&/g, '') + '{' + v)
+        insert(k.replace(/&\s*/g, '') + '{' + v)
       )
-      return
-    }
-    className = prefix + ++uid
-    classes += ' ' + className
-    for (let i = 0; i < nesting; i++)
-      className += '.' + className
+    } else {
+      className = prefix + ++uid
+      classes += ' ' + className
+      for (let i = 0; i < nesting; i++)
+        className += '.' + className
 
-    Object.entries(rules).forEach(([k, v]) => {
-      insert(k.replace(/&/g, '.' + className) + '{' + v)
-    })
+      Object.entries(rules).forEach(([k, v]) => {
+        insert(k.replace(/&/g, '.' + className) + '{' + v)
+      })
+    }
   }
 
   const result = { name, id, classes, args, vars }
@@ -221,7 +222,7 @@ function parseStyles(idx, end) {
 
     if (quote === -1 && valueStart >= 0 && (colon ? char === 59 : valueEndChar(char))) {
       prop === '@import'
-        ? insert(prop + ' ' + x.slice(valueStart, i) + ';', 0)
+        ? insert(prop + ' ' + x.slice(valueStart, i), 0)
         : rule += propValue(prop, value + x.slice(valueStart, i))
       start = valueStart = colon = -1
       prop = value = ''
@@ -250,7 +251,12 @@ function parseStyles(idx, end) {
         selector.indexOf(',') !== -1 && (selector = splitSelector(selector))
         selectors.push(
           (noSpace(startChar) ? '' : ' ') + selector
-          + (startChar === 64 && x.charCodeAt(start + 1) !== 102 ? '{' : '')
+          + (startChar === 64
+            ? x.charCodeAt(start + 1) === 102
+              ? Array(++fontFaces + 1).join(' ')
+              : '{'
+            : ''
+          )
           + (x.slice(start, start + 6) === '@media' ? '&' : '')
         )
         path = (at ? '' : '&') + selectors.join('')

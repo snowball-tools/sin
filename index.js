@@ -489,7 +489,7 @@ function attributes(dom, view, init) {
 
 function giveLife(dom, view) {
   const life = [].concat(view.attrs.life)
-    .map(x => x(dom, () => diff(dom, view)))
+    .map(x => x && x(dom, () => diff(dom, view)))
     .filter(x => typeof x === 'function')
 
   life.length && lives.set(dom, life)

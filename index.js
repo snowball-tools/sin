@@ -384,7 +384,7 @@ function updateComponent(dom, view, parent, tree) {
 }
 
 function createComponent(dom, view, parent, tree = Tree(), keyChange) {
-  const x = view.component[0](view.attrs, view.children, () => diff(dom, view))
+  const x = view.component[0]({ life: () => {}, ...view.attrs }, view.children, () => diff(dom, view))
 
   if (typeof x === 'function') {
     tree.add(view)

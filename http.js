@@ -5,15 +5,17 @@
   }
 )
 
+http.redraw = () => { /* noop */ }
+
 export default function http(url, {
   method = 'GET',
   redraw = true,
   body = null,
-  user,
-  pass,
+  user = undefined,
+  pass = undefined,
   headers = {},
-  config,
-  raw
+  config = (xhr) => { /* noop */ },
+  raw = false
 } = {}) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
@@ -36,15 +38,15 @@ export default function http(url, {
           body,
           xhr
         })
-        redraw && http.redraw && http.redraw()
+        redraw && http.redraw()
       }
     }
-    xhr.onerror = xhr.onabort = event => reject(xhr, { event })
+    xhr.onerror = xhr.onabort = event => reject({ event, xhr })
     xhr.open(method.toUpperCase(), url, true, user, pass)
     Object.keys(headers).forEach(x => headers[x] && xhr.setRequestHeader(x, headers[x]))
     'Content-Type' in headers === false && xhr.setRequestHeader('Content-Type', 'application/json; charset=utf-8')
     'Accept' in headers === false && xhr.setRequestHeader('Accept', 'application/json, text/*')
-    config && config(xhr)
+    config(xhr)
     body === null
       ? xhr.send()
       : xhr.send(raw ? body : JSON.stringify(body))

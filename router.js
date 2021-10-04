@@ -107,7 +107,7 @@ export default function router(s, root, attrs) {
 
     return typeof view === 'function'
       ? view({
-        key: current,
+        key: current || '/',
         route: subRoute,
         ...(root + path === current && routeState[root + path] || {}),
         ...params(match || [], pathTokens)

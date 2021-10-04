@@ -1,0 +1,11 @@
+{
+  "name": "sin",
+  "version": "1.0.0",
+  "description": "## Todo - CSS features from BSS - SSR - Hydration - SVG - trust - http",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

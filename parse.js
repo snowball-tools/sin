@@ -62,7 +62,6 @@ const cache = new WeakMap()
 
 let start = -1
   , valueStart = -1
-  , colon = -1
   , classIdx = -1
   , idIdx = -1
   , startChar = -1
@@ -82,8 +81,10 @@ let start = -1
   , classes = ''
   , x = ''
   , value = ''
+  , varName = ''
   , rules = null
   , append = true
+  , colon = false
   , at = false
   , styles = false
   , cacheable = true
@@ -113,7 +114,7 @@ function renderValue(v, x) {
 }
 
 function splitSelector(x) {
-  return x.replace(/,\s*[\:\[]?/g, x => noSpace(x.charCodeAt(x.length - 1)) ? ',&' + x[x.length - 1] : ',& ')
+  return x.replace(/,\s*[:[]?/g, x => noSpace(x.charCodeAt(x.length - 1)) ? ',&' + x[x.length - 1] : ',& ')
 }
 
 function insert(rule, index) {
@@ -137,11 +138,13 @@ function insert(rule, index) {
 function parse([xs, ...args], parent, nesting = 0, root) {
   if (cache.has(xs)) {
     const prev = cache.get(xs)
-    prev.args = args
-    return prev
+    return {
+      ...prev,
+      args
+    }
   }
 
-  const vars = []
+  const vars = {}
   name = id = classes = rule = value = ''
   selectors.length = 0
   valueStart = fontFaces = -1
@@ -158,7 +161,8 @@ function parse([xs, ...args], parent, nesting = 0, root) {
     x = xs[j + 1]
     if (j < args.length) {
       if (valueStart >= 0) {
-        value += xs[j].slice(valueStart) + arg(j, vars, args)
+        vars[varName = '--' + prefix + uid + j] = j
+        value += xs[j].slice(valueStart) + 'var(' + varName + ')'
         valueStart = 0
       } else {
         x += args[j] + ';'
@@ -173,8 +177,8 @@ function parse([xs, ...args], parent, nesting = 0, root) {
         insert(k.replace(/&\s*/g, '') + '{' + v)
       )
     } else {
-      className = prefix + ++uid
-      classes += ' ' + className
+      className = prefix + uid++
+      classes += (classes ? ' ' : '') + className
       for (let i = 0; i < nesting; i++)
         className += '.' + className
 
@@ -184,7 +188,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
     }
   }
 
-  const result = { name, id, classes, args, vars }
+  const result = { name, id, classes, args, vars, parent }
   cacheable && cache.set(xs, result)
 
   return result
@@ -200,7 +204,7 @@ function parseSelector(xs, j, args, parent) {
         break
       }
     } else if (!isStartChar(char) || i === x.length) {
-      classes = (classIdx !== -1 ? x.slice(classIdx + 1, i).replace(/\./g, ' ') : '') + classes
+      classes = (classIdx !== -1 ? x.slice(classIdx + 1, i).replace(/\./g, ' ') : '') + classes + parent.classes
       id = (idIdx !== -1 ? x.slice(idIdx, classIdx || i) : '') || parent?.id
       name = x.slice(0, id
         ? idIdx - 1
@@ -224,7 +228,8 @@ function parseStyles(idx, end) {
       prop === '@import'
         ? insert(prop + ' ' + x.slice(valueStart, i), 0)
         : rule += propValue(prop, value + x.slice(valueStart, i))
-      start = valueStart = colon = -1
+      start = valueStart = -1
+      colon = false
       prop = value = ''
     }
 

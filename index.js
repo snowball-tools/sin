@@ -3,9 +3,7 @@ import router, { routeState, cleanSlash } from './router.js'
 import View from './view.js'
 import http from './http.js'
 import Stream from './stream.js'
-import pws from 'pws'
 
-s.pws = pws
 s.http = http
 s.http.redraw = redraw
 s.request = (url, o) => (o ? http(url, o) : http(url.url, url))
@@ -40,9 +38,9 @@ s.css = (xs, ...args) => parse([xs, args], null, 0, true)
 
 s.route = router(s, '', {
   url: window.location,
-  notFound: () => {},
-  title: () => {},
-  head: () => {}
+  notFound: () => { /* noop */ },
+  title: () => { /* noop */ },
+  head: () => { /* noop */ }
 })
 
 function link(dom) {
@@ -115,12 +113,12 @@ function globalRedraw() {
   idle = true
 }
 
-function diffs(parent, views, first, prev) {
+function diffs(parent = new DocumentFragment(), views, first, prev) {
   const oldKeyed = keys.has(first || parent.firstChild)
       , newKeyed = views[0] instanceof View && views[0].key != null
 
   return oldKeyed && newKeyed
-    ? keyed(parent, views, first, oldKeyed, newKeyed, prev)
+    ? keyed(parent, views, first)
     : nonKeyed(parent, views, first, oldKeyed, newKeyed, prev)
 }
 
@@ -129,22 +127,24 @@ function nonKeyed(parent, views, first, oldKeyed, newKeyed, prev) {
 
   let i = 0
     , dom = first === undefined ? parent.firstChild : first
-    , last = dom && dom.previousSibling
+    , last
     , next
 
   while (i < views.length) {
     if (!removing.has(dom)) {
-      dom = last = (!prev || i < prev.length)
+      dom = last = !prev || i < prev.length
         ? diff(dom, views[i], parent)
-        : parent.insertBefore(diff(null, views[i], null), dom)
-      newKeys && (newKeys[i] = { dom, key: views[i].key })
-      i === 0 && newKeyed && (newKeyed = dom)
+        : insertBefore(parent, diff(null, views[i], new DocumentFragment()), dom)
+
+      newKeys && (newKeys[i] = { dom: arrays.has(dom) ? arrays.get(dom).dom : dom, key: views[i].key })
+      i === 0 && newKeyed && (newKeyed = arrays.has(dom) ? arrays.get(dom).dom : dom)
       i++
     }
     dom && (dom = dom.nextSibling)
   }
 
   while (dom && !removing.has(dom) && (!prev || i++ < prev.length)) {
+    console.trace('remove', woot, prev)
     next = dom.nextSibling
     removeChild(dom, parent)
     dom = next
@@ -154,14 +154,17 @@ function nonKeyed(parent, views, first, oldKeyed, newKeyed, prev) {
     ? keys.set(newKeyed, newKeys)
     : oldKeyed && keys.delete(first || parent.firstChild)
 
-  return last
+  return parent instanceof DocumentFragment
+    ? parent
+    : last
 }
 
-function keyed(parent, b, first, oldKeyed, newKeyed) {
+function keyed(parent, b, first) {
   const a = keys.get(first || parent.firstChild)
       , bLength = b.length
       , aLength = a.length
-      , before = a[aLength - 1].dom.nextSibling
+
+  const before = aLength && a[aLength - 1].dom.nextSibling
 
   let aEnd = aLength
     , bEnd = bLength
@@ -172,6 +175,7 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
     , ax = null
     , dom
     , view
+    , last
 
   while (aStart < aEnd || bStart < bEnd) {
     if (aEnd === aStart) {
@@ -183,7 +187,7 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
 
       while (bStart < bEnd) {
         view = b[bStart++]
-        parent.insertBefore(diff(ax && ax.has(view.key) ? ax.get(view.key).dom : null, view), dom)
+        last = insertBefore(parent, diff(ax && ax.has(view.key) ? ax.get(view.key).dom : null, view), dom)
       }
     } else if (bEnd === bStart) {
       while (aStart < aEnd) {
@@ -192,7 +196,7 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
           removeChild(view.dom, parent)
       }
     } else if (a[aStart].key === b[bStart].key) {
-      diff(a[aStart].dom, b[bStart], parent)
+      last = diff(a[aStart].dom, b[bStart], parent)
       aStart++
       bStart++
     } else if (a[aEnd - 1].key === b[bEnd - 1].key) {
@@ -204,7 +208,7 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
       diff(a[aEnd - 1].dom, b[bStart], parent)
       view = a[--aEnd]
       dom = view.dom.nextSibling
-      parent.insertBefore(b[bStart++].dom, a[aStart++].dom.nextSibling)
+      last = parent.insertBefore(b[bStart++].dom, a[aStart++].dom.nextSibling)
       parent.insertBefore(b[--bEnd].dom, dom)
       a[aEnd] = b[bEnd]
     } else {
@@ -230,11 +234,11 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
           if (sequence > index - bStart) {
             while (bStart < index) {
               view = b[bStart++]
-              parent.insertBefore(diff(ax.has(view.key) ? ax.get(view.key).dom : null, view), a[aStart].dom)
+              last = insertBefore(parent, diff(ax.has(view.key) ? ax.get(view.key).dom : null, view), a[aStart].dom)
             }
           } else {
             view = b[bStart++]
-            parent.replaceChild(diff(ax.has(view.key) ? ax.get(view.key).dom : null, view), a[aStart++].dom)
+            last = replaceChild(parent, diff(ax.has(view.key) ? ax.get(view.key).dom : null, view), a[aStart++].dom)
           }
         } else {
           aStart++
@@ -248,13 +252,29 @@ function keyed(parent, b, first, oldKeyed, newKeyed) {
 
   keys.set(b[0].dom, b)
   a[0].dom !== b[0].dom && keys.delete(a[0].dom)
-  return b[b.length - 1].dom
+
+  return parent instanceof DocumentFragment
+    ? parent
+    : last
 }
 
+function insertBefore(parent, dom, before) {
+  parent.insertBefore(dom, before)
+  return dom instanceof DocumentFragment
+    ? dom.lastChild
+    : dom
+}
+
+function replaceChild(parent, dom, replace) {
+  parent.replaceChild(dom, replace)
+  return dom instanceof DocumentFragment
+    ? dom.lastChild
+    : dom
+}
 
 function diff(dom, view, parent, tree, keyChange) {
   return isStream(view)
-    ? diffStream(dom, view, parent, tree, keyChange)
+    ? diffStream(dom, view, parent)
     : typeof view === 'function'
       ? diff(dom, view(), parent, tree, keyChange)
       : view instanceof View
@@ -262,7 +282,7 @@ function diff(dom, view, parent, tree, keyChange) {
           ? diffComponent(dom, view, parent, tree, keyChange)
           : diffView(dom, view, parent, keyChange)
         : Array.isArray(view)
-          ? diffArray(dom, view, parent, keyChange)
+          ? diffArray(dom, view, parent)
           : diffValue(dom, view, parent, keyChange)
 }
 
@@ -270,7 +290,7 @@ function isStream(view) {
   return view && view.constructor === Stream
 }
 
-function diffStream(dom, view, parent, tree, keyChange) {
+function diffStream(dom, view, parent) {
   if (streams.has(dom))
     return streams.get(dom)
 
@@ -279,7 +299,7 @@ function diffStream(dom, view, parent, tree, keyChange) {
 
   view.map(x => {
     newDom = diff(dom, x, parent)
-    first = arrays.has(newDom) ? arrays.get(newDom) : newDom
+    first = arrays.has(newDom) ? arrays.get(newDom).dom : newDom
     dom !== first && (dom && streams.delete(dom), streams.set(first, newDom))
     dom = first
   })
@@ -291,28 +311,29 @@ function isSingleText(xs) {
   return xs && xs.length === 1 && (typeof xs[0] === 'string' || typeof xs[0] === 'number')
 }
 
-function diffArray(dom, view, parent) {
-  const prev = dom && dom.nodeType === 8 && dom.nodeValue.slice(1, -1)
-      , comment = diffValue(dom, '[' + view.length + ']', parent, false, true)
+function diffArray(dom, view, parent = new DocumentFragment()) {
+  const prev = dom && dom.nodeType === 8 && { length: parseInt(dom.nodeValue.slice(1, -1)) }
 
-  dom = diffs(parent, view, comment.nextSibling, prev && { length: parseInt(prev) })
-  arrays.set(dom, comment)
+  view.dom = diffValue(dom, '[' + view.length + ']', parent, false, 8)
+
+  dom = diffs(parent, view, view.dom.nextSibling, prev)
+  arrays.set(dom, { dom: view.dom, length: view.length })
 
   return dom
 }
 
-function diffValue(dom, view, parent, keyChange, array = false) {
-  const nodeChange = keyChange || !dom || !view || (array !== (dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91))
+function diffValue(dom, view, parent, keyChange, nodeType = typeof view === 'boolean' || view == null ? 8 : 3) {
+  const nodeChange = keyChange || !dom || dom.nodeType !== nodeType
 
   nodeChange && replace(
     dom,
-    dom = array || typeof view === 'boolean' || view == null
+    dom = nodeType === 8
       ? document.createComment(view)
       : document.createTextNode(view),
     parent
   )
 
-  !nodeChange && dom.nodeValue != view && (dom.nodeValue = '' + view)
+  !nodeChange && dom.nodeValue != view && (dom.nodeValue = '' + view) // eslint-disable-line
 
   return dom
 }
@@ -357,9 +378,13 @@ function Tree() {
 }
 
 function diffComponent(dom, view, parent, tree, keyChange) {
-  return !keyChange && (tree || components.has(dom))
+  dom = !keyChange && (tree || components.has(dom))
     ? updateComponent(dom, view, parent, tree || components.get(dom))
     : createComponent(dom, view, parent, tree, keyChange)
+
+  view.dom = Array.isArray(view) && arrays.has(dom) ? arrays.get(dom).dom : dom
+
+  return dom
 }
 
 function updateComponent(dom, view, parent, tree) {
@@ -369,8 +394,9 @@ function updateComponent(dom, view, parent, tree) {
     return createComponent(dom, view, parent, tree)
 
   if (typeof prev.instance === 'function') {
-    const next = diff(dom, mergeTag(prev.instance(view.attrs, view.children), view), parent, tree.next())
-    prev.dom = next // arrays.has(next) ? arrays.get(next) : next
+    const v = mergeTag(prev.instance(view.attrs, view.children), view)
+    const next = diff(dom, v, parent, tree.next())
+    prev.dom = Array.isArray(v) && arrays.has(next) ? arrays.get(next).dom : next
     tree.prev()
     tree.i === 0 && (tree.xs.length = tree.max, tree.max = 0)
     prev.dom !== dom && (components.set(prev.dom, tree), components.delete(dom))
@@ -380,7 +406,7 @@ function updateComponent(dom, view, parent, tree) {
     return dom
   }
 
-  return diff(dom, prev.instance, parent, tree)
+  return prev.dom = diff(dom, prev.instance, parent, tree)
 }
 
 function createComponent(dom, view, parent, tree = Tree(), keyChange) {
@@ -388,20 +414,20 @@ function createComponent(dom, view, parent, tree = Tree(), keyChange) {
 
   if (typeof x === 'function') {
     tree.add(view)
-    const next = diff(dom, mergeTag(x(view.attrs, view.children), view), parent, tree.next(), keyChange)
+    const v = mergeTag(x(view.attrs, view.children), view)
+    const next = diff(dom, v, parent, tree.next(), keyChange)
     tree.prev()
-    view.dom = next // arrays.has(next) ? arrays.get(next) : next
+    view.dom = Array.isArray(v) && arrays.has(next) ? arrays.get(next).dom : next
     view.instance = x
     view.dom !== dom && (components.set(view.dom, tree), components.delete(dom))
     return next
   } else if (x && typeof x.then === 'function') {
     const next = document.createComment('pending')
-    view.dom = next
     view.instance = x
     tree.add(view)
     tree.max++
     next !== dom && (components.set(next, tree), components.delete(dom))
-    x.catch(x => console.error(x) || x).then(result => {
+    x.catch(x => (console.error(x), x)).then(result => {
       if (!components.has(next))
         return
 
@@ -425,9 +451,10 @@ function mergeTag(a, b) {
   a.tag = {
     id: b.tag.id || a.tag.id,
     name: b.tag.name || a.tag.name,
-    classes: a.tag.classes + b.tag.classes,
+    classes: (a.tag.classes ? a.tag.classes + ' ' : '') + b.tag.classes,
     args: b.tag.args,
-    vars: b.tag.vars
+    vars: b.tag.vars,
+    parent: a.tag
   }
 
   return a
@@ -445,6 +472,8 @@ function empty(o) {
 
 function attributes(dom, view, init) {
   let has = false
+    , tag = view.tag
+
   const prev = attrs.has(dom) && attrs.get(dom)
   prev && view.attrs && (view.attrs.handleEvent = prev.handleEvent)
 
@@ -473,13 +502,11 @@ function attributes(dom, view, init) {
       dom.removeAttribute('class')
     }
   }
-  for (let i = 0; i < (view.tag ? view.tag.vars.length : 0); i++) {
-    const arg = view.tag.args[i]
-        , id = '--' + parse.prefix + (i + 1)
 
-    arg && arg.constructor === Stream
-      ? init && arg.map(x => dom.style.setProperty(id, x))
-      : dom.style.setProperty(id, typeof arg === 'function' ? arg(dom) : arg)
+  if (view.tag) {
+    setVars(dom, view.tag.vars, view.tag.args, init)
+    while ((tag = tag.parent))
+      setVars(dom, tag.vars, tag.args, init)
   }
 
   has
@@ -487,9 +514,18 @@ function attributes(dom, view, init) {
     : prev && empty(view.attrs) && attrs.delete(dom)
 }
 
+function setVars(dom, vars, args, init) {
+  for (const id in vars) {
+    const value = args[vars[id]]
+    value && value.constructor === Stream
+      ? init && value.map(x => dom.style.setProperty(id, x))
+      : dom.style.setProperty(id, typeof value === 'function' ? value(dom) : value)
+  }
+}
+
 function giveLife(dom, view) {
   const life = [].concat(view.attrs.life)
-    .map(x => x && x(dom, () => diff(dom, view)))
+    .map(x => typeof x === 'function' && x(dom, () => diff(dom, view)))
     .filter(x => typeof x === 'function')
 
   life.length && lives.set(dom, life)
@@ -530,14 +566,14 @@ function removeEvent(dom, attrs, name) {
 }
 
 function addEvent(dom, attrs, name) {
-  !attrs.handleEvent && (attrs.handleEvent = handleEvent(dom, attrs))
+  !attrs.handleEvent && (attrs.handleEvent = handleEvent(dom))
   dom.addEventListener(name.slice(2), attrs.handleEvent)
 }
 
 function handleEvent(dom) {
   return {
     handleEvent: function(e) {
-      const handler = attrs.get(dom)['on' + event.type]
+      const handler = attrs.get(dom)['on' + e.type]
       const result = typeof handler === 'function'
         ? handler.call(e.currentTarget, e)
         : handler && typeof handler.handleEvent === 'function' && handler.handleEvent(e)
@@ -580,7 +616,9 @@ function defer(dom, parent, children) {
 }
 
 function removeArray(dom, parent, count) {
-  let next
+  let next = dom.nextSibling
+  parent.removeChild(dom)
+  dom = next
   while (count && dom) {
     next = dom.nextSibling
     !removing.has(dom) && (removeChild(dom, parent), count--)
@@ -593,10 +631,10 @@ function removeChild(dom, parent, remove = true) {
     return
 
   if (dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91)
-    return removeArray(dom.nextSibling, parent, parseInt(dom.nodeValue.slice(1, -1)))
+    return removeArray(dom, parent, parseInt(dom.nodeValue.slice(1, -1)))
 
   if (dom.nodeType !== 1)
-    return
+    return remove && parent.removeChild(dom) && false
 
   const lives = []
   let child = dom.firstChild

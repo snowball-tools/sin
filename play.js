@@ -2,31 +2,23 @@ import s from './index.js'
 
 window.run = s.redraw
 
-s.css`
-  @keyframes fade {
-    from {
-      o 0
-    }
-  }
+let xs = []
 
-  * {
-    animation 1s fade
-  }
-`
-
-const counter = s(({ count = 3 }) => () =>
-  s`button`({
-    key: count,
-    onclick: () => count++
-  }, count)
-)
-
-const wat = s(() => counter({ ke: 'counter' }))
-
-const waiter = s(() => {
-  return ({ sub }) => [s`h1`({ ke: 'h1' }, 'hej'), sub
-    ? waiter({ ke: 'waiter' })
-    : wat({ ke: 'wat' })]
-})
-
-s.mount(() => waiter({ sub: true }))
+s.mount(() => [
+  'hej',
+  s``({
+    key: 'wat'
+  },
+    s`button`({
+      onclick: () => xs = []
+    }, 'empty'),
+    s`button`({
+      onclick: () => xs = [...Array(Math.floor(Math.random() * 10)).keys()]
+    }, 'create'),
+    s`ul`(
+      xs.map(x => s`li`({
+        key: x
+      }, x))
+    )
+  )
+])

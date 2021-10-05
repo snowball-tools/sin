@@ -1,19 +1,13 @@
-import parse from './parse.js'
+import parse, { ats } from './parse.js'
 import router, { routeState, cleanSlash } from './router.js'
 import View from './view.js'
 import http from './http.js'
 import Stream from './stream.js'
 
-s.http = http
-s.http.redraw = redraw
-s.request = (url, o) => (o ? http(url, o) : http(url.url, url))
-  .then(({ body }) => body)
-  .catch(x => (x.response = x.body, Promise.reject(x)))
-
 export default function s(...x) {
   return S.bind(
     typeof x[0] === 'function'
-      ? new View(x)
+      ? new View(x[0])
       : tagged(x)
   )
 }
@@ -37,10 +31,23 @@ s.stream = Stream
 s.css = (xs, ...args) => parse([xs, args], null, 0, true)
 
 s.route = router(s, '', {
-  url: window.location,
+  url: typeof window !== 'undefined' && window.location,
   notFound: () => { /* noop */ },
   title: () => { /* noop */ },
   head: () => { /* noop */ }
+})
+
+s.http = http
+s.http.redraw = redraw
+s.request = (url, o) => (o ? http(url, o) : http(url.url, url))
+  .then(({ body }) => body)
+  .catch(x => (x.response = x.body, Promise.reject(x)))
+
+s.bss = { at: ats, global: s.css }
+s.trust = x => s``({
+  life(dom) {
+    dom.innerHTML = x
+  }
 })
 
 function link(dom) {
@@ -69,7 +76,7 @@ function S(...x) {
 function tagged(x, parent) {
   return new View(
     parent && parent.component,
-    parse(x, parent ? parent.tag : defaults, parent ? parent.level + 1 : 0),
+    parse(x, parent && parent.tag || defaults, parent ? parent.level + 1 : 0),
     parent ? parent.level + 1 : 0
   )
 }
@@ -102,6 +109,7 @@ function mount(dom, view) {
   )
   mounts.set(dom, view)
   redraw()
+  return view
 }
 
 function redraw() {
@@ -115,44 +123,44 @@ function globalRedraw() {
 
 function diffs(parent = new DocumentFragment(), views, first, prev) {
   const oldKeyed = keys.has(first || parent.firstChild)
-      , newKeyed = views[0] instanceof View && views[0].key != null
 
-  return oldKeyed && newKeyed
+  return oldKeyed
     ? keyed(parent, views, first)
-    : nonKeyed(parent, views, first, oldKeyed, newKeyed, prev)
+    : nonKeyed(parent, views, first === undefined ? parent.firstChild : first, prev)
 }
 
-function nonKeyed(parent, views, first, oldKeyed, newKeyed, prev) {
-  const newKeys = newKeyed && new Array(views.length)
-
+function nonKeyed(parent, views, first, prev) {
   let i = 0
-    , dom = first === undefined ? parent.firstChild : first
+    , dom = first
     , last
     , next
+    , newKeys
 
   while (i < views.length) {
     if (!removing.has(dom)) {
+      p(dom, first, dom && dom.parent, parent)
       dom = last = !prev || i < prev.length
         ? diff(dom, views[i], parent)
         : insertBefore(parent, diff(null, views[i], new DocumentFragment()), dom)
 
-      newKeys && (newKeys[i] = { dom: arrays.has(dom) ? arrays.get(dom).dom : dom, key: views[i].key })
-      i === 0 && newKeyed && (newKeyed = arrays.has(dom) ? arrays.get(dom).dom : dom)
+      i === 0 && (first = arrays.has(dom) ? arrays.get(dom).dom : dom)
+
+      views[i] instanceof View && views[i].key != null && (
+        !newKeys && (newKeys = new Array(views.length)),
+        newKeys[i] = { dom: arrays.has(dom) ? arrays.get(dom).dom : dom, key: views[i].key }
+      )
       i++
     }
     dom && (dom = dom.nextSibling)
   }
 
   while (dom && !removing.has(dom) && (!prev || i++ < prev.length)) {
-    console.trace('remove', woot, prev)
     next = dom.nextSibling
     removeChild(dom, parent)
     dom = next
   }
 
-  newKeyed
-    ? keys.set(newKeyed, newKeys)
-    : oldKeyed && keys.delete(first || parent.firstChild)
+  newKeys && keys.set(first, newKeys)
 
   return parent instanceof DocumentFragment
     ? parent
@@ -160,7 +168,8 @@ function nonKeyed(parent, views, first, oldKeyed, newKeyed, prev) {
 }
 
 function keyed(parent, b, first) {
-  const a = keys.get(first || parent.firstChild)
+  const aRef = first || parent.firstChild
+      , a = keys.get(aRef)
       , bLength = b.length
       , aLength = a.length
 
@@ -195,15 +204,15 @@ function keyed(parent, b, first) {
         if (!bx || !bx.has(view.key))
           removeChild(view.dom, parent)
       }
-    } else if (a[aStart].key === b[bStart].key) {
+    } else if (b[bStart] instanceof View && a[aStart].key === b[bStart].key) {
       last = diff(a[aStart].dom, b[bStart], parent)
       aStart++
       bStart++
-    } else if (a[aEnd - 1].key === b[bEnd - 1].key) {
+    } else if (b[bEnd - 1] instanceof View && a[aEnd - 1].key === b[bEnd - 1].key) {
       diff(a[aEnd - 1].dom, b[bEnd - 1], parent)
       aEnd--
       bEnd--
-    } else if (a[aStart].key === b[bEnd - 1].key && b[bStart].key === a[aEnd - 1].key) {
+    } else if (b[bStart] instanceof View && a[aStart].key === b[bEnd - 1].key && b[bStart].key === a[aEnd - 1].key) {
       diff(a[aStart].dom, b[bEnd - 1], parent)
       diff(a[aEnd - 1].dom, b[bStart], parent)
       view = a[--aEnd]
@@ -250,8 +259,9 @@ function keyed(parent, b, first) {
     }
   }
 
-  keys.set(b[0].dom, b)
-  a[0].dom !== b[0].dom && keys.delete(a[0].dom)
+  b.length
+    ? (keys.set(b[0].dom, b), (b[0].dom !== aRef) && keys.delete(aRef))
+    : keys.delete(aRef)
 
   return parent instanceof DocumentFragment
     ? parent
@@ -410,7 +420,7 @@ function updateComponent(dom, view, parent, tree) {
 }
 
 function createComponent(dom, view, parent, tree = Tree(), keyChange) {
-  const x = view.component[0]({ life: () => {}, ...view.attrs }, view.children, () => diff(dom, view))
+  const x = view.component({ life: () => {}, ...view.attrs }, view.children, () => diff(dom, view))
 
   if (typeof x === 'function') {
     tree.add(view)

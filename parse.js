@@ -9,6 +9,9 @@ const doc = typeof document !== 'undefined' && window.document
     , findWidth = x => x ? x.hasOwnProperty('width') ? x : findWidth(Object.getPrototypeOf(x)) : {}
     , initials = (acc, x) => (acc[x.split('-').map(x => x[0]).join('')] = x, acc)
     , propCache = {}
+    , atsCache = {}
+
+export const ats = x => Object.entries(x).forEach(([k, v]) => atsCache['@' + k] = v)
 
 parse.prefix = prefix
 
@@ -49,7 +52,7 @@ const popular = ['align-items','bottom','background-color','border-radius','box-
 const shorthands = Object.assign(properties.reduce(initials, {}), popular.reduce(initials, {}))
 
 const cache = new WeakMap()
-    , cssVars = window.CSS && CSS.supports('color', 'var(--support-test)')
+    , cssVars = typeof window !== 'undefined' && window.CSS && CSS.supports('color', 'var(--support-test)')
     , isStartChar = x => x !== 32 && x !== 9 && x !== 10 && x !== 13 && x !== 59
     , quoteChar = x => x === 34 || x === 39
     , propEndChar = x => x === 32 || x === 58 || x === 9
@@ -220,6 +223,10 @@ function parseSelector(xs, j, args, parent) {
   }
 }
 
+function atHelper(x) {
+  return atsCache[x] || x
+}
+
 function parseStyles(idx, end) {
   for (let i = idx; i <= x.length; i++) {
     char = x.charCodeAt(i)
@@ -252,12 +259,14 @@ function parseStyles(idx, end) {
       } else {
         rule && (rules[path || '&'] = rule)
         !selectors.length && (at = startChar === 64)
-        selector = x.slice(start, i).trim()
+        selector = at
+          ? atHelper(x.slice(start, i).trim())
+          : x.slice(start, i).trim()
         selector.indexOf(',') !== -1 && (selector = splitSelector(selector))
         selectors.push(
           (noSpace(startChar) ? '' : ' ') + selector
-          + (startChar === 64
-            ? x.charCodeAt(start + 1) === 102
+          + (at
+            ? selector.indexOf('@font-face') === 0
               ? Array(++fontFaces + 1).join(' ')
               : '{'
             : ''

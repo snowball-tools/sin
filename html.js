@@ -47,8 +47,12 @@ async function updateElement(view) {
       ' ' + k + '="' + v + '"'
     ).join('')
     + '>'
-    + await updateChildren(view.children)
-    + (open.has(tag) ? '' : '</' + tag + '>')
+    + (view.text
+      ? view.text
+      : view.children && view.children.length
+        ? await updateChildren(view.children)
+        : ''
+    )+ (open.has(tag) ? '' : '</' + tag + '>')
 }
 
 async function updateChildren(xs) {
@@ -74,7 +78,7 @@ function updateComment(view) {
 
 async function updateComponent(view) {
   lastWasText = false
-  let x = view.component[0]()
+  let x = view.component()
   if (typeof x.then === 'function')
     x = await x
 

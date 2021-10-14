@@ -1,41 +1,50 @@
-function getAfter(node, i) {
-  while (node && i--)
-    node = node.nextSibling
-  return node
+export function nonKeyed(parent, next, diff, remove, keys, removing, dom, after = null) { // eslint-disable-line
+  let i = 0
+    , temp
+    , view
+
+  while (i < next.length) {
+    if (!removing.has(dom)) {
+      view = next[i]
+      temp = dom !== after
+        ? diff(dom, view, parent)
+        : diff(null, view)
+      dom === after && parent.insertBefore(temp.dom, after)
+      keys && (
+        keys.rev[view.key] = i,
+        keys[i] = Ref(view, temp)
+      )
+      dom = temp.last
+      i++
+    }
+    dom && (dom = dom.nextSibling)
+  }
+
+  while (dom !== after) {
+    temp = dom.nextSibling
+    remove(dom, parent)
+    dom = temp
+  }
 }
 
-export function keyed(parent, current, next, create, update, remove, before) { // eslint-disable-line
-  let node = before ? before.nextSibling : parent.firstChild
-    , tmp
-    , mode
-    , i = 0
-    , after = current.after || getAfter(node, current.length)
-
-  if (next.length === 0) {
-    while (i) {
-      tmp = node.nextSibling
-      remove(node) && i--
-      node = tmp
-    }
-    return
-  }
-
-  if (current.length === 0) {
-    for (i = 0; i < next.length; i++)
-      parent.insertBefore(create(next[i]), node)
-    return
-  }
-
-  let prevStart = 0
+export function keyed(parent, current, next, diff, remove, keys, removing, before, after = null, arrays) { // eslint-disable-line
+  let node
+    , temp
+    , i = current.length
+    , prevStart = 0
     , newStart = 0
     , loop = true
     , prevEnd = current.length - 1
     , newEnd = next.length - 1
     , a
     , b
-    , prevStartNode = before ? before.nextSibling : parent.firstChild
+    , prevStartNode = before && before.nextSibling || parent.firstChild
     , newStartNode = prevStartNode
-    , prevEndNode = after ? after.previousSibling : parent.lastChild
+    , prevEndNode = after && after.previousSibling || parent.lastChild
+
+  const last = prevStartNode
+
+  arrays.has(prevEndNode) && (prevEndNode = arrays.get(prevEndNode))
 
   fixes: while (loop) {
     loop = false
@@ -44,10 +53,11 @@ export function keyed(parent, current, next, create, update, remove, before) { /
     a = current[prevStart]
     b = next[newStart]
     while (a.key === b.key) {
-      update(prevStartNode, b)
+      temp = diff(prevStartNode, b, parent)
+      keys[newStart] = Ref(b, temp)
       prevStart++
       newStart++
-      newStartNode = prevStartNode = prevStartNode.nextSibling
+      newStartNode = prevStartNode = temp.last.nextSibling
       if (prevEnd < prevStart || newEnd < newStart) break fixes
       a = current[prevStart]
       b = next[newStart]
@@ -57,11 +67,13 @@ export function keyed(parent, current, next, create, update, remove, before) { /
     a = current[prevEnd]
     b = next[newEnd]
     while (a.key === b.key) {
-      update(prevEndNode, b)
+      temp = diff(prevEndNode, b, parent)
+      keys[newEnd] = Ref(b, temp)
       prevEnd--
       newEnd--
       after = prevEndNode
-      prevEndNode = prevEndNode.previousSibling
+      prevEndNode = temp.first.previousSibling
+      arrays.has(prevEndNode) && (prevEndNode = arrays.get(prevEndNode))
       if (prevEnd < prevStart || newEnd < newStart) break fixes
       a = current[prevEnd]
       b = next[newEnd]
@@ -72,10 +84,11 @@ export function keyed(parent, current, next, create, update, remove, before) { /
     b = next[newStart]
     while (a.key === b.key) {
       loop = true
-      update(prevEndNode, b)
       node = prevEndNode.previousSibling
-      parent.insertBefore(prevEndNode, newStartNode)
-      prevEndNode = node
+      temp = diff(prevEndNode, b, parent)
+      keys[newStart] = Ref(b, temp)
+      insertBefore(parent, temp, newStartNode)
+      prevEndNode = arrays.has(node) ? arrays.get(node) : node
       newStart++
       prevEnd--
       if (prevEnd < prevStart || newEnd < newStart) break fixes
@@ -88,11 +101,12 @@ export function keyed(parent, current, next, create, update, remove, before) { /
     b = next[newEnd]
     while (a.key === b.key) {
       loop = true
-      update(prevStartNode, b)
-      node = prevStartNode.nextSibling
-      parent.insertBefore(prevStartNode, after)
+      temp = diff(prevStartNode, b, parent)
+      keys[newEnd] = Ref(b, temp)
+      node = temp.last.nextSibling
+      insertBefore(parent, temp, after)
       prevStart++
-      after = prevStartNode
+      after = temp.last
       prevStartNode = node
       newEnd--
       if (prevEnd < prevStart || newEnd < newStart) break fixes
@@ -106,29 +120,29 @@ export function keyed(parent, current, next, create, update, remove, before) { /
     if (prevStart <= prevEnd) {
       while (prevStart <= prevEnd) {
         if (prevEnd === 0) {
-          remove(prevEndNode) && prevEnd--
+          remove(prevEndNode, parent) && prevEnd--
         } else {
-          tmp = prevEndNode.previousSibling
-          remove(prevEndNode) && prevEnd--
-          prevEndNode = tmp
+          temp = prevEndNode.previousSibling
+          remove(prevEndNode, parent) && prevEnd--
+          prevEndNode = arrays.has(temp) ? arrays.get(temp) : temp
         }
       }
     }
-    return
+    return keys
   }
 
   // Fast path for add
   if (prevEnd < prevStart) {
     if (newStart <= newEnd) {
-      mode = after ? 1 : 0
-
       while (newStart <= newEnd) {
-        node = create(next[newStart])
-        mode ? parent.insertBefore(node, after) : parent.appendChild(node)
+        b = next[newStart]
+        node = diff(null, b)
+        keys[newStart] = Ref(b, node)
+        parent.insertBefore(node.dom, after)
         newStart++
       }
     }
-    return
+    return keys
   }
 
   // Positions for reusing nodes from current DOM state
@@ -153,27 +167,22 @@ export function keyed(parent, current, next, create, update, remove, before) { /
 
   // Fast path for full replace
   if (reusingNodes === 0) {
-    if (before !== undefined || after !== undefined) {
-      before !== undefined ? before.nextSibling : parent.firstChild
+    node = before && before.nextSibling || parent.firstChild
 
-      if (after === undefined) after = null
-
-      while (node !== after) {
-        tmp = node.nextSibling
-        remove(node) && prevStart++
-        node = tmp
-      }
-    } else {
-      parent.textContent = ''
+    while (node) {
+      temp = node.nextSibling
+      remove(node, parent) && prevStart++
+      node = temp !== last && temp
     }
 
-    mode = after ? 1 : 0
     for (i = newStart; i <= newEnd; i++) {
-      node = create(next[i])
-      mode ? parent.insertBefore(node, after) : parent.appendChild(node)
+      b = next[i]
+      node = diff(null, b)
+      keys[i] = Ref(b, node)
+      parent.insertBefore(node.dom, after)
     }
 
-    return
+    return keys
   }
 
   // What else?
@@ -181,35 +190,54 @@ export function keyed(parent, current, next, create, update, remove, before) { /
 
   // Collect nodes to work with them
   const nodes = []
-  let tmpC = prevStartNode
+
+  temp = prevStartNode
   for (i = prevStart; i <= prevEnd; i++) {
-    nodes[i] = tmpC
-    tmpC = tmpC.nextSibling
+    nodes[i] = temp
+    temp = temp.nextSibling
   }
 
   i = 0
   while (i < toRemove.length)
-    remove(nodes[toRemove[i]]) && i++
+    remove(nodes[toRemove[i]], parent) && i++
 
   let lisIdx = longestSeq.length - 1
-    , tmpD
 
   for (i = newEnd; i >= newStart; i--) {
     if (longestSeq[lisIdx] === i) {
       after = nodes[P[longestSeq[lisIdx]]]
-      update(after, next[i])
+      diff(after, next[i], parent)
       lisIdx--
     } else {
       if (P[i] === -1) {
-        tmpD = create(next[i])
+        temp = diff(null, next[i])
+        parent.insertBefore(temp.dom, after)
       } else {
-        tmpD = nodes[P[i]]
-        update(tmpD, next[i])
+        temp = diff(nodes[P[i]], next[i], parent)
+        insertBefore(parent, temp, after)
       }
-      parent.insertBefore(tmpD, after)
-      after = tmpD
+
+      after = temp.last
     }
   }
+
+  return keys
+}
+
+function insertBefore(parent, x, after) {
+  let first = x.first
+    , temp
+
+  after === x.first && (after = null)
+
+  do {
+    temp = first.nextSibling
+    p('yas', first && first.nodeValue || first, after && after.nodeValue || after)
+    parent.insertBefore(first, after)
+    first = first === x.last ? null : temp
+  } while (first)
+
+  return x
 }
 
 export default keyed
@@ -269,4 +297,8 @@ function findGreatestIndexLEQ(seq, n) {
   }
 
   return lo
+}
+
+function Ref({ key }, { first }) {
+  return { dom: first, key }
 }

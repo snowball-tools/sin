@@ -1,9 +1,11 @@
+import window from './window.js'
+
 export default parse
 
-const doc = typeof document !== 'undefined' && window.document
-    , style = doc && doc.querySelector && (doc.querySelector('.sin') || doc.createElement('style'))
+const document = window.document
+    , style = document && document.querySelector && (document.querySelector('.sin') || document.createElement('style'))
     , prefix = style && style.getAttribute('id') || 'sin-' + ('000000' + (Math.random() * Math.pow(36, 6) | 0).toString(36)).slice(-6)
-    , dom = doc && document.createElement('div')
+    , dom = document.createElement('div')
     , vendorRegex = /^(o|O|ms|MS|Ms|moz|Moz|webkit|Webkit|WebKit)([A-Z])/
     , snake = x => x.replace(/(\B[A-Z])/g, '-$1').toLowerCase()
     , findWidth = x => x ? x.hasOwnProperty('width') ? x : findWidth(Object.getPrototypeOf(x)) : {}
@@ -29,7 +31,7 @@ const pxCache = {
 
 const properties = ['float']
   .concat(Object.keys(
-    doc ? findWidth(document.documentElement.style) : {}
+    document.documentElement ? findWidth(document.documentElement.style) : {}
   ))
   .filter((x, i, xs) => x.indexOf('-') === -1 && x !== 'length' && xs.indexOf(x) === i)
   .map(x => x.match(vendorRegex) ? '-' + snake(x) : snake(x))
@@ -102,7 +104,7 @@ function propValue(x, v) {
 
   return x
     + ':' +
-   (colon ? v : renderValue(v, x))
+   (colon ? v : renderValue(x, v))
     + ';'
 }
 
@@ -110,10 +112,10 @@ function renderProp(x) {
   return propCache[x] || (propCache[x] = vendor(shorthand(x)))
 }
 
-function renderValue(v, x) {
-  return px(x)
-    ? v.replace(/(^| )?([-0-9.]+)( |$)/g, '$1$2px$3')
-    : v
+export function renderValue(prop, value) {
+  return px(prop)
+    ? ('' + value).replace(/(^| )?(-?[0-9.]+)( |$)/g, '$1$2px$3')
+    : value
 }
 
 function splitSelector(x) {
@@ -122,7 +124,7 @@ function splitSelector(x) {
 
 function insert(rule, index) {
   if (append) {
-    style && doc.head && doc.head.appendChild(style)
+    style && document.head && document.head.appendChild(style)
     append = false
   }
 
@@ -164,7 +166,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
     x = xs[j + 1]
     if (j < args.length) {
       if (valueStart >= 0) {
-        vars[varName = '--' + prefix + uid + j] = j
+        vars[varName = '--' + prefix + uid + j] = { prop, index: j }
         value += xs[j].slice(valueStart) + 'var(' + varName + ')'
         valueStart = 0
       } else {
@@ -191,7 +193,20 @@ function parse([xs, ...args], parent, nesting = 0, root) {
     }
   }
 
-  const result = { name, id, classes, args, vars, parent }
+
+  const node = name ? document.createElement(name) : parent.node
+  name && node.setAttribute('class', classes)
+
+  const result = {
+    node,
+    name,
+    classes,
+    id,
+    args,
+    vars,
+    parent
+  }
+
   cacheable && cache.set(xs, result)
 
   return result
@@ -212,7 +227,7 @@ function parseSelector(xs, j, args, parent) {
       name = x.slice(0, id
         ? idIdx - 1
         : (classIdx !== -1 ? classIdx : i)
-      ).toUpperCase() || parent?.name
+      ).toUpperCase() || parent.name
       idIdx = classIdx = -1
       styles = true
     } else if (char === 35) { // #
@@ -250,8 +265,8 @@ function parseStyles(idx, end) {
     } else if (char === 123) { // {
       if (prop === 'animation') {
         rule && (rules[path || '&'] = rule)
-        animation = x.slice(valueStart, i).trim()
-        keyframes = ''
+        animation = value + x.slice(valueStart, i).trim()
+        keyframes = value = ''
         rule = ''
       } else if (animation) {
         keyframe = x.slice(start, i).trim()

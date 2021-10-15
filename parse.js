@@ -90,10 +90,8 @@ let start = -1
   , rules = null
   , append = true
   , colon = false
-  , at = false
   , styles = false
   , cacheable = true
-  , fontFaces = -1
 
 function shorthand(x) {
   return shorthands[x] || x
@@ -152,7 +150,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
   const vars = {}
   name = id = classes = rule = value = ''
   selectors.length = 0
-  valueStart = fontFaces = -1
+  valueStart = -1
   rules = root ? {} : null
   styles = false
   cacheable = true
@@ -273,22 +271,12 @@ function parseStyles(idx, end) {
         rule = ''
       } else {
         rule && (rules[path || '&'] = rule)
-        !selectors.length && (at = startChar === 64)
-        selector = at
+        selector = startChar === 64
           ? atHelper(x.slice(start, i).trim())
           : x.slice(start, i).trim()
         selector.indexOf(',') !== -1 && (selector = splitSelector(selector))
-        selectors.push(
-          (noSpace(startChar) ? '' : ' ') + selector
-          + (at
-            ? selector.indexOf('@font-face') === 0
-              ? Array(++fontFaces + 1).join(' ')
-              : '{'
-            : ''
-          )
-          + (x.slice(start, start + 6) === '@media' ? '&' : '')
-        )
-        path = (at ? '' : '&') + selectors.join('')
+        selectors.push((noSpace(startChar) ? '' : ' ') + selector)
+        path = selectors.toString()
         rule = rules[path || '&'] || ''
       }
       start = valueStart = -1
@@ -304,7 +292,7 @@ function parseStyles(idx, end) {
       } else {
         rule && (rules[path || '&'] = rule)
         selectors.pop()
-        path = (at ? '' : '&') + selectors.join('')
+        path = selectors.toString()
         rule = rules[path || '&'] || ''
       }
       start = valueStart = -1
@@ -319,6 +307,17 @@ function parseStyles(idx, end) {
       valueStart = i
     }
   }
+}
+
+selectors.toString = function() {
+  let a = ''
+    , b = ''
+  selectors.forEach(x =>
+    x.charCodeAt(0) === 64
+      ? (a += x)
+      : (b += x)
+  )
+  return (a ? a + '{' : '') + '&' + b
 }
 
 function px(x) {

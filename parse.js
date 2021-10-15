@@ -13,7 +13,7 @@ const document = window.document
     , propCache = {}
     , atsCache = {}
 
-export const ats = x => Object.entries(x).forEach(([k, v]) => atsCache['@' + k] = v)
+export const atReplacer = x => Object.entries(x).forEach(([k, v]) => atsCache['@' + k] = v)
 
 parse.prefix = prefix
 

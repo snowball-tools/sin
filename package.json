@@ -5,7 +5,8 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "esbuild --minify --minify-syntax --minify-identifiers --format=esm --bundle --outfile=index.min.js index.js",
+    "gzip": "gzip -c index.min.js > index.min.js.gz && ls -l index.min.js.gz && rm index.min.js.gz"
   },
   "author": "",
   "license": "ISC"

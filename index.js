@@ -24,7 +24,6 @@ const components = new WeakMap()
     , attrs = new WeakMap()
     , keyCache = new WeakMap()
     , mounts = new Map()
-    , defaults = { node: document.createElement('DIV'), name: 'DIV', classes: '' }
     , resolved = Promise.resolve()
 
 let idle = true
@@ -33,7 +32,7 @@ s.pathmode = ''
 s.redraw = redraw
 s.mount = mount
 s.stream = Stream
-s.css = (xs, ...args) => parse([xs, args], defaults, 0, true)
+s.css = (xs, ...args) => parse([xs, args], null, 0, true)
 
 s.route = router(s, '', {
   url: typeof window !== 'undefined' && window.location,
@@ -88,7 +87,7 @@ function tagged(x, parent) {
   const level = parent ? parent.level + 1 : 0
   return new View(
     parent && parent.component,
-    parse(x, parent && parent.tag || defaults, level),
+    parse(x, parent && parent.tag, level),
     level
   )
 }
@@ -176,7 +175,7 @@ function nonKeyed(parent, next, keys, dom, after = null) { // eslint-disable-lin
     dom && (dom = dom.nextSibling)
   }
 
-  while (dom !== after)
+  while (dom && dom !== after)
     dom = remove(dom, parent).after
 }
 
@@ -253,24 +252,24 @@ function insertBefore(parent, { first, last }, before) {
 }
 
 
-function update(dom, view, parent, tree, keyChange) {
+function update(dom, view, parent, stack, create) {
   return typeof view === 'function'
     ? view.constructor === Stream
       ? updateStream(dom, view, parent)
-      : update(dom, view(), parent, tree, keyChange)
+      : update(dom, view(), parent, stack, create)
     : view instanceof View
-      ? updateView(dom, view, parent, tree, keyChange)
+      ? updateView(dom, view, parent, stack, create)
       : Array.isArray(view)
         ? updateArray(dom, view, parent)
         : view instanceof Node
           ? Ret(view)
-          : updateValue(dom, view, parent, keyChange)
+          : updateValue(dom, view, parent, create)
 }
 
-function updateView(dom, view, parent, tree, keyChange) {
+function updateView(dom, view, parent, stack, create) {
   return view.component
-    ? updateComponent(dom, view, parent, tree, keyChange)
-    : updateElement(dom, view, parent, keyChange)
+    ? updateComponent(dom, view, parent, stack, create)
+    : updateElement(dom, view, parent, create)
 }
 
 function updateStream(dom, view, parent) {
@@ -316,8 +315,8 @@ function updateArray(dom, view, parent) {
   return Ret(parent, comment.first, parent.lastChild)
 }
 
-function updateValue(dom, view, parent, keyChange, nodeType = typeof view === 'boolean' || view == null ? 8 : 3) {
-  const nodeChange = keyChange || !dom || dom.nodeType !== nodeType
+function updateValue(dom, view, parent, create, nodeType = typeof view === 'boolean' || view == null ? 8 : 3) {
+  const nodeChange = create || !dom || dom.nodeType !== nodeType
 
   nodeChange && replace(
     dom,
@@ -333,10 +332,10 @@ function updateValue(dom, view, parent, keyChange, nodeType = typeof view === 'b
   return Ret(dom)
 }
 
-function updateElement(dom, view, parent, nodeChange = dom === null || dom.tagName !== view.tag.name) {
-  nodeChange && replace(
+function updateElement(dom, view, parent, create = dom === null || dom.tagName !== (view.tag.name || 'DIV')) {
+  create && replace(
     dom,
-    dom = view.tag.node.cloneNode(),
+    dom = document.createElement(view.tag.name || 'DIV'),
     parent
   )
 
@@ -344,7 +343,7 @@ function updateElement(dom, view, parent, nodeChange = dom === null || dom.tagNa
     ? updates(dom, view.children)
     : dom.hasChildNodes() && removeChildren(dom.firstChild, dom)
 
-  attributes(dom, view, nodeChange)
+  attributes(dom, view, create)
 
   return Ret(dom)
 }
@@ -354,81 +353,77 @@ function removeChildren(dom, parent) {
   while (dom)
 }
 
-function Tree() {
+function Stack() {
   const xs = []
-  const tree = {
-    xs,
-    i: 0,
-    max: 0,
-    peek: () => xs[tree.i],
-    prev: () => {
-      tree.i--
-    },
-    next: () => {
-      tree.i <= tree.xs.length && (tree.max = ++tree.i)
-      return tree
-    },
-    add: (x) => xs.push(x)
-  }
+  let i = 0
+    , top = 0
 
-  return tree
+  return {
+    get empty() {
+      return xs.length === 0
+    },
+    get key() {
+      return i < xs.length
+        ? xs[i].key
+        : null
+    },
+    next(instance) {
+      if (arguments.length) {
+        xs.length = i
+        xs[i] = ({ key: null, instance })
+      }
+      return i < xs.length && xs[top = i++]
+    },
+    pop() {
+      --i === 0 && (xs.length = top + 1, top = 0)
+    }
+  }
 }
 
-function updateComponent(dom, view, parent, tree, keyChange) {
-  if (keyChange || (!tree && !components.has(dom)))
-    return createComponent(dom, view, parent, tree, keyChange)
+function updateComponent(
+  dom,
+  view,
+  parent,
+  stack = components.has(dom) ? components.get(dom) : Stack(),
+  create = stack.empty || stack.key !== view.key
+) {
+  const x = create
+    ? stack.next(view.component({ life: () => {}, ...view.attrs }, view.children))
+    : stack.next()
 
-  !tree && (tree = components.get(dom))
+  view.key && (x.key = view.key)
+  let next
 
-  const prev = tree && tree.peek()
-
-  if (!prev)
-    return createComponent(dom, view, parent, tree)
-
-  if (typeof prev.instance === 'function') {
-    const v = mergeTag(prev.instance(view.attrs, view.children), view)
-    const next = update(dom, v, parent, tree.next())
-    tree.prev()
-    tree.i === 0 && (tree.xs.length = tree.max, tree.max = 0)
-    next.first !== dom && (components.set(next.first, tree), components.delete(dom))
-    return next
-  } else if (prev.instance && typeof prev.instance.then === 'function') {
-    tree.max++
-    return Ret(dom)
-  }
-
-  return update(dom, prev.instance, parent, tree)
-}
-
-function createComponent(dom, view, parent, tree = Tree(), keyChange) {
-  const x = view.component({ life: () => {}, ...view.attrs }, view.children, () => update(dom, view))
-
-  if (typeof x === 'function') {
-    tree.add(view)
-    const v = mergeTag(x(view.attrs, view.children), view)
-    const next = update(dom, v, parent, tree.next(), keyChange)
-    tree.prev()
-    view.instance = x
-    next.first !== dom && (components.set(next.first, tree), components.delete(dom))
-    return next
-  } else if (x && typeof x.then === 'function') {
-    const next = document.createComment('pending')
-    view.instance = x
-    tree.add(view)
-    tree.max++
-    next !== dom && (components.set(next, tree), components.delete(dom))
-    x.catch(x => (console.error(x), x)).then(result => {
-      if (!components.has(next))
+  if (x.instance && typeof x.instance.then === 'function') {
+    next = updateValue(dom, 'pending', parent, false, 8)
+    create && x.instance.catch(x => (console.error(x), x)).then(view => {
+      if (!components.has(next.first))
         return
 
-      view.instance = result
+      x.instance = view
       redraw()
     })
-    replace(dom, next, parent)
-    return Ret(next)
+  } else {
+    next = update(
+      dom,
+      mergeTag(
+        typeof x.instance === 'function'
+          ? x.instance(view.attrs, view.children)
+          : create
+            ? x.instance
+            : view.component({ life: () => {}, ...view.attrs }, view.children),
+        view
+      ),
+      parent,
+      stack,
+      create || undefined
+    )
   }
 
-  return update(dom, mergeTag(x, view), parent, tree, keyChange)
+  stack.pop()
+  next.first !== dom && (components.set(next.first, stack), dom && components.delete(dom))
+
+  return next
 }
 
 function mergeTag(a, b) {
@@ -440,7 +435,6 @@ function mergeTag(a, b) {
 
   a.tag = {
     id: b.tag.id || a.tag.id,
-    node: b.tag.node || a.tag.node,
     name: b.tag.name || a.tag.name,
     classes: (a.tag.classes ? a.tag.classes + ' ' : '') + b.tag.classes,
     args: b.tag.args,
@@ -452,7 +446,7 @@ function mergeTag(a, b) {
 }
 
 function ignoreAttr(x) {
-  return x === 'key' || x === 'handleEvent' || x === 'class' || x === 'className'
+  return x === 'id' || x === 'key' || x === 'handleEvent' || x === 'class' || x === 'className'
 }
 
 function empty(o) {
@@ -485,18 +479,12 @@ function attributes(dom, view, init) {
     }
   }
 
-  const className = (view.attrs.class ? view.attrs.class + ' ' : '')
-    + (view.attrs.className ? view.attrs.className + ' ' : '')
-    + view.tag.classes
+  const id = view.attrs.id ? view.attrs.id : view.tag.id
+  if (id !== dom.getAttribute('id'))
+    id ? dom.setAttribute('id', id) : dom.removeAttribute('id')
 
-  if (className !== (dom.getAttribute('class') || '')) {
-    if (className) {
-      !has && (has = true)
-      dom.setAttribute('class', className)
-    } else {
-      dom.removeAttribute('class')
-    }
-  }
+  if (init || (!prev && view.attrs.class) || view.attrs.class !== prev.class || view.attrs.className !== prev.className)
+    dom.className = classes(view.attrs.class) + classes(view.attrs.className) + view.tag.classes
 
   if (view.tag) {
     setVars(dom, view.tag.vars, view.tag.args, init)
@@ -509,13 +497,21 @@ function attributes(dom, view, init) {
     : prev && empty(view.attrs) && attrs.delete(dom)
 }
 
+function classes(x) {
+  return x
+    ? typeof x === 'object'
+      ? Object.keys(x).reduce((acc, c) => acc + x[c] ? c + ' ' : '', '')
+      : x + ' '
+    : ''
+}
+
 function setVars(dom, vars, args, init) {
   for (const id in vars) {
-    const { prop, index } = vars[id]
+    const { unit, index } = vars[id]
     const value = args[index]
     value && value.constructor === Stream
-      ? init && value.map(x => dom.style.setProperty(id, renderValue(prop, x)))
-      : dom.style.setProperty(id, renderValue(prop, typeof value === 'function' ? value(dom) : value))
+      ? init && value.map(x => dom.style.setProperty(id, renderValue(x, unit)))
+      : dom.style.setProperty(id, renderValue(typeof value === 'function' ? value(dom) : value, unit))
   }
 }
 
@@ -619,10 +615,8 @@ function removeArray(dom, parent) {
 
   const after = last.nextSibling
   dom = dom.nextSibling
-  do {
-    !dom && console.trace(dom, last)
-    dom = remove(dom, parent).after
-  } while (dom && dom !== last)
+  do dom = remove(dom, parent).after
+  while (dom && dom !== after)
 
   return after
 }

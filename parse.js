@@ -12,21 +12,24 @@ const document = window.document
     , initials = (acc, x) => (acc[x.split('-').map(x => x[0]).join('')] = x, acc)
     , propCache = {}
     , atsCache = {}
+    , unitCache = {}
 
 export const atReplacer = x => Object.entries(x).forEach(([k, v]) => atsCache['@' + k] = v)
 
 parse.prefix = prefix
 
 const pxCache = {
-  flex: 0,
-  border: 1,
-  transform: 1,
-  'line-height': 0,
-  'box-shadow': 1,
-  'border-top': 1,
-  'border-left': 1,
-  'border-right': 1,
-  'border-bottom': 1
+  flex: '',
+  'line-height': '',
+
+  border: 'px',
+  transform: 'px',
+  'box-shadow': 'px',
+  'border-top': 'px',
+  'border-left': 'px',
+  'border-right': 'px',
+  'border-bottom': 'px',
+  '@media': 'px'
 }
 
 const properties = ['float']
@@ -53,14 +56,18 @@ const vendorMap = properties.reduce((acc, x) => {
 const popular = ['align-items','bottom','background-color','border-radius','box-shadow','background-image','color','display','float','flex-direction','font-family','font-size','height','justify-content','left','line-height','letter-spacing','margin','margin-bottom','margin-left','margin-right','margin-top','opacity','padding','padding-bottom','padding-left','padding-right','padding-top','right','top','text-align','text-decoration','text-transform','width']
 const shorthands = Object.assign(properties.reduce(initials, {}), popular.reduce(initials, {}))
 
-const cache = new WeakMap()
+const cache = new Map()
     , cssVars = typeof window !== 'undefined' && window.CSS && CSS.supports('color', 'var(--support-test)')
     , isStartChar = x => x !== 32 && x !== 9 && x !== 10 && x !== 13 && x !== 59
+    , isNumber = x => (x >= 48 && x <= 57) || x === 46 // 0-9-.
+    , isUnit = x => x === 37 || (x >= 65 && x <= 90) || (x >= 97 && x <= 122)
     , quoteChar = x => x === 34 || x === 39
     , propEndChar = x => x === 32 || x === 58 || x === 9
     , valueEndChar = x => x === 59 || x === 10 || x === 125
     , noSpace = x => x === 58 || x === 64 || x === 38 || x === 91
+    , last = xs => xs[xs.length - 1]
     , selectors = []
+    , fn = []
     , arg = cssVars
       ? (j, vars, args) => 'var(--' + prefix + vars.push(args[j]) + ')'
       : (j, vars, args) => args[j]
@@ -72,6 +79,8 @@ let start = -1
   , startChar = -1
   , quote = -1
   , char = -1
+  , lastSpace = -1
+  , numberStart = -1
   , uid = 0
   , className = ''
   , prop = ''
@@ -92,32 +101,22 @@ let start = -1
   , colon = false
   , styles = false
   , cacheable = true
+  , hasRules = false
 
 function shorthand(x) {
   return shorthands[x] || x
 }
 
 function propValue(x, v) {
-  x = colon ? x : renderProp(x)
-
-  return x
-    + ':' +
-   (colon ? v : renderValue(x, v))
-    + ';'
+  return colon ? x : renderProp(x) + ':' + v + ';'
 }
 
 function renderProp(x) {
   return propCache[x] || (propCache[x] = vendor(shorthand(x)))
 }
 
-export function renderValue(prop, value) {
-  return px(prop)
-    ? ('' + value).replace(/(^| )?(-?[0-9.]+)( |$)/g, '$1$2px$3')
-    : value
-}
-
 function splitSelector(x) {
-  return x.replace(/,\s*[:[]?/g, x => noSpace(x.charCodeAt(x.length - 1)) ? ',&' + x[x.length - 1] : ',& ')
+  return x.replace(/,\s*[:[]?/g, x => noSpace(x.charCodeAt(x.length - 1)) ? ',&' + last(x) : ',& ')
 }
 
 function insert(rule, index) {
@@ -152,6 +151,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
   selectors.length = 0
   valueStart = -1
   rules = root ? {} : null
+  hasRules = false
   styles = false
   cacheable = true
 
@@ -164,8 +164,9 @@ function parse([xs, ...args], parent, nesting = 0, root) {
     x = xs[j + 1]
     if (j < args.length) {
       if (valueStart >= 0) {
-        vars[varName = '--' + prefix + uid + j] = { prop, index: j }
-        value += xs[j].slice(valueStart) + 'var(' + varName + ')'
+        const before = xs[j].slice(valueStart)
+        vars[varName = '--' + prefix + uid + j] = { unit: getUnit(prop, last(fn)), index: j }
+        value += before + 'var(' + varName + ')'
         valueStart = 0
       } else {
         x += args[j] + ';'
@@ -174,7 +175,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
     }
   }
 
-  if (rules) {
+  if (hasRules) {
     if (root) {
       Object.entries(rules).forEach(([k, v]) =>
         insert(k.replace(/&\s*/g, '') + '{' + v)
@@ -191,12 +192,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
     }
   }
 
-
-  const node = name ? document.createElement(name) : parent.node
-  name && node.setAttribute('class', classes)
-
   const result = {
-    node,
     name,
     classes,
     id,
@@ -220,12 +216,12 @@ function parseSelector(xs, j, args, parent) {
         break
       }
     } else if (!isStartChar(char) || i === x.length) {
-      classes = (classIdx !== -1 ? x.slice(classIdx + 1, i).replace(/\./g, ' ') : '') + classes + parent.classes
-      id = (idIdx !== -1 ? x.slice(idIdx, classIdx || i) : '') || parent?.id
+      classes = (classIdx !== -1 ? x.slice(classIdx + 1, i).replace(/\./g, ' ') : '') + classes + (parent ? parent.classes : '')
+      id === '' && (id = (idIdx !== -1 ? x.slice(idIdx, classIdx === -1 ? i : classIdx) : '') || (parent ? parent.id : null))
       name = x.slice(0, id
         ? idIdx - 1
         : (classIdx !== -1 ? classIdx : i)
-      ).toUpperCase() || parent.name
+      ).toUpperCase() || (parent && parent.name)
       idIdx = classIdx = -1
       styles = true
     } else if (char === 35) { // #
@@ -245,9 +241,11 @@ function parseStyles(idx, end) {
     char = x.charCodeAt(i)
 
     if (quote === -1 && valueStart >= 0 && (colon ? char === 59 : valueEndChar(char))) {
+      numberStart > -1 && !isUnit(char) && addUnit(i)
       prop === '@import'
         ? insert(prop + ' ' + x.slice(valueStart, i), 0)
         : rule += propValue(prop, value + x.slice(valueStart, i))
+      hasRules = true
       start = valueStart = -1
       colon = false
       prop = value = ''
@@ -272,7 +270,7 @@ function parseStyles(idx, end) {
       } else {
         rule && (rules[path || '&'] = rule)
         selector = startChar === 64
-          ? atHelper(x.slice(start, i).trim())
+          ? atHelper(prop + value + x.slice(valueStart, i).trim())
           : x.slice(start, i).trim()
         selector.indexOf(',') !== -1 && (selector = splitSelector(selector))
         selectors.push((noSpace(startChar) ? '' : ' ') + selector)
@@ -305,8 +303,52 @@ function parseStyles(idx, end) {
       colon = char === 58 // :
     } else if (valueStart === -1 && prop && !propEndChar(char)) {
       valueStart = i
+      isNumber(char) && (numberStart = i)
+    } else if (valueStart !== -1) {
+      if (isNumber(char))
+        numberStart === -1 && (numberStart = i)
+      else if (numberStart > -1)
+        addUnit(i)
+
+      if (char === 40) // (
+        fn.push(x.slice(Math.max(lastSpace, valueStart), i))
+      else if (char === 41) // )
+        fn.pop()
+      else if (char === 9 || char === 32)
+        lastSpace = i + 1
     }
   }
+}
+
+function addUnit(i) {
+  if (!isUnit(char)) {
+    value = value + x.slice(valueStart, i) + getUnit(prop, last(fn))
+    valueStart = i
+  }
+  numberStart = -1
+}
+
+export function renderValue(x, unit) {
+  return typeof x !== 'string' || isUnit(x.charCodeAt(x.length - 1))
+    ? x + unit
+    : x
+}
+
+export function getUnit(prop, fn = '') {
+  prop = shorthand(prop)
+  const id = prop + ',' + fn
+  if (id in unitCache)
+    return unitCache[id]
+
+  return unitCache[id] = (
+    fn && (fn.indexOf('translate') === 0 || 'perspective blur drop-shadow inset polygon'.indexOf(fn) > -1)
+      ? 'px'
+      : fn.indexOf('rotate') === 0 || fn.indexOf('skew') === 0
+        ? 'deg'
+        : fn
+          ? ''
+          : px(prop)
+  )
 }
 
 selectors.toString = function() {
@@ -321,15 +363,16 @@ selectors.toString = function() {
 }
 
 function px(x) {
+  x = shorthand(x)
   if ((x[0] === '-' && x[1] === '-') || x in pxCache)
     return pxCache[x]
 
   try {
     dom.style[x] = '1px'
     dom.style.setProperty(x, '1px')
-    return pxCache[x] = dom.style[x].slice(-3) === '1px'
+    return pxCache[x] = dom.style[x].slice(-3) === '1px' ? 'px' : ''
   } catch (err) {
-    return pxCache[x] = false
+    return pxCache[x] = ''
   }
 }
 

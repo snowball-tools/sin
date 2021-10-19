@@ -4,6 +4,7 @@ import router, { routeState, cleanSlash } from './router.js'
 import View from './view.js'
 import http from './http.js'
 import Stream from './stream.js'
+import { className, ignoredAttr } from './shared.js'
 
 const document = window.document
 
@@ -459,10 +460,6 @@ function mergeTag(a, b) {
   return a
 }
 
-function ignoreAttr(x) {
-  return x === 'id' || x === 'key' || x === 'handleEvent' || x === 'class' || x === 'className'
-}
-
 function empty(o) {
   for (const x in o)
     return false
@@ -480,7 +477,7 @@ function attributes(dom, view, init) {
   for (attr in view.attrs) {
     if (attr === 'life') {
       init && giveLife(dom, view)
-    } else if (!ignoreAttr(attr) && prev[attr] !== view.attrs[attr]) {
+    } else if (!ignoredAttr(attr) && prev[attr] !== view.attrs[attr]) {
       !has && (has = true)
       updateAttribute(dom, view.attrs, attr, prev[attr], view.attrs[attr])
     }
@@ -498,7 +495,7 @@ function attributes(dom, view, init) {
     id ? dom.setAttribute('id', id) : dom.removeAttribute('id')
 
   if (init || (!prev && view.attrs.class) || view.attrs.class !== prev.class || view.attrs.className !== prev.className)
-    dom.className = classes(view.attrs.class) + classes(view.attrs.className) + view.tag.classes
+    dom.className = className(view)
 
   if (view.tag) {
     setVars(dom, view.tag.vars, view.tag.args, init)
@@ -509,14 +506,6 @@ function attributes(dom, view, init) {
   has
     ? attrs.set(dom, view.attrs)
     : prev && empty(view.attrs) && attrs.delete(dom)
-}
-
-function classes(x) {
-  return x
-    ? typeof x === 'object'
-      ? Object.keys(x).reduce((acc, c) => acc + x[c] ? c + ' ' : '', '')
-      : x + ' '
-    : ''
 }
 
 function setVars(dom, vars, args, init) {

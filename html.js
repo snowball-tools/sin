@@ -1,5 +1,6 @@
 import s from './index.js'
 import View from './view.js'
+import { className, ignoredAttr } from './shared.js'
 
 let lastWasText = false
 
@@ -40,19 +41,31 @@ async function update(view) {
 
 async function updateElement(view) {
   lastWasText = false
-  const tag = (view.tag.name || 'div')
+  const tag = (view.tag.name || 'div').toLowerCase()
   return '<'
     + tag
-    + Object.entries(view.attrs).map(([k, v]) =>
-      ' ' + k + '="' + v + '"'
-    ).join('')
+    + getClassName(view)
+    + Object.entries(view.attrs).reduce((acc, [k, v]) =>
+      acc += ignoredAttr(k) ? '' : (' ' + k + '="' + v + '"'),
+      ''
+    )
     + '>'
-    + (view.text
-      ? view.text
-      : view.children && view.children.length
-        ? await updateChildren(view.children)
-        : ''
-    )+ (open.has(tag) ? '' : '</' + tag + '>')
+    + (open.has(tag)
+      ? ''
+      : (view.text
+        ? view.text
+        : view.children && view.children.length
+          ? await updateChildren(view.children)
+          : ''
+      ) + '</' + tag + '>'
+    )
+}
+
+function getClassName(view) {
+  const classes = className(view)
+  return classes
+    ? ' class="' + classes + '"'
+    : ''
 }
 
 async function updateChildren(xs) {
@@ -93,7 +106,7 @@ console.time('w')
 s.html(
   s`h1`(
     s(async() => () => s`h2`('woo')),
-    s`button`({}, ['hej', s`input`, 'dig']),
+    s`button`({class:'wat'}, ['hej', s`input`, 'dig']),
       s`;bc white;br 0.5rem;p 1.5rem;@md{d flex}`(
       s`img;h 4rem;w 4rem;br 100%;m auto;@md{w 6rem;h 6rem;m 0;mr 1.5rem}`({
         src:'https://randomuser.me/api/portraits/women/17.jpg'

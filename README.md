@@ -10,7 +10,6 @@
 - scroll memory
 
 ## Ideas
-- css vars as functions(gets dom as arg)
 - css vars as signals
 - signals as local redraws
 - signals as local redraws can include / exclude global redraw

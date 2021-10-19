@@ -605,7 +605,7 @@ function defer(dom, parent, children) {
     remove(dom, parent)
   })
 }
-function removeArray(dom, parent) {
+function removeArray(dom, parent, lives) {
   if (!arrays.has(dom))
     return dom.nextSibling
 
@@ -615,8 +615,11 @@ function removeArray(dom, parent) {
 
   const after = last.nextSibling
   dom = dom.nextSibling
-  do dom = remove(dom, parent).after
-  while (dom && dom !== after)
+  do {
+    const x = remove(dom, parent, false)
+    x.life && lives.push(x.life)
+    dom = x.after
+  } while (dom && dom !== after)
 
   return after
 }
@@ -625,16 +628,17 @@ function remove(dom, parent, instant = true) {
   if (!parent || removing.has(dom))
     return { after: dom.nextSibling }
 
+  const lives = []
+
   let after = dom.nextSibling
   if (dom.nodeType === 8)
-    after = removeArray(dom, parent)
+    after = removeArray(dom, parent, lives)
 
   if (dom.nodeType !== 1) {
     instant && parent.removeChild(dom)
     return { after }
   }
 
-  const lives = []
   let child = dom.firstChild
   while (child !== null) {
     const life = remove(child, dom, false).life

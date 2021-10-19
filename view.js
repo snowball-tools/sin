@@ -1,7 +1,6 @@
 export default class View {
   constructor(component, tag = null, level = 0, attrs = {}, children = null) {
     this.level = level
-    this.instance = null
     this.component = component
     this.tag = tag
     this.attrs = attrs

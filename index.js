@@ -33,6 +33,7 @@ s.redraw = redraw
 s.mount = mount
 s.stream = Stream
 s.css = (xs, ...args) => parse([xs, args], null, 0, true)
+s.animate = animate
 
 s.route = router(s, '', {
   url: typeof window !== 'undefined' && window.location,
@@ -59,6 +60,15 @@ s.trust = x => s(({ life }) => {
 
   return () => frag
 })
+
+function animate(dom) {
+  dom.setAttribute('animate', 'entry')
+  requestAnimationFrame(() => dom.removeAttribute('animate', 'entry'))
+  return () => {
+    dom.setAttribute('animate', 'exit')
+    return new Promise(r => dom.addEventListener('transitionend', r))
+  }
+}
 
 function link(dom) {
   dom.addEventListener('click', e => {

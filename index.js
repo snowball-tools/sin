@@ -385,7 +385,7 @@ function Stack() {
       return i < xs.length && xs[top = i++]
     },
     pop() {
-      --i === 0 && (xs.length = top + 1, top = 0)
+      return !(--i === 0 && (xs.length = top + 1, top = 0))
     }
   }
 }
@@ -430,8 +430,12 @@ function updateComponent(
     )
   }
 
-  stack.pop()
-  next.first !== dom && (components.set(next.first, stack), dom && components.delete(dom))
+  const changed = dom !== next.first
+
+  stack.pop() && (changed || create) && (
+    changed && components.delete(dom),
+    components.set(next.first, stack)
+  )
 
   return next
 }

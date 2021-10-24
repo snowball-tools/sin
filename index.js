@@ -387,7 +387,7 @@ function Stack() {
       return i < xs.length && xs[top = i++]
     },
     pop() {
-      return !(--i === 0 && (xs.length = top + 1, top = 0))
+      return --i === 0 && !(xs.length = top + 1, top = 0)
     }
   }
 }

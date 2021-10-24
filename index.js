@@ -124,12 +124,15 @@ function isAttrs(x) {
     && !(x instanceof View)
 }
 
-function mount(dom, view) {
-  !view && (
-    view = dom,
+function mount(dom, view, attrs = {}, context = {}) {
+  if (typeof view !== 'function') {
+    context = attrs || {}
+    attrs = view || {}
+    view = dom
     dom = document.body
-  )
-  mounts.set(dom, view)
+  }
+
+  mounts.set(dom, { view, attrs, context })
   redraw()
   return view
 }
@@ -139,19 +142,19 @@ function redraw() {
 }
 
 function globalRedraw() {
-  mounts.forEach((view, dom) => updates(dom, [].concat(view({ route: s.route }))))
+  mounts.forEach(({ view, attrs, context }, dom) => updates(dom, [].concat(view(attrs, [], context)), context))
   idle = true
 }
 
-function updates(parent, next, before, last = parent.lastChild) {
+function updates(parent, next, context, before, last = parent.lastChild) {
   const keys = next[0] && next[0].key != null && new Array(next.length)
       , ref = before ? before.nextSibling : parent.firstChild
       , tracked = keyCache.has(ref)
       , after = last ? last.nextSibling : null
 
   keys && (keys.rev = {}) && tracked
-    ? keyed(parent, keyCache.get(ref), next, keys, after)
-    : nonKeyed(parent, next, keys, ref, after)
+    ? keyed(parent, context, keyCache.get(ref), next, keys, after)
+    : nonKeyed(parent, context, next, keys, ref, after)
 
   const first = before ? before.nextSibling : parent.firstChild
   if (keys) {
@@ -167,7 +170,7 @@ function Ref(keys, dom, key, i) {
   keys.rev[key] = i
 }
 
-function nonKeyed(parent, next, keys, dom, after = null) { // eslint-disable-line
+function nonKeyed(parent, context, next, keys, dom, after = null) { // eslint-disable-line
   let i = 0
     , temp
     , view
@@ -176,8 +179,8 @@ function nonKeyed(parent, next, keys, dom, after = null) { // eslint-disable-lin
     if (!removing.has(dom)) {
       view = next[i]
       temp = dom !== after
-        ? update(dom, view, parent)
-        : update(null, view)
+        ? update(dom, view, context, parent)
+        : update(null, view, context)
       dom === after && parent.insertBefore(temp.dom, after)
       keys && Ref(keys, temp.first, view.key, i)
       dom = temp.last
@@ -190,7 +193,7 @@ function nonKeyed(parent, next, keys, dom, after = null) { // eslint-disable-lin
     dom = remove(dom, parent).after
 }
 
-function keyed(parent, as, bs, keys, after) { // eslint-disable-line
+function keyed(parent, context, as, bs, keys, after) { // eslint-disable-line
   const map = as.rev
 
   let ai = as.length - 1
@@ -201,7 +204,7 @@ function keyed(parent, as, bs, keys, after) { // eslint-disable-line
 
   outer: while (true) { // eslint-disable-line
     while (a.key === b.key) {
-      after = updateView(a.dom, b, parent).first
+      after = updateView(a.dom, b, context, parent).first
       Ref(keys, after, b.key, bi)
       delete map[b.key]
 
@@ -220,12 +223,12 @@ function keyed(parent, as, bs, keys, after) { // eslint-disable-line
     if (b.key in map) {
       temp = map[b.key]
       if (temp > bi) {
-        temp = updateView(as[temp].dom, b, parent)
+        temp = updateView(as[temp].dom, b, context, parent)
         insertBefore(parent, temp, after)
         after = temp.first
         Ref(keys, after, b.key, bi)
       } else if (temp !== bi) {
-        temp = updateView(as[temp].dom, b, parent)
+        temp = updateView(as[temp].dom, b, context, parent)
         insertBefore(parent, temp, after)
         after = temp.first
         Ref(keys, after, b.key, bi)
@@ -238,7 +241,7 @@ function keyed(parent, as, bs, keys, after) { // eslint-disable-line
         break
       b = bs[--bi]
     } else {
-      temp = updateView(null, b)
+      temp = updateView(null, b, context)
       insertBefore(parent, temp, after)
       after = temp.first
       Ref(keys, after, b.key, bi)
@@ -263,27 +266,27 @@ function insertBefore(parent, { first, last }, before) {
 }
 
 
-function update(dom, view, parent, stack, create) {
+function update(dom, view, context, parent, stack, create) {  // eslint-disable-line
   return typeof view === 'function'
     ? view.constructor === Stream
-      ? updateStream(dom, view, parent)
-      : update(dom, view(), parent, stack, create)
+      ? updateStream(dom, view, context, parent)
+      : update(dom, view(), context, parent, stack, create)
     : view instanceof View
-      ? updateView(dom, view, parent, stack, create)
+      ? updateView(dom, view, context, parent, stack, create)
       : Array.isArray(view)
-        ? updateArray(dom, view, parent)
+        ? updateArray(dom, view, context, parent)
         : view instanceof Node
           ? Ret(view)
           : updateValue(dom, view, parent, create)
 }
 
-function updateView(dom, view, parent, stack, create) {
+function updateView(dom, view, context, parent, stack, create) {  // eslint-disable-line
   return view.component
-    ? updateComponent(dom, view, parent, stack, create)
-    : updateElement(dom, view, parent, create)
+    ? updateComponent(dom, view, context, parent, stack, create)
+    : updateElement(dom, view, context, parent, create)
 }
 
-function updateStream(dom, view, parent) {
+function updateStream(dom, view, context, parent) {
   if (streams.has(dom))
     return streams.get(dom)
 
@@ -291,7 +294,7 @@ function updateStream(dom, view, parent) {
     , first
 
   view.map(x => {
-    newDom = update(dom, x, parent)
+    newDom = update(dom, x, context, parent)
     first = arrays.has(newDom) ? arrays.get(newDom).dom : newDom
     dom !== first && (dom && streams.delete(dom), streams.set(first, newDom))
     dom = first
@@ -304,13 +307,13 @@ function Ret(dom, first = dom, last = first) {
   return { dom, first, last }
 }
 
-function updateArray(dom, view, parent) {
+function updateArray(dom, view, context, parent) {
   const last = arrays.has(dom) ? arrays.get(dom) : dom
   const comment = updateValue(dom, '[' + view.length, parent, false, 8)
 
   if (parent) {
     const after = last ? last.nextSibling : null
-    updates(parent, view, comment.first, last)
+    updates(parent, view, context, comment.first, last)
 
     const nextLast = after ? after.previousSibling : parent.lastChild
     last !== nextLast && arrays.set(comment.first, nextLast)
@@ -320,7 +323,7 @@ function updateArray(dom, view, parent) {
 
   parent = new DocumentFragment()
   parent.appendChild(comment.dom)
-  updates(parent, view, comment.first, last)
+  updates(parent, view, context, comment.first, last)
   arrays.set(comment.first, parent.lastChild)
   rarrays.set(parent.lastChild, comment.first)
   return Ret(parent, comment.first, parent.lastChild)
@@ -343,7 +346,7 @@ function updateValue(dom, view, parent, create, nodeType = typeof view === 'bool
   return Ret(dom)
 }
 
-function updateElement(dom, view, parent, create = dom === null || dom.tagName !== (view.tag.name || 'DIV')) {
+function updateElement(dom, view, context, parent, create = dom === null || dom.tagName !== (view.tag.name || 'DIV')) {
   create && replace(
     dom,
     dom = document.createElement(view.tag.name || 'DIV'),
@@ -351,10 +354,10 @@ function updateElement(dom, view, parent, create = dom === null || dom.tagName !
   )
 
   view.children && view.children.length
-    ? updates(dom, view.children)
+    ? updates(dom, view.children, context)
     : dom.hasChildNodes() && removeChildren(dom.firstChild, dom)
 
-  attributes(dom, view, create)
+  attributes(dom, view, context, create)
 
   return Ret(dom)
 }
@@ -364,7 +367,12 @@ function removeChildren(dom, parent) {
   while (dom)
 }
 
-function Stack() {
+function Stack(context) {
+  const life = []
+  context.life = fn => Array.isArray(fn)
+    ? life.push(...fn)
+    : life.push(fn)
+
   const xs = []
   let i = 0
     , top = 0
@@ -392,21 +400,23 @@ function Stack() {
   }
 }
 
-function updateComponent(
+function updateComponent( // eslint-disable-line
   dom,
   view,
+  context,
   parent,
-  stack = components.has(dom) ? components.get(dom) : Stack(),
+  stack = components.has(dom) ? components.get(dom) : Stack(context),
   create = stack.exhausted || stack.key !== view.key
 ) {
   const x = create
-    ? stack.next(view.component({ life: () => {}, ...view.attrs }, view.children))
+    ? stack.next(view.component(view.attrs, view.children, context))
     : stack.next()
 
+  const promise = x.instance && typeof x.instance.then === 'function'
   view.key && (x.key = view.key)
   let next
 
-  if (x.instance && typeof x.instance.then === 'function') {
+  if (promise) {
     next = updateValue(dom, 'pending', parent, false, 8)
     create && x.instance.catch(x => (console.error(x), x)).then(view => {
       if (!components.has(next.first))
@@ -420,12 +430,13 @@ function updateComponent(
       dom,
       mergeTag(
         typeof x.instance === 'function'
-          ? x.instance(view.attrs, view.children)
+          ? x.instance(view.attrs, view.children, context)
           : create
             ? x.instance
-            : view.component({ life: () => {}, ...view.attrs }, view.children),
+            : view.component(view.attrs, view.children, context),
         view
       ),
+      context,
       parent,
       stack,
       create || undefined
@@ -436,7 +447,8 @@ function updateComponent(
 
   stack.pop() && (changed || create) && (
     changed && components.delete(dom),
-    components.set(next.first, stack)
+    components.set(next.first, stack),
+    !promise && giveLife(next.first, stack.life)
   )
 
   return next
@@ -467,7 +479,7 @@ function empty(o) {
   return true
 }
 
-function attributes(dom, view, init) {
+function attributes(dom, view, context, init) {
   let has = false
     , tag = view.tag
     , attr
@@ -477,7 +489,7 @@ function attributes(dom, view, init) {
 
   for (attr in view.attrs) {
     if (attr === 'life') {
-      init && giveLife(dom, view)
+      init && giveLife(dom, view.attrs.life)
     } else if (!ignoredAttr(attr) && prev[attr] !== view.attrs[attr]) {
       !has && (has = true)
       updateAttribute(dom, view.attrs, attr, prev[attr], view.attrs[attr])
@@ -519,12 +531,12 @@ function setVars(dom, vars, args, init) {
   }
 }
 
-function giveLife(dom, view) {
-  const life = [].concat(view.attrs.life)
-    .map(x => typeof x === 'function' && x(dom, () => update(dom, view)))
+function giveLife(dom, life) {
+  life = [].concat(life)
+    .map(x => typeof x === 'function' && x(dom))
     .filter(x => typeof x === 'function')
 
-  life.length && lives.set(dom, life)
+  life.length && lives.set(dom, (life.get(dom) || []).concat(life))
 }
 
 function updateAttribute(dom, attrs, attr, old, value) { // eslint-disable-line

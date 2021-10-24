@@ -11,7 +11,7 @@ const document = window.document
 export default function s(...x) {
   const type = typeof x[0]
   return type === 'string'
-    ? execute(x.slice(1), { tag: { name: x[0] }, level: 0 })
+    ? S(Object.assign([x[0]], { raw: [] }))(...x.slice(1))
     : S.bind(
       type === 'function'
         ? new View(x[0])

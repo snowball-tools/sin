@@ -51,6 +51,13 @@ function getPath(s, location, x = 0) {
 }
 
 export default function router(s, root, attrs) {
+  const routed = s(({ route, key, ...attrs }, [view], context) => {
+    context.route = route
+    return () => typeof view === 'function'
+      ? view(attrs, [], context)
+      : view
+  })
+
   Object.assign(route, attrs)
   route.toString = route
   route.has = x => x === '/'
@@ -105,13 +112,13 @@ export default function router(s, root, attrs) {
     const subRoute = router(s, current.replace(/\/$/, ''), attrs)
     subRoute.parent = route
 
-    return typeof view === 'function'
-      ? view({
-        key: current || '/',
-        route: subRoute,
-        ...(root + path === current && routeState[root + path] || {}),
-        ...params(match || [], pathTokens)
-      })
-      : view
+    return routed({
+      key: current || '/',
+      route: subRoute,
+      ...(root + path === current && routeState[root + path] || {}),
+      ...params(match || [], pathTokens)
+    },
+      view
+    )
   }
 }

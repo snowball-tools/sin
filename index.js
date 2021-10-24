@@ -370,8 +370,9 @@ function Stack() {
     , top = 0
 
   return {
-    get empty() {
-      return xs.length === 0
+    life,
+    get exhausted() {
+      return i >= xs.length
     },
     get key() {
       return i < xs.length
@@ -396,7 +397,7 @@ function updateComponent(
   view,
   parent,
   stack = components.has(dom) ? components.get(dom) : Stack(),
-  create = stack.empty || stack.key !== view.key
+  create = stack.exhausted || stack.key !== view.key
 ) {
   const x = create
     ? stack.next(view.component({ life: () => {}, ...view.attrs }, view.children))

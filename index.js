@@ -9,11 +9,20 @@ import { className, ignoredAttr } from './shared.js'
 const document = window.document
 
 export default function s(...x) {
-  return S.bind(
-    typeof x[0] === 'function'
-      ? new View(x[0])
-      : tagged(x)
-  )
+  const type = typeof x[0]
+  return type === 'string'
+    ? execute(x.slice(1), { tag: { name: x[0] }, level: 0 })
+    : S.bind(
+      type === 'function'
+        ? new View(x[0])
+        : tagged(x)
+    )
+}
+
+function S(...x) {
+  return x[0] && Array.isArray(x[0].raw)
+    ? S.bind(tagged(x, this))
+    : execute(x, this)
 }
 
 const components = new WeakMap()
@@ -86,12 +95,6 @@ function link(dom) {
       s.redraw()
     }
   })
-}
-
-function S(...x) {
-  return x[0] && Array.isArray(x[0].raw)
-    ? S.bind(tagged(x, this))
-    : execute(x, this)
 }
 
 function tagged(x, parent) {

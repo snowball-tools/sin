@@ -354,7 +354,13 @@ function updateValue(dom, view, parent, create, nodeType = typeof view === 'bool
   return Ret(dom)
 }
 
-function updateElement(dom, view, context, parent, create = dom === null || dom.tagName !== (view.tag.name || 'DIV').toUpperCase()) {
+function updateElement(
+  dom,
+  view,
+  context,
+  parent,
+  create = dom === null || dom.tagName !== (view.tag.name || 'DIV').toUpperCase()
+) {
   const previousNS = context.NS
   create && replace(
     dom,

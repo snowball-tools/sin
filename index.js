@@ -591,7 +591,7 @@ function updateAttribute(dom, context, attrs, attr, old, value) { // eslint-disa
 }
 
 function isEvent(x) {
-  x.charCodeAt(0) === 111 && x.charCodeAt(1) === 110 // on
+  return x.charCodeAt(0) === 111 && x.charCodeAt(1) === 110 // on
 }
 
 function removeEvent(dom, attrs, name) {

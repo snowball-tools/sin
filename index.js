@@ -451,7 +451,7 @@ function updateComponent( // eslint-disable-line
   stack.pop() && (changed || create) && (
     changed && components.delete(dom),
     components.set(next.first, stack),
-    !promise && giveLife(next.first, stack.life)
+    !promise && giveLife(next.first, view.attrs, view.children, context, stack.life)
   )
 
   return next
@@ -492,7 +492,7 @@ function attributes(dom, view, context, init) {
 
   for (attr in view.attrs) {
     if (attr === 'life') {
-      init && giveLife(dom, view.attrs.life)
+      init && giveLife(dom, view.attrs, view.children, context, view.attrs.life)
     } else if (!ignoredAttr(attr) && (!prev || prev[attr] !== view.attrs[attr])) {
       !has && (has = true)
       updateAttribute(dom, view.attrs, attr, prev && prev[attr], view.attrs[attr])
@@ -537,9 +537,9 @@ function setVars(dom, vars, args, init) {
   }
 }
 
-function giveLife(dom, life) {
+function giveLife(dom, attrs, children, context, life) {
   life = [].concat(life)
-    .map(x => typeof x === 'function' && x(dom))
+    .map(x => typeof x === 'function' && x(dom, attrs, children, context))
     .filter(x => typeof x === 'function')
 
   life.length && lives.set(dom, (life.get(dom) || []).concat(life))

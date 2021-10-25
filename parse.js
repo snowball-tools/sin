@@ -221,7 +221,7 @@ function parseSelector(xs, j, args, parent) {
       name = x.slice(0, id
         ? idIdx - 1
         : (classIdx !== -1 ? classIdx : i)
-      ).toUpperCase() || (parent && parent.name)
+      ) || (parent && parent.name)
       idIdx = classIdx = -1
       styles = true
     } else if (char === 35) { // #

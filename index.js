@@ -7,6 +7,11 @@ import Stream from './stream.js'
 import { className, ignoredAttr } from './shared.js'
 
 const document = window.document
+    , NS = {
+      html: 'http://www.w3.org/1999/xhtml',
+      svg: 'http://www.w3.org/2000/svg',
+      math: 'http://www.w3.org/1998/Math/MathML'
+    }
 
 export default function s(...x) {
   const type = typeof x[0]
@@ -349,10 +354,13 @@ function updateValue(dom, view, parent, create, nodeType = typeof view === 'bool
   return Ret(dom)
 }
 
-function updateElement(dom, view, context, parent, create = dom === null || dom.tagName !== (view.tag.name || 'DIV')) {
+function updateElement(dom, view, context, parent, create = dom === null || dom.tagName !== (view.tag.name || 'DIV').toUpperCase()) {
+  const previousNS = context.NS
   create && replace(
     dom,
-    dom = document.createElement(view.tag.name || 'DIV'),
+    dom = (context.NS || (context.NS = view.attrs.xmlns || NS[view.tag.name]))
+      ? document.createElementNS(context.NS, view.tag.name)
+      : document.createElement(view.tag.name || 'DIV'),
     parent
   )
 
@@ -361,6 +369,7 @@ function updateElement(dom, view, context, parent, create = dom === null || dom.
     : dom.hasChildNodes() && removeChildren(dom.firstChild, dom)
 
   attributes(dom, view, context, create)
+  context.NS = previousNS
 
   return Ret(dom)
 }
@@ -495,14 +504,17 @@ function attributes(dom, view, context, init) {
       init && giveLife(dom, view.attrs, view.children, context, view.attrs.life)
     } else if (!ignoredAttr(attr) && (!prev || prev[attr] !== view.attrs[attr])) {
       !has && (has = true)
-      updateAttribute(dom, view.attrs, attr, prev && prev[attr], view.attrs[attr])
+      updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], view.attrs[attr])
     }
   }
 
   if (attrs && prev) {
     for (const attr in prev) {
-      if (attr in view.attrs === false)
-        removeAttribute(dom, prev, attr)
+      if (attr in view.attrs === false) {
+        isEvent(attr)
+          ? removeEvent(dom, attrs, attr)
+          : dom.removeAttribute(attr)
+      }
     }
   }
 
@@ -545,7 +557,7 @@ function giveLife(dom, attrs, children, context, life) {
   life.length && lives.set(dom, (life.get(dom) || []).concat(life))
 }
 
-function updateAttribute(dom, attrs, attr, old, value) { // eslint-disable-line
+function updateAttribute(dom, context, attrs, attr, old, value) { // eslint-disable-line
   if (old === value)
     return
 
@@ -554,7 +566,7 @@ function updateAttribute(dom, attrs, attr, old, value) { // eslint-disable-line
     link(dom)
   }
 
-  const on = attr.charCodeAt(0) === 111 && attr.charCodeAt(1) === 110
+  const on = isEvent(attr)
   if (on && typeof old === typeof value)
     return
 
@@ -564,15 +576,13 @@ function updateAttribute(dom, attrs, attr, old, value) { // eslint-disable-line
       : removeEvent(dom, attrs, attr)
     : !value && value !== 0
       ? dom.removeAttribute(attr)
-      : attr in dom && typeof value !== 'boolean'
+      : !context.NS && attr in dom && typeof value !== 'boolean'
         ? dom[attr] = value
         : dom.setAttribute(attr, value === true ? '' : value)
 }
 
-function removeAttribute(dom, attrs, attr) {
-  return attr.charCodeAt(0) === 111 && attr.charCodeAt(1) === 110
-    ? removeEvent(dom, attrs, attr)
-    : dom.removeAttribute(attr)
+function isEvent(x) {
+  x.charCodeAt(0) === 111 && x.charCodeAt(1) === 110 // on
 }
 
 function removeEvent(dom, attrs, name) {

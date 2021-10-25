@@ -549,7 +549,7 @@ function updateAttribute(dom, attrs, attr, old, value) { // eslint-disable-line
   if (old === value)
     return
 
-  if (attr === 'href') {
+  if (attr === 'href' && value && !value.match(/^([a-z]+:)?\/\//)) {
     value = s.pathmode + cleanSlash(value)
     link(dom)
   }

@@ -358,9 +358,7 @@ function updateElement(dom, view, context, parent, create = dom === null || dom.
   const previousNS = context.NS
   create && replace(
     dom,
-    dom = (context.NS || (context.NS = view.attrs.xmlns || NS[view.tag.name]))
-      ? document.createElementNS(context.NS, view.tag.name)
-      : document.createElement(view.tag.name || 'DIV'),
+    dom = createElement(view, context),
     parent
   )
 
@@ -372,6 +370,17 @@ function updateElement(dom, view, context, parent, create = dom === null || dom.
   context.NS = previousNS
 
   return Ret(dom)
+}
+
+function createElement(view, context) {
+  const is = view.attrs.is
+  return (context.NS || (context.NS = view.attrs.xmlns || NS[view.tag.name]))
+    ? is
+      ? document.createElementNS(context.NS, view.tag.name, { is })
+      : document.createElementNS(context.NS, view.tag.name)
+    : is
+      ? document.createElement(view.tag.name || 'DIV', { is })
+      : document.createElement(view.tag.name || 'DIV')
 }
 
 function removeChildren(dom, parent) {

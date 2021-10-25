@@ -53,7 +53,7 @@ const vendorMap = properties.reduce((acc, x) => {
   return acc
 }, {})
 
-const popular = ['align-items','bottom','background-color','border-radius','box-shadow','background-image','color','display','float','flex-direction','font-family','font-size','height','justify-content','left','line-height','letter-spacing','margin','margin-bottom','margin-left','margin-right','margin-top','opacity','padding','padding-bottom','padding-left','padding-right','padding-top','right','top','text-align','text-decoration','text-transform','width']
+const popular = ['align-items', 'bottom', 'background-color', 'border-radius', 'box-shadow', 'background-image', 'color', 'display', 'float', 'flex-direction', 'font-family', 'font-size', 'height', 'justify-content', 'left', 'line-height', 'letter-spacing', 'margin', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top', 'opacity', 'padding', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top', 'right', 'top', 'text-align', 'text-decoration', 'text-transform', 'width']
 const shorthands = Object.assign(properties.reduce(initials, {}), popular.reduce(initials, {}))
 
 const cache = new Map()
@@ -216,8 +216,16 @@ function parseSelector(xs, j, args, parent) {
         break
       }
     } else if (!isStartChar(char) || i === x.length) {
-      classes = (classIdx !== -1 ? x.slice(classIdx + 1, i).replace(/\./g, ' ') : '') + classes + (parent ? parent.classes : '')
-      id === '' && (id = (idIdx !== -1 ? x.slice(idIdx, classIdx === -1 ? i : classIdx) : '') || (parent ? parent.id : null))
+      classes = (classIdx !== -1
+        ? x.slice(classIdx + 1, i).replace(/\./g, ' ')
+        : ''
+      ) + classes + (parent ? parent.classes : '')
+
+      id === '' && (id = (idIdx !== -1
+        ? x.slice(idIdx, classIdx === -1 ? i : classIdx)
+        : ''
+      ) || (parent ? parent.id : null))
+
       name = x.slice(0, id
         ? idIdx - 1
         : (classIdx !== -1 ? classIdx : i)

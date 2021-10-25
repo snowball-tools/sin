@@ -73,7 +73,7 @@ s.trust = x => s(({ life }) => {
 
 function animate(dom) {
   dom.setAttribute('animate', 'entry')
-  requestAnimationFrame(() => dom.removeAttribute('animate', 'entry'))
+  requestAnimationFrame(() => dom.removeAttribute('animate'))
   return () => {
     dom.setAttribute('animate', 'exit')
     return new Promise(r => dom.addEventListener('transitionend', r))

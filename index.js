@@ -59,7 +59,7 @@ s.request = (url, o) => (o ? http(url, o) : http(url.url, url))
   .catch(x => (x.response = x.body, Promise.reject(x)))
 
 s.bss = { at: atReplacer, global: s.css }
-s.trust = x => s(({ life }) => {
+s.trust = x => s(() => {
   const div = document.createElement('div')
       , frag = new DocumentFragment()
 

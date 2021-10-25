@@ -141,7 +141,7 @@ function mount(dom, view, attrs = {}, context = {}) {
   }
 
   mounts.set(dom, { view, attrs, context })
-  redraw()
+  updates(dom, [].concat(view(attrs, [], context)), context)
   return view
 }
 

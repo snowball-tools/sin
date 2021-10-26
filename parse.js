@@ -83,6 +83,7 @@ let start = -1
   , numberStart = -1
   , uid = 0
   , className = ''
+  , specificity = ''
   , prop = ''
   , path = '&'
   , selector = ''
@@ -183,11 +184,12 @@ function parse([xs, ...args], parent, nesting = 0, root) {
     } else {
       className = prefix + uid++
       classes += (classes ? ' ' : '') + className
+      specificity = ''
       for (let i = 0; i < nesting; i++)
-        className += '.' + className
+        specificity += '.' + className
 
       Object.entries(rules).forEach(([k, v]) => {
-        insert(k.replace(/&/g, '.' + className) + '{' + v)
+        insert(k.replace(/&/g, '.' + className + specificity) + '{' + v)
       })
     }
   }

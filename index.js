@@ -673,7 +673,7 @@ function removeArray(dom, parent, lives) {
 
 function remove(dom, parent, instant = true) {
   if (!parent || removing.has(dom))
-    return { after: dom.nextSibling }
+    return { after: dom.nextSibling, life: null }
 
   const lives = []
 
@@ -683,7 +683,7 @@ function remove(dom, parent, instant = true) {
 
   if (dom.nodeType !== 1) {
     instant && parent.removeChild(dom)
-    return { after }
+    return { after, life: null }
   }
 
   let child = dom.firstChild
@@ -697,7 +697,7 @@ function remove(dom, parent, instant = true) {
   instant && !life && parent.removeChild(dom)
 
   return {
-    life,
-    after
+    after,
+    life
   }
 }

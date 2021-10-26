@@ -569,7 +569,7 @@ function giveLife(dom, attrs, children, context, life) {
     .map(x => typeof x === 'function' && x(dom, attrs, children, context))
     .filter(x => typeof x === 'function')
 
-  life.length && lives.set(dom, (life.get(dom) || []).concat(life))
+  life.length && lives.set(dom, (lives.get(dom) || []).concat(life))
 }
 
 function updateAttribute(dom, context, attrs, attr, old, value) { // eslint-disable-line

@@ -514,16 +514,24 @@ function attributes(dom, view, context, init) {
   const prev = attrs.has(dom) ? attrs.get(dom) : undefined
   prev && view.attrs && (view.attrs.handleEvent = prev.handleEvent)
 
+  'id' in view.attrs === false
+    && view.tag.id
+    && (view.attrs.id = view.tag.id)
+
+  if ((init && view.tag.classes) ||
+     view.attrs.class !== (prev && prev.class) ||
+     view.attrs.className !== (prev && prev.className)
+  )
+    dom.className = className(view)
+
   for (attr in view.attrs) {
-    if (attr === 'life') {
-      init && giveLife(dom, view.attrs, view.children, context, view.attrs.life)
-    } else if (!ignoredAttr(attr) && (!prev || prev[attr] !== view.attrs[attr])) {
+    if (!ignoredAttr(attr) && (!prev || prev[attr] !== view.attrs[attr])) {
       !has && (has = true)
       updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], view.attrs[attr])
     }
   }
 
-  if (attrs && prev) {
+  if (prev) {
     for (const attr in prev) {
       if (attr in view.attrs === false) {
         isEvent(attr)
@@ -533,21 +541,13 @@ function attributes(dom, view, context, init) {
     }
   }
 
-  const id = view.attrs.id ? view.attrs.id : view.tag.id
-  if (id !== dom.getAttribute('id'))
-    id ? dom.setAttribute('id', id) : dom.removeAttribute('id')
-
-  if ((init && view.tag.classes) ||
-     (view.attrs.class !== prev && prev.class) ||
-     (view.attrs.className !== prev && prev.className)
-  )
-    dom.className = className(view)
-
   if (view.tag) {
     setVars(dom, view.tag.vars, view.tag.args, init)
     while ((tag = tag.parent))
       setVars(dom, tag.vars, tag.args, init)
   }
+
+  init && view.attrs.life && giveLife(dom, view.attrs, view.children, context, view.attrs.life)
 
   has
     ? attrs.set(dom, view.attrs)

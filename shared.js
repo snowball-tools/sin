@@ -1,5 +1,5 @@
 export function ignoredAttr(x) {
-  return x === 'id' || x === 'is' || x === 'key' || x === 'handleEvent' || x === 'class' || x === 'className'
+  return x === 'life' || x === 'is' || x === 'key' || x === 'handleEvent' || x === 'class' || x === 'className'
 }
 
 export function className(view) {

@@ -250,7 +250,7 @@ function parseStyles(idx, end) {
   for (let i = idx; i <= x.length; i++) {
     char = x.charCodeAt(i)
 
-    if (quote === -1 && valueStart >= 0 && (colon ? char === 59 : valueEndChar(char))) {
+    if (quote === -1 && valueStart >= 0 && ((colon ? char === 59 : valueEndChar(char) || i === x.length))) {
       numberStart > -1 && !isUnit(char) && addUnit(i)
       prop === '@import'
         ? insert(prop + ' ' + x.slice(valueStart, i), 0)

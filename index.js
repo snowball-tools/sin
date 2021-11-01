@@ -365,11 +365,13 @@ function updateElement(
     parent
   )
 
-  view.children && view.children.length
-    ? updates(dom, view.children, context)
-    : dom.hasChildNodes() && removeChildren(dom.firstChild, dom)
+  const prev = attributes(dom, view, context, create)
+  view.attrs.domSize = view.children && view.children.length
 
-  attributes(dom, view, context, create)
+  view.attrs.domSize
+    ? updates(dom, view.children, context)
+    : prev && prev.domSize && dom.hasChildNodes() && removeChildren(dom.firstChild, dom)
+
   context.NS = previousNS
 
   return Ret(dom)
@@ -553,6 +555,8 @@ function attributes(dom, view, context, init) {
   has
     ? attrs.set(dom, view.attrs)
     : prev && empty(view.attrs) && attrs.delete(dom)
+
+  return prev
 }
 
 function setVars(dom, vars, args, init) {

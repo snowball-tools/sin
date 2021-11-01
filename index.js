@@ -34,7 +34,6 @@ const components = new WeakMap()
     , removing = new WeakSet()
     , streams = new WeakMap()
     , arrays = new WeakMap()
-    , rarrays = new WeakMap()
     , lives = new WeakMap()
     , attrs = new WeakMap()
     , keyCache = new WeakMap()
@@ -325,7 +324,6 @@ function updateArray(dom, view, context, parent) {
 
     const nextLast = after ? after.previousSibling : parent.lastChild
     last !== nextLast && arrays.set(comment.first, nextLast)
-    rarrays.set(nextLast, comment.first)
     return Ret(comment.dom, comment.first, nextLast)
   }
 
@@ -333,7 +331,6 @@ function updateArray(dom, view, context, parent) {
   parent.appendChild(comment.dom)
   updates(parent, view, context, comment.first, last)
   arrays.set(comment.first, parent.lastChild)
-  rarrays.set(parent.lastChild, comment.first)
   return Ret(parent, comment.first, parent.lastChild)
 }
 

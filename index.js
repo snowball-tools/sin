@@ -193,7 +193,10 @@ function nonKeyed(parent, context, next, keys, dom, after = null) { // eslint-di
       dom = temp.last
       i++
     }
-    dom && (dom = dom.nextSibling)
+    if (dom !== null) {
+      dom = dom.nextSibling
+      dom !== null && dom.nodeType === 8 && dom.nodeValue === ',' && (dom = remove(dom, parent).after)
+    }
   }
 
   while (dom && dom !== after)

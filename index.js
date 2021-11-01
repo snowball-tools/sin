@@ -356,7 +356,7 @@ function updateElement(
   view,
   context,
   parent,
-  create = dom === null || dom.tagName !== (view.tag.name || 'DIV').toUpperCase()
+  create = dom === null || tagChanged(dom, view)
 ) {
   const previousNS = context.NS
   create && replace(
@@ -373,6 +373,10 @@ function updateElement(
   context.NS = previousNS
 
   return Ret(dom)
+}
+
+function tagChanged(dom, view) {
+  return dom.tagName !== (view.tag.name || 'DIV').toUpperCase()
 }
 
 function createElement(view, context) {

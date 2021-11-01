@@ -334,7 +334,13 @@ function updateArray(dom, view, context, parent) {
   return Ret(parent, comment.first, parent.lastChild)
 }
 
-function updateValue(dom, view, parent, create, nodeType = typeof view === 'boolean' || view == null ? 8 : 3) {
+function updateValue(
+  dom,
+  view,
+  parent,
+  create,
+  nodeType = typeof view === 'boolean' || view == null ? 8 : 3
+) {
   const nodeChange = create || !dom || dom.nodeType !== nodeType
 
   nodeChange && replace(

@@ -514,7 +514,7 @@ function attributes(dom, view, context, init) {
     , tag = view.tag
     , attr
 
-  const prev = attrs.has(dom) ? attrs.get(dom) : undefined
+  const prev = !init && attrs.has(dom) ? attrs.get(dom) : undefined
   prev && view.attrs && (view.attrs.handleEvent = prev.handleEvent)
 
   'id' in view.attrs === false

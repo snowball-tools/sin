@@ -183,7 +183,7 @@ function nonKeyed(parent, context, next, keys, dom, after = null) { // eslint-di
     , view
 
   while (i < next.length) {
-    if (!removing.has(dom)) {
+    if (dom === null || !removing.has(dom)) {
       view = next[i]
       temp = dom !== after
         ? update(dom, view, context, parent)

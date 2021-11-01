@@ -31,25 +31,6 @@ function params(path, current) {
   }, {})
 }
 
-function reroute(s, path, options = {}) {
-  s.pathmode[0] === '#'
-    ? window.location.hash = s.pathmode + path
-    : s.pathmode[0] === '?'
-      ? window.location.search = s.pathmode + path
-      : window.history[options.replace ? 'replaceState' : 'pushState'](options.state, null, s.pathmode + path)
-  routeState[path] = options.state
-  s.redraw()
-}
-
-function getPath(s, location, x = 0) {
-  return (s.pathmode[0] === '#'
-    ? location.hash.slice(s.pathmode.length + x)
-    : s.pathmode[0] === '?'
-      ? location.search.slice(s.pathmode.length + x)
-      : location.pathname.slice(s.pathmode + x)
-  ).replace(/(.)\/$/, '$1')
-}
-
 export default function router(s, root, attrs) {
   const routed = s(({ route, key, ...attrs }, [view], context) => {
     context.route = route
@@ -61,12 +42,12 @@ export default function router(s, root, attrs) {
   Object.assign(route, attrs)
   route.toString = route
   route.has = x => x === '/'
-    ? (getPath(s, route.url) === root || (getPath(s, route.url) === '/' && root === ''))
-    : getPath(s, route.url).indexOf(cleanSlash(root + '/' + x)) === 0
+    ? (getPath(route.url) === root || (getPath(route.url) === '/' && root === ''))
+    : getPath(route.url).indexOf(cleanSlash(root + '/' + x)) === 0
 
   Object.defineProperty(route, 'current', {
     get() {
-      const path = getPath(s, route.url)
+      const path = getPath(route.url)
           , idx = path.indexOf('/', root.length + 1)
 
       return idx === -1 ? path : path.slice(0, idx)
@@ -75,12 +56,31 @@ export default function router(s, root, attrs) {
 
   return route
 
+  function getPath(location, x = 0) {
+    return (s.pathmode[0] === '#'
+      ? location.hash.slice(s.pathmode.length + x)
+      : s.pathmode[0] === '?'
+        ? location.search.slice(s.pathmode.length + x)
+        : location.pathname.slice(s.pathmode + x)
+    ).replace(/(.)\/$/, '$1')
+  }
+
+  function reroute(path, options = {}) {
+    s.pathmode[0] === '#'
+      ? window.location.hash = s.pathmode + path
+      : s.pathmode[0] === '?'
+        ? window.location.search = s.pathmode + path
+        : window.history[options.replace ? 'replaceState' : 'pushState'](options.state, null, s.pathmode + path)
+    routeState[path] = options.state
+    s.redraw()
+  }
+
   function route(routes, options = {}) {
     if (typeof routes === 'undefined')
       return root + '/'
 
     if (typeof routes === 'string')
-      return reroute(s, cleanSlash(routes[0] === '/' ? routes : '/' + routes), options)
+      return reroute(cleanSlash(routes[0] === '/' ? routes : '/' + routes), options)
 
     if (!routing) {
       routing = true
@@ -89,10 +89,10 @@ export default function router(s, root, attrs) {
         : typeof window.history.pushState === 'function' && window.addEventListener('popstate', s.redraw)
     }
 
-    const path = getPath(s, route.url, root.length)
+    const path = getPath(route.url, root.length)
     const pathTokens = tokenizePath(path)
 
-    const [_, match, view = options.notFound] = Object
+    const [_, match, view = options.notFound] = Object // eslint-disable-line
       .entries(routes)
       .reduce((acc, [match, view]) => {
         match = tokenizePath(cleanSlash(match))

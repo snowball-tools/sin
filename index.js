@@ -557,7 +557,7 @@ function setVars(dom, vars, args, init) {
     const value = args[index]
     value && value.constructor === Stream
       ? init && value.map(x => dom.style.setProperty(id, renderValue(x, unit)))
-      : dom.style.setProperty(id, renderValue(typeof value === 'function' ? value(dom) : value, unit))
+      : dom.style.setProperty(id, renderValue(value, unit))
   }
 }
 

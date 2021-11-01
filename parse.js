@@ -339,6 +339,7 @@ function addUnit(i) {
 }
 
 export function renderValue(x, unit) {
+  typeof x === 'function' && (x = value())
   return typeof x !== 'string' || isUnit(x.charCodeAt(x.length - 1))
     ? x + unit
     : x

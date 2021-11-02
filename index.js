@@ -49,6 +49,7 @@ s.mount = mount
 s.stream = Stream
 s.css = (xs, ...args) => parse([xs, args], null, 0, true)
 s.animate = animate
+s.value = value
 s.html = html
 s.style = style
 
@@ -716,5 +717,33 @@ function remove(dom, parent, instant = true) {
   return {
     after,
     life
+  }
+}
+
+function value(v, fn) {
+  const observers = new Set()
+  value.valueOf = () => v
+  value.stringOf = () => v
+  typeof fn === 'function' && observers.add(fn)
+
+  return function(x) {
+    if (typeof x === 'function')
+      return derived(x)
+    else if (arguments.length === 0)
+      return v
+
+    v = x
+    observers.forEach(call)
+    return v
+  }
+
+  function derived(fn) {
+    const x = value(v)
+    observers.add(v => x(fn(v)))
+    return x
+  }
+
+  function call(fn) {
+    fn(v)
   }
 }

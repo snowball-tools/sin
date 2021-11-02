@@ -1,28 +1,29 @@
-import s from './index.js'
 import View from './view.js'
 import { className, ignoredAttr } from './shared.js'
+import { renderValue } from './parse.js'
 
 let lastWasText = false
 
 const open = new Set([
-  'AREA',
-  'BASE',
-  'BR',
-  'COL',
-  'EMBED',
-  'HR',
-  'IMG',
-  'INPUT',
-  'LINK',
-  'META',
-  'PARAM',
-  'SOURCE',
-  'TRACK',
-  'WBR'
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'param',
+  'source',
+  'track',
+  'wbr'
 ])
 
-s.html = async function(view) {
-  return await update(view)
+export default async function html(view) {
+  const result = await update(view)
+  return result
 }
 
 async function update(view) {
@@ -45,10 +46,15 @@ async function updateElement(view) {
   return '<'
     + tag
     + getClassName(view)
-    + Object.entries(view.attrs).reduce((acc, [k, v]) =>
+    + Object.
+    entries(view.attrs).reduce((acc, [k, v]) =>
       acc += ignoredAttr(k) ? '' : (' ' + k + '="' + v + '"'),
       ''
     )
+    + (view.tag.args.length ? Object.entries(view.tag.vars).reduce((acc, [k, v]) =>
+      acc += k + ':' + renderValue(view.tag.args[v.index], v.unit) + ';',
+      ' style="'
+    ) + '"' : '')
     + '>'
     + (open.has(tag)
       ? ''
@@ -101,7 +107,7 @@ async function updateComponent(view) {
   return update(x)
 }
 
-
+/*
 console.time('w')
 s.html(
   s`h1`(
@@ -130,3 +136,4 @@ s.html(
   console.timeEnd('w')
   p(x)
 })
+*/

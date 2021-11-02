@@ -1,10 +1,11 @@
 import window from './window.js'
-import parse, { atReplacer, renderValue } from './parse.js'
+import parse, { atReplacer, renderValue, style } from './parse.js'
 import router, { routeState, cleanSlash } from './router.js'
 import View from './view.js'
 import http from './http.js'
 import Stream from './stream.js'
 import { className, ignoredAttr } from './shared.js'
+import html from './html.js'
 
 const document = window.document
     , NS = {
@@ -48,6 +49,8 @@ s.mount = mount
 s.stream = Stream
 s.css = (xs, ...args) => parse([xs, args], null, 0, true)
 s.animate = animate
+s.html = html
+s.style = style
 
 s.route = router(s, '', {
   url: typeof window !== 'undefined' && window.location,

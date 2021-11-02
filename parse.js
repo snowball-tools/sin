@@ -3,8 +3,9 @@ import window from './window.js'
 export default parse
 
 const document = window.document
-    , style = document && document.querySelector && (document.querySelector('.sin') || document.createElement('style'))
-    , prefix = style && style.getAttribute('id') || 'sin-' + ('000000' + (Math.random() * Math.pow(36, 6) | 0).toString(36)).slice(-6)
+export const style = document && document.querySelector && (document.querySelector('.sin') || document.createElement('style'))
+
+const prefix = style && style.getAttribute('id') || 'sin-' + ('000000' + (Math.random() * Math.pow(36, 6) | 0).toString(36)).slice(-6)
     , dom = document.createElement('div')
     , vendorRegex = /^(o|O|ms|MS|Ms|moz|Moz|webkit|Webkit|WebKit)([A-Z])/
     , snake = x => x.replace(/(\B[A-Z])/g, '-$1').toLowerCase()

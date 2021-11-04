@@ -151,7 +151,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
   const vars = {}
   name = id = classes = rule = value = ''
   selectors.length = 0
-  valueStart = -1
+  valueStart = fontFaces = -1
   rules = root ? {} : null
   hasRules = false
   styles = false
@@ -285,7 +285,11 @@ function parseStyles(idx, end) {
           : x.slice(start, i).trim()
         selector.indexOf(',') !== -1 && (selector = splitSelector(selector))
         value = prop = ''
-        selectors.push((noSpace(startChar) ? '' : ' ') + selector)
+        selectors.push(
+          (noSpace(startChar) ? '' : ' ')
+          + (selector === '@font-face' ? Array(++fontFaces + 1).join(' ') : '')
+          + selector
+        )
         path = selectors.toString()
         rule = rules[path || '&'] || ''
       }
@@ -368,11 +372,11 @@ selectors.toString = function() {
   let a = ''
     , b = ''
   selectors.forEach(x =>
-    x.charCodeAt(0) === 64
+    x.charCodeAt(0) === 64 && x !== '@font-face'
       ? (a += x)
       : (b += x)
   )
-  return (a ? a + '{' : '') + '&' + b
+  return (a ? a + '{' : '') + (b === '@font-face' ? '' : '&') + b
 }
 
 function px(x) {

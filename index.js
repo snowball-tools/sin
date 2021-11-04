@@ -5,7 +5,6 @@ import View from './view.js'
 import http from './http.js'
 import Stream from './stream.js'
 import { className, ignoredAttr } from './shared.js'
-import html from './html.js'
 
 const document = window.document
     , NS = {
@@ -50,7 +49,6 @@ s.stream = Stream
 s.css = (...x) => parse(x, null, 0, true)
 s.animate = animate
 s.value = value
-s.html = html
 s.style = style
 
 s.route = router(s, '', {

@@ -5,9 +5,13 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "build": "esbuild --minify --minify-syntax --minify-identifiers --format=esm --bundle --outfile=index.min.js index.js",
-    "gzip": "gzip -c index.min.js > index.min.js.gz && ls -l index.min.js.gz && rm index.min.js.gz"
+    "lint": "eslint *.js",
+    "build": "esbuild index.js --minify --minify-syntax --minify-identifiers --format=esm --bundle --outfile=sin.min.js",
+    "build:bundle": "esbuild index.js --format=esm --bundle --outfile=sin.js",
+    "gzip": "gzip -c sin.min.js > sin.min.js.gz && ls -l sin.min.js.gz && rm sin.min.js.gz"
   },
-  "author": "",
-  "license": "ISC"
+  "author": "Rasmus Porsager <rasmus@porsager.com>",
+  "devDependencies": {
+    "esbuild": "0.13.12"
+  }
 }

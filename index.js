@@ -143,6 +143,7 @@ function mount(dom, view, attrs = {}, context = {}) {
     dom = document.body
   }
 
+  attrs.route = context.route = s.route
   mounts.set(dom, { view, attrs, context })
   updates(dom, [].concat(view(attrs, [], context)), context)
   return view
@@ -410,9 +411,9 @@ function removeChildren(dom, parent) {
   while (dom)
 }
 
-function Stack(context) {
+function Stack(view, context) {
   const life = []
-  context.life = fn => Array.isArray(fn)
+  view.attrs.life = fn => Array.isArray(fn)
     ? life.push(...fn)
     : life.push(fn)
 
@@ -448,7 +449,7 @@ function updateComponent( // eslint-disable-line
   view,
   context,
   parent,
-  stack = components.has(dom) ? components.get(dom) : Stack(context),
+  stack = components.has(dom) ? components.get(dom) : Stack(view, context),
   create = stack.exhausted || stack.key !== view.key
 ) {
   const x = create

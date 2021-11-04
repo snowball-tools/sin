@@ -46,8 +46,7 @@ async function updateElement(view) {
   return '<'
     + tag
     + getClassName(view)
-    + Object.
-    entries(view.attrs).reduce((acc, [k, v]) =>
+    + Object.entries(view.attrs).reduce((acc, [k, v]) =>
       acc += ignoredAttr(k) ? '' : (' ' + k + '="' + v + '"'),
       ''
     )

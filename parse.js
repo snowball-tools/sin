@@ -104,6 +104,7 @@ let start = -1
   , styles = false
   , cacheable = true
   , hasRules = false
+  , fontFaces = -1
 
 function shorthand(x) {
   return shorthands[x] || x

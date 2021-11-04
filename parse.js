@@ -164,7 +164,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
       : parseSelector(xs, j, args, parent)
 
     x = xs[j + 1]
-    if (j < args.length) {
+    if (j < args.length - 1) {
       if (valueStart >= 0) {
         const before = xs[j].slice(valueStart)
         vars[varName = '--' + prefix + uid + j] = { unit: getUnit(prop, last(fn)), index: j }
@@ -251,7 +251,7 @@ function parseStyles(idx, end) {
   for (let i = idx; i <= x.length; i++) {
     char = x.charCodeAt(i)
 
-    if (quote === -1 && valueStart >= 0 && ((colon ? char === 59 : valueEndChar(char) || i === x.length))) {
+    if (quote === -1 && valueStart >= 0 && ((colon ? char === 59 : valueEndChar(char) || (end && i === x.length)))) {
       numberStart > -1 && !isUnit(char) && addUnit(i)
       prop === '@import'
         ? insert(prop + ' ' + x.slice(valueStart, i), 0)
@@ -290,7 +290,7 @@ function parseStyles(idx, end) {
       }
       start = valueStart = -1
       prop = ''
-    } else if (char === 125 || (i === x.length && end)) { // }
+    } else if (char === 125 || (end && i === x.length)) { // }
       if (keyframe) {
         keyframes += keyframe + '{' + rule + '}'
         keyframe = rule = ''

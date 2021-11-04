@@ -47,7 +47,7 @@ s.pathmode = ''
 s.redraw = redraw
 s.mount = mount
 s.stream = Stream
-s.css = (xs, ...args) => parse([xs, args], null, 0, true)
+s.css = (...x) => parse(x, null, 0, true)
 s.animate = animate
 s.value = value
 s.html = html

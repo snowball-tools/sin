@@ -110,7 +110,7 @@ function shorthand(x) {
 }
 
 function propValue(x, v) {
-  return colon ? x : renderProp(x) + ':' + v + ';'
+  return (colon ? x : renderProp(x)) + ':' + v + ';'
 }
 
 function renderProp(x) {

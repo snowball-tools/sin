@@ -164,7 +164,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
       : parseSelector(xs, j, args, parent)
 
     x = xs[j + 1]
-    if (j < args.length - 1) {
+    if (j < args.length) {
       if (valueStart >= 0) {
         const before = xs[j].slice(valueStart)
         vars[varName = '--' + prefix + uid + j] = { unit: getUnit(prop, last(fn)), index: j }

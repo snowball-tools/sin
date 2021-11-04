@@ -284,6 +284,7 @@ function parseStyles(idx, end) {
           ? atHelper(prop + value + x.slice(valueStart, i).trim())
           : x.slice(start, i).trim()
         selector.indexOf(',') !== -1 && (selector = splitSelector(selector))
+        value = prop = ''
         selectors.push((noSpace(startChar) ? '' : ' ') + selector)
         path = selectors.toString()
         rule = rules[path || '&'] || ''

@@ -170,7 +170,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
         vars[varName = '--' + prefix + uid + j] = { unit: getUnit(prop, last(fn)), index: j }
         value += before + 'var(' + varName + ')'
         valueStart = 0
-      } else {
+      } else if (args[j]) {
         x += args[j] + ';'
         cacheable = false
       }

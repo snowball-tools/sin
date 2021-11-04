@@ -15,7 +15,9 @@ export default function http(url, {
   pass = undefined,
   headers = {},
   config = (xhr) => { /* noop */ },
-  raw = false
+  raw = false,
+  background = false,
+  extract = x => x
 } = {}) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
@@ -27,7 +29,7 @@ export default function http(url, {
 
         if (!raw) {
           try {
-            body = JSON.parse(xhr.responseText)
+            body = extract ? extract(xhr) : JSON.parse(xhr.responseText)
           } catch (e) {
             error = e
           }
@@ -38,7 +40,7 @@ export default function http(url, {
           body,
           xhr
         })
-        redraw && http.redraw()
+        redraw && !background && http.redraw()
       }
     }
     xhr.onerror = xhr.onabort = event => reject({ event, xhr })

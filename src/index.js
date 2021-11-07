@@ -46,7 +46,6 @@ s.redraw = redraw
 s.mount = mount
 s.css = (...x) => parse(x, null, 0, true)
 s.animate = animate
-s.style = style
 s.http = http
 s.http.redraw = redraw
 s.medias = medias

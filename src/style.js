@@ -1,23 +1,18 @@
 import window from './window.js'
+import { popular } from './shorthands.js'
 
-export default parse
-
-const document = window.document
-export const style = document && document.querySelector && (document.querySelector('.sin') || document.createElement('style'))
+const doc = window.document
+const style = doc && doc.querySelector && (doc.querySelector('.sin-styles') || doc.createElement('style'))
 
 const prefix = style && style.getAttribute('id') || 'sin-'
-    , dom = document.createElement('div')
+    , div = doc.createElement('div')
     , vendorRegex = /^(o|O|ms|MS|Ms|moz|Moz|webkit|Webkit|WebKit)([A-Z])/
     , snake = x => x.replace(/(\B[A-Z])/g, '-$1').toLowerCase()
-    , findWidth = x => x ? x.hasOwnProperty('width') ? x : findWidth(Object.getPrototypeOf(x)) : {}
-    , initials = (acc, x) => (acc[x.split('-').map(x => x[0]).join('')] = x, acc)
     , mediasCache = {}
     , propCache = {}
     , unitCache = {}
 
 export const medias = x => Object.entries(x).forEach(([k, v]) => mediasCache['@' + k] = v)
-
-parse.prefix = prefix
 
 const pxCache = {
   flex: '',
@@ -32,29 +27,32 @@ const pxCache = {
   '@media': 'px'
 }
 
+const shorthands = {}
+const vendorMap = {}
 const properties = ['float']
-  .concat(Object.keys(
-    document.documentElement ? findWidth(document.documentElement.style) : {}
-  ))
-  .filter((x, i, xs) => x.indexOf('-') === -1 && x !== 'length' && xs.indexOf(x) === i)
-  .map(x => x.match(vendorRegex) ? '-' + snake(x) : snake(x))
-  .sort()
+  .concat(Object.keys(div))
+  .forEach((x, i, xs) => {
+    if (x.indexOf('-') !== -1 || x === 'length' || xs.indexOf(x) !== i)
+      return
 
-const vendorMap = properties.reduce((acc, x) => {
-  const vendor = x.match(/-(ms|o|webkit|moz)-/g)
-  if (vendor) {
-    const unprefixed = x.replace(/-(ms|o|webkit|moz)-/, '')
-    if (properties.indexOf(unprefixed) === -1) {
-      if (unprefixed === 'flexDirection')
-        acc.flex = '-' + vendor[1].toLowerCase() + '-flex'
-      acc[unprefixed] = x
+    x = x.match(vendorRegex) ? '-' + snake(x) : snake(x)
+    const short = x.split('-').map(x => x[0]).join('')
+        , idx = popular.indexOf[x]
+
+    shorthands[short] = idx !== -1
+      ? popular[idx]
+      : x
+
+    const vendor = x.match(/-(ms|o|webkit|moz)-/g)
+    if (vendor) {
+      const unprefixed = x.replace(/-(ms|o|webkit|moz)-/, '')
+      if (properties.indexOf(unprefixed) === -1) {
+        if (unprefixed === 'flexDirection')
+          vendorMap.flex = '-' + vendor[1].toLowerCase() + '-flex'
+        vendorMap[unprefixed] = x
+      }
     }
-  }
-  return acc
-}, {})
-
-const popular = ['align-items', 'bottom', 'background-color', 'border-radius', 'box-shadow', 'background-image', 'color', 'display', 'float', 'flex-direction', 'font-family', 'font-size', 'height', 'justify-content', 'left', 'line-height', 'letter-spacing', 'margin', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top', 'opacity', 'padding', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top', 'right', 'top', 'text-align', 'text-decoration', 'text-transform', 'width']
-const shorthands = Object.assign(properties.reduce(initials, {}), popular.reduce(initials, {}))
+  })
 
 const cache = new Map()
     , cssVars = typeof window !== 'undefined' && window.CSS && CSS.supports('color', 'var(--support-test)')
@@ -123,7 +121,7 @@ function splitSelector(x) {
 
 function insert(rule, index) {
   if (append) {
-    style && document.head && document.head.appendChild(style)
+    style && doc.head && doc.head.appendChild(style)
     append = false
   }
 
@@ -139,7 +137,7 @@ function insert(rule, index) {
   }
 }
 
-function parse([xs, ...args], parent, nesting = 0, root) {
+export function parse([xs, ...args], parent, nesting = 0, root) {
   if (cache.has(xs)) {
     const prev = cache.get(xs)
     return {
@@ -390,9 +388,9 @@ function px(x) {
     return pxCache[x]
 
   try {
-    dom.style[x] = '1px'
-    dom.style.setProperty(x, '1px')
-    return pxCache[x] = dom.style[x].slice(-3) === '1px' ? 'px' : ''
+    div.style[x] = '1px'
+    div.style.setProperty(x, '1px')
+    return pxCache[x] = div.style[x].slice(-3) === '1px' ? 'px' : ''
   } catch (err) {
     return pxCache[x] = ''
   }

@@ -3,7 +3,6 @@ import parse, { atReplacer, renderValue, style } from './parse.js'
 import router, { routeState, cleanSlash } from './router.js'
 import View from './view.js'
 import http from './http.js'
-import Stream from './stream.js'
 import { className, ignoredAttr } from './shared.js'
 
 const document = window.document
@@ -45,10 +44,8 @@ let idle = true
 s.pathmode = ''
 s.redraw = redraw
 s.mount = mount
-s.stream = Stream
 s.css = (...x) => parse(x, null, 0, true)
 s.animate = animate
-s.value = value
 s.style = style
 
 s.route = router(s, '', {
@@ -281,7 +278,7 @@ function insertBefore(parent, { first, last }, before) {
 
 function update(dom, view, context, parent, stack, create) {  // eslint-disable-line
   return typeof view === 'function'
-    ? view.constructor === Stream
+    ? typeof view.map === 'function'
       ? updateStream(dom, view, context, parent)
       : update(dom, view(), context, parent, stack, create)
     : view instanceof View
@@ -409,11 +406,9 @@ function removeChildren(dom, parent) {
   while (dom)
 }
 
-function Stack(view, context) {
+function Stack(context) {
   const life = []
-  view.attrs.life = fn => Array.isArray(fn)
-    ? life.push(...fn)
-    : life.push(fn)
+  context.onremove = fn => life.push(() => fn)
 
   const xs = []
   let i = 0
@@ -447,7 +442,7 @@ function updateComponent( // eslint-disable-line
   view,
   context,
   parent,
-  stack = components.has(dom) ? components.get(dom) : Stack(view, context),
+  stack = components.has(dom) ? components.get(dom) : Stack(context),
   create = stack.exhausted || stack.key !== view.key
 ) {
   const x = create
@@ -575,7 +570,7 @@ function setVars(dom, vars, args, init) {
   for (const id in vars) {
     const { unit, index } = vars[id]
     const value = args[index]
-    value && value.constructor === Stream
+    typeof value === 'function' && typeof value.map === 'function'
       ? init && value.map(x => dom.style.setProperty(id, renderValue(x, unit)))
       : dom.style.setProperty(id, renderValue(value, unit))
   }
@@ -716,33 +711,5 @@ function remove(dom, parent, instant = true) {
   return {
     after,
     life
-  }
-}
-
-function value(v, fn) {
-  const observers = new Set()
-  value.valueOf = () => v
-  value.stringOf = () => v
-  typeof fn === 'function' && observers.add(fn)
-
-  return function(x) {
-    if (typeof x === 'function')
-      return derived(x)
-    else if (arguments.length === 0)
-      return v
-
-    v = x
-    observers.forEach(call)
-    return v
-  }
-
-  function derived(fn) {
-    const x = value(v)
-    observers.add(v => x(fn(v)))
-    return x
-  }
-
-  function call(fn) {
-    fn(v)
   }
 }

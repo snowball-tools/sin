@@ -1,6 +1,6 @@
-# Sin - JSSML
+##
 
-- Fix sin clearing unknown children
+- Component end lifecycle - different from life?
 
 ## Todo
 - CSS features from BSS

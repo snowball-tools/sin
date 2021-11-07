@@ -1,39 +1,52 @@
-import s from './index.js'
-import html from './html.js'
+import s from './src/stream.js'
 
 //window.run = s.redraw
+// stream naming?
 
-s.css`
-  .dragging * {
-    user-select: none;
-    cursor: grabbing;
-  }
+const a = s(1)
+    , b = a.reduce((acc, x) => acc.concat(x), [])
 
-   @font-face {
-    font-family: ptroot;
-    src: url('/fonts/PT-Root-UI_Light.woff2') format('woff2'),
-        url('/fonts/PT-Root-UI_Light.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
-  }
+p(a())
+a(2)
+a(3)
+p(b())
 
-  @font-face {
-    font-family: ptroot;
-    src: url('/fonts/PT-Root-UI_Medium.woff2') format('woff2'),
-      url('/fonts/PT-Root-UI_Medium.woff') format('woff');
-    font-weight: bold;
-    font-style: normal;
-  }
-`
-const app = () => s`div`(
-  s`h1`('hej'),
-  s`h2`('dig')
-)
 
-p(await s.html(app()))
-p(s.style.sheet.cssRules)
 
-s.mount(app)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

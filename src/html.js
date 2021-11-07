@@ -21,26 +21,26 @@ const open = new Set([
   'wbr'
 ])
 
-export default async function html(view) {
-  const result = await update(view)
+export default async function html(view, context) {
+  const result = await update(view, context)
   return result
 }
 
-async function update(view) {
+async function update(view, context) {
   return typeof view === 'function'
-    ? update(view())
+    ? update(view(), context)
     : view instanceof View
       ? view.component
-        ? updateComponent(view)
-        : updateElement(view)
+        ? updateComponent(view, context)
+        : updateElement(view, context)
       : Array.isArray(view)
-        ? updateArray(view)
+        ? updateArray(view, context)
         : view || view === 0 || view === ''
           ? updateText(view)
           : updateComment(view)
 }
 
-async function updateElement(view) {
+async function updateElement(view, context) {
   lastWasText = false
   const tag = (view.tag.name || 'div').toLowerCase()
   return '<'
@@ -60,7 +60,7 @@ async function updateElement(view) {
       : (view.text
         ? view.text
         : view.children && view.children.length
-          ? await updateChildren(view.children)
+          ? await updateChildren(view.children, context)
           : ''
       ) + '</' + tag + '>'
     )
@@ -73,14 +73,14 @@ function getClassName(view) {
     : ''
 }
 
-async function updateChildren(xs) {
+async function updateChildren(xs, context) {
   lastWasText = false
-  return (await Promise.all(xs.map(update))).join('')
+  return (await Promise.all(xs.map(x => update(x, context)))).join('')
 }
 
-async function updateArray(xs) {
+async function updateArray(xs, context) {
   lastWasText = false
-  return '<!--' + xs.length + '-->' + (await Promise.all(xs.map(update))).join('')
+  return '<!--' + xs.length + '-->' + (await Promise.all(xs.map(x => update(x, context)))).join('')
 }
 
 function updateText(view) {
@@ -94,16 +94,16 @@ function updateComment(view) {
   return '<!--' + (typeof view === 'string' ? view.replace(/--/g, '- -') : view) + '-->'
 }
 
-async function updateComponent(view) {
+async function updateComponent(view, context) {
   lastWasText = false
-  let x = view.component()
+  let x = view.component(view.attrs, view.children, context)
   if (typeof x.then === 'function')
     x = await x
 
   if (typeof x === 'function')
     x = x()
 
-  return update(x)
+  return update(x, context)
 }
 
 /*

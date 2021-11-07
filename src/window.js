@@ -8,7 +8,6 @@ function proxy() {
     document: {
       documentElement: {
         style: {
-          
         }
       },
       querySelector: () => null,

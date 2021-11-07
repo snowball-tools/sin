@@ -11,20 +11,19 @@ const prefix = style && style.getAttribute('id') || 'sin-'
     , snake = x => x.replace(/(\B[A-Z])/g, '-$1').toLowerCase()
     , findWidth = x => x ? x.hasOwnProperty('width') ? x : findWidth(Object.getPrototypeOf(x)) : {}
     , initials = (acc, x) => (acc[x.split('-').map(x => x[0]).join('')] = x, acc)
+    , mediasCache = {}
     , propCache = {}
-    , atsCache = {}
     , unitCache = {}
 
-export const atReplacer = x => Object.entries(x).forEach(([k, v]) => atsCache['@' + k] = v)
+export const medias = x => Object.entries(x).forEach(([k, v]) => mediasCache['@' + k] = v)
 
 parse.prefix = prefix
 
 const pxCache = {
   flex: '',
-  'line-height': '',
-
   border: 'px',
   transform: 'px',
+  'line-height': '',
   'box-shadow': 'px',
   'border-top': 'px',
   'border-left': 'px',
@@ -248,11 +247,11 @@ function parseSelector(xs, j, args, parent) {
 }
 
 function atHelper(x) {
-  return atsCache[x] || x
+  return mediasCache[x] || x
 }
 
 function parseStyles(idx, end) {
-  for (let i = idx; i <= x.length; i++) {
+  for (let i = idx; i <= x.length; i++) { // rewrite to i < length and avoid NaN charCode
     char = x.charCodeAt(i)
     i < x.length && (hash = Math.imul(31, hash) + char | 0)
 

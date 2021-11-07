@@ -1,5 +1,5 @@
 import window from './window.js'
-import parse, { atReplacer, renderValue, style } from './parse.js'
+import parse, { medias, renderValue, style } from './parse.js'
 import router, { routeState, cleanSlash } from './router.js'
 import View from './view.js'
 import http from './http.js'
@@ -47,6 +47,9 @@ s.mount = mount
 s.css = (...x) => parse(x, null, 0, true)
 s.animate = animate
 s.style = style
+s.http = http
+s.http.redraw = redraw
+s.medias = medias
 
 s.route = router(s, '', {
   url: typeof window !== 'undefined' && window.location,
@@ -55,13 +58,10 @@ s.route = router(s, '', {
   head: () => { /* noop */ }
 })
 
-s.http = http
-s.http.redraw = redraw
 s.request = (url, o) => (o ? http(url, o) : http(url.url, url))
   .then(({ body }) => body)
   .catch(x => (x.response = x.body, Promise.reject(x)))
 
-s.bss = { at: atReplacer, global: s.css }
 s.trust = x => s(() => {
   const div = document.createElement('div')
       , frag = new DocumentFragment()

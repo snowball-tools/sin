@@ -5,7 +5,7 @@ export default parse
 const document = window.document
 export const style = document && document.querySelector && (document.querySelector('.sin') || document.createElement('style'))
 
-const prefix = style && style.getAttribute('id') || 'sin-' + ('000000' + (Math.random() * Math.pow(36, 6) | 0).toString(36)).slice(-6)
+const prefix = style && style.getAttribute('id') || 'sin-'
     , dom = document.createElement('div')
     , vendorRegex = /^(o|O|ms|MS|Ms|moz|Moz|webkit|Webkit|WebKit)([A-Z])/
     , snake = x => x.replace(/(\B[A-Z])/g, '-$1').toLowerCase()
@@ -82,8 +82,7 @@ let start = -1
   , char = -1
   , lastSpace = -1
   , numberStart = -1
-  , uid = 0
-  , className = ''
+  , ts = ''
   , specificity = ''
   , prop = ''
   , path = '&'
@@ -105,6 +104,7 @@ let start = -1
   , cacheable = true
   , hasRules = false
   , fontFaces = -1
+  , hash = 0
 
 function shorthand(x) {
   return shorthands[x] || x
@@ -151,7 +151,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
 
   const vars = {}
   name = id = classes = rule = value = ''
-  selectors.length = 0
+  selectors.length = hash = 0
   valueStart = fontFaces = -1
   rules = root ? {} : null
   hasRules = false
@@ -168,7 +168,8 @@ function parse([xs, ...args], parent, nesting = 0, root) {
     if (j < args.length) {
       if (valueStart >= 0) {
         const before = xs[j].slice(valueStart)
-        vars[varName = '--' + prefix + uid + j] = { unit: getUnit(prop, last(fn)), index: j }
+        ts = prefix + Math.abs(hash).toString(31)
+        vars[varName = '--' + ts + j] = { unit: getUnit(prop, last(fn)), index: j }
         value += before + 'var(' + varName + ')'
         valueStart = 0
       } else if (args[j]) {
@@ -184,14 +185,14 @@ function parse([xs, ...args], parent, nesting = 0, root) {
         insert(k.replace(/&\s*/g, '') + '{' + v)
       )
     } else {
-      className = prefix + uid++
-      classes += (classes ? ' ' : '') + className
+      ts = prefix + Math.abs(hash).toString(31)
+      classes += (classes ? ' ' : '') + ts
       specificity = ''
       for (let i = 0; i < nesting; i++)
-        specificity += '.' + className
+        specificity += '.' + ts
 
       Object.entries(rules).forEach(([k, v]) => {
-        insert(k.replace(/&/g, '.' + className + specificity) + '{' + v)
+        insert(k.replace(/&/g, '.' + ts + specificity) + '{' + v)
       })
     }
   }
@@ -213,6 +214,8 @@ function parse([xs, ...args], parent, nesting = 0, root) {
 function parseSelector(xs, j, args, parent) {
   for (let i = 0; i <= x.length; i++) {
     char = x.charCodeAt(i)
+    i < x.length && (hash = Math.imul(31, hash) + char | 0)
+
     if (styles) {
       if (isStartChar(char)) {
         rules = {}
@@ -251,6 +254,7 @@ function atHelper(x) {
 function parseStyles(idx, end) {
   for (let i = idx; i <= x.length; i++) {
     char = x.charCodeAt(i)
+    i < x.length && (hash = Math.imul(31, hash) + char | 0)
 
     if (quote === -1 && valueStart >= 0 && ((colon ? char === 59 : valueEndChar(char) || (end && i === x.length)))) {
       numberStart > -1 && !isUnit(char) && addUnit(i)
@@ -301,8 +305,9 @@ function parseStyles(idx, end) {
         keyframes += keyframe + '{' + rule + '}'
         keyframe = rule = ''
       } else if (animation) {
-        insert('@keyframes ' + prefix + ++uid + '{' + keyframes + '}')
-        rule = (rules[path || '&'] || '') + propValue('animation', animation + ' ' + prefix + uid)
+        ts = prefix + Math.abs(hash).toString(31)
+        insert('@keyframes ' + ts + '{' + keyframes + '}')
+        rule = (rules[path || '&'] || '') + propValue('animation', animation + ' ' + ts)
         animation = ''
       } else {
         rule && (rules[path || '&'] = rule)

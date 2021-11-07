@@ -31,7 +31,7 @@ function params(path, current) {
   }, {})
 }
 
-export default function router(s, root, attrs) {
+export function router(s, root, attrs) {
   const routed = s(async({ route, key, ...attrs }, [view], context) => { // eslint-disable
     if (typeof view === 'string')
       view = (await import((view[0] === '/' ? '' : route) + view)).default

@@ -1,8 +1,8 @@
 import window from './window.js'
-import parse, { medias, renderValue, style } from './parse.js'
-import router, { routeState, cleanSlash } from './router.js'
 import View from './view.js'
 import http from './http.js'
+import { parse, medias, renderValue } from './style.js'
+import { router, routeState, cleanSlash } from './router.js'
 import { className, ignoredAttr } from './shared.js'
 
 const document = window.document

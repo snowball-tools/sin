@@ -1,13 +1,13 @@
 import window from './window.js'
-import { popular } from './shorthands.js'
+import { popular, initials } from './shorthands.js'
 
 const doc = window.document
 const style = doc && doc.querySelector && (doc.querySelector('.sin-styles') || doc.createElement('style'))
 
-const prefix = style && style.getAttribute('id') || 'sin-'
-    , div = doc.createElement('div')
-    , vendorRegex = /^(o|O|ms|MS|Ms|moz|Moz|webkit|Webkit|WebKit)([A-Z])/
+const vendorRegex = /^(o|O|ms|MS|Ms|moz|Moz|webkit|Webkit|WebKit)([A-Z])/
     , snake = x => x.replace(/(\B[A-Z])/g, '-$1').toLowerCase()
+    , prefix = style && style.getAttribute('id') || 'sin-'
+    , div = doc.createElement('div')
     , mediasCache = {}
     , propCache = {}
     , unitCache = {}
@@ -27,32 +27,26 @@ const pxCache = {
   '@media': 'px'
 }
 
-const shorthands = {}
-const vendorMap = {}
 const properties = ['float']
-  .concat(Object.keys(div))
-  .forEach((x, i, xs) => {
-    if (x.indexOf('-') !== -1 || x === 'length' || xs.indexOf(x) !== i)
-      return
+  .concat(Object.keys(div.style))
+  .filter((x, i, xs) => x.indexOf('-') === -1 && x !== 'length' && xs.indexOf(x) === i)
+  .map(x => x.match(vendorRegex) ? '-' + snake(x) : snake(x))
+  .sort()
 
-    x = x.match(vendorRegex) ? '-' + snake(x) : snake(x)
-    const short = x.split('-').map(x => x[0]).join('')
-        , idx = popular.indexOf[x]
+const shorthands = Object.assign(properties.reduce(initials, {}), popular.reduce(initials, {}))
 
-    shorthands[short] = idx !== -1
-      ? popular[idx]
-      : x
-
-    const vendor = x.match(/-(ms|o|webkit|moz)-/g)
-    if (vendor) {
-      const unprefixed = x.replace(/-(ms|o|webkit|moz)-/, '')
-      if (properties.indexOf(unprefixed) === -1) {
-        if (unprefixed === 'flexDirection')
-          vendorMap.flex = '-' + vendor[1].toLowerCase() + '-flex'
-        vendorMap[unprefixed] = x
-      }
+const vendorMap = properties.reduce((acc, x) => {
+  const vendor = x.match(/-(ms|o|webkit|moz)-/g)
+  if (vendor) {
+    const unprefixed = x.replace(/-(ms|o|webkit|moz)-/, '')
+    if (properties.indexOf(unprefixed) === -1) {
+      if (unprefixed === 'flexDirection')
+        acc.flex = '-' + vendor[1].toLowerCase() + '-flex'
+      acc[unprefixed] = x
     }
-  })
+  }
+  return acc
+}, {})
 
 const cache = new Map()
     , cssVars = typeof window !== 'undefined' && window.CSS && CSS.supports('color', 'var(--support-test)')

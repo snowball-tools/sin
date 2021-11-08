@@ -1,3 +1,4 @@
+export const initials = (acc, x) => (acc[x.split('-').map(x => x[0]).join('')] = x, acc)
 export const popular = [
   'align-items',
   'bottom',

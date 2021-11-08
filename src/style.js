@@ -29,8 +29,7 @@ const pxCache = {
 
 const properties = ['float']
   .concat(Object.keys(div.style))
-  .filter((x, i, xs) => x.indexOf('-') === -1 && x !== 'length' && xs.indexOf(x) === i)
-  .map(x => x.match(vendorRegex) ? '-' + snake(x) : snake(x))
+  .reduce((acc, x) => (x.indexOf('-') === -1 && acc.push(x.match(vendorRegex) ? '-' + snake(x) : snake(x)), acc), [])
   .sort()
 
 const shorthands = Object.assign(properties.reduce(initials, {}), popular.reduce(initials, {}))

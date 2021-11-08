@@ -2,9 +2,8 @@ import window from './window.js'
 import { popular, initials } from './shorthands.js'
 
 const doc = window.document
-const style = doc && doc.querySelector && (doc.querySelector('.sin-styles') || doc.createElement('style'))
-
-const vendorRegex = /^(o|O|ms|MS|Ms|moz|Moz|webkit|Webkit|WebKit)([A-Z])/
+    , style = doc && doc.querySelector && (doc.querySelector('.sin-styles') || doc.createElement('style'))
+    , vendorRegex = /^(o|O|ms|MS|Ms|moz|Moz|webkit|Webkit|WebKit)([A-Z])/
     , snake = x => x.replace(/(\B[A-Z])/g, '-$1').toLowerCase()
     , prefix = style && style.getAttribute('id') || 'sin-'
     , div = doc.createElement('div')
@@ -347,7 +346,7 @@ export function renderValue(x, unit) {
     : x
 }
 
-export function getUnit(prop, fn = '') {
+function getUnit(prop, fn = '') {
   prop = shorthand(prop)
   const id = prop + ',' + fn
   if (id in unitCache)

@@ -556,7 +556,7 @@ function attributes(dom, view, context, init) {
       setVars(dom, tag.vars, tag.args, init)
   }
 
-  init && view.attrs.life && giveLife(dom, view.attrs, view.children, context, view.attrs.life)
+  init && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom)
 
   has
     ? attrs.set(dom, view.attrs)

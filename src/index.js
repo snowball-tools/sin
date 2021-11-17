@@ -144,7 +144,7 @@ function mount(dom, view, attrs = {}, context = {}) {
 }
 
 function redraw() {
-  idle && (resolved.then(globalRedraw), idle = false)
+  idle && (requestAnimationFrame(globalRedraw), idle = false)
 }
 
 function globalRedraw() {

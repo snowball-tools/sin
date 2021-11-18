@@ -1,6 +1,7 @@
 import window from './window.js'
 import View from './view.js'
 import http from './http.js'
+import live from './live.js'
 import { parse, medias, renderValue } from './style.js'
 import { router, routeState, cleanSlash } from './router.js'
 import { className, ignoredAttr } from './shared.js'
@@ -37,7 +38,6 @@ const components = new WeakMap()
     , attrs = new WeakMap()
     , keyCache = new WeakMap()
     , mounts = new Map()
-    , resolved = Promise.resolve()
 
 let idle = true
   , afterUpdate = []
@@ -50,6 +50,7 @@ s.animate = animate
 s.http = http
 s.http.redraw = redraw
 s.medias = medias
+s.live = live
 
 s.route = router(s, '', {
   url: typeof window !== 'undefined' && window.location,
@@ -576,9 +577,20 @@ function setVars(dom, vars, args, init) {
   for (const id in vars) {
     const { unit, index } = vars[id]
     const value = args[index]
-    typeof value === 'function' && typeof value.map === 'function'
-      ? init && value.map(x => dom.style.setProperty(id, renderValue(x, unit)))
-      : dom.style.setProperty(id, renderValue(value, unit))
+    if (typeof value === 'function') {
+      if (typeof value.constructor === s.live) {
+        if (init) {
+          value.observe(x => dom.style.setProperty(id, renderValue(x, unit)))
+          dom.style.setProperty(id, renderValue(value(), unit))
+          init && afterUpdate.push(() => dom.style.setProperty(id, renderValue(value(), unit)))
+        }
+      } else {
+        dom.style.setProperty(id, renderValue(value(dom), unit))
+        init && afterUpdate.push(() => dom.style.setProperty(id, renderValue(value(dom), unit)))
+      }
+    } else {
+      dom.style.setProperty(id, renderValue(value, unit))
+    }
   }
 }
 

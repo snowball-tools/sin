@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "sin",
   "type": "module",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "lint": "eslint *.js",
-    "build": "esbuild index.js --minify --minify-syntax --minify-identifiers --format=esm --bundle --outfile=sin.min.js",
-    "build:bundle": "esbuild index.js --format=esm --bundle --outfile=sin.js",
+    "build": "esbuild src/index.js --minify --minify-syntax --minify-identifiers --format=esm --bundle --outfile=sin.min.js",
+    "build:bundle": "esbuild src/index.js --format=esm --bundle --outfile=sin.js",
     "gzip": "gzip -c sin.min.js > sin.min.js.gz && ls -l sin.min.js.gz && rm sin.min.js.gz"
   },
   "author": "Rasmus Porsager <rasmus@porsager.com>",

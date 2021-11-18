@@ -40,6 +40,7 @@ const components = new WeakMap()
     , resolved = Promise.resolve()
 
 let idle = true
+  , afterUpdate = []
 
 s.pathmode = ''
 s.redraw = redraw
@@ -139,7 +140,7 @@ function mount(dom, view, attrs = {}, context = {}) {
 
   attrs.route = context.route = s.route
   mounts.set(dom, { view, attrs, context })
-  updates(dom, [].concat(view(attrs, [], context)), context)
+  draw({ view, attrs, context }, dom)
   return view
 }
 
@@ -148,8 +149,14 @@ function redraw() {
 }
 
 function globalRedraw() {
-  mounts.forEach(({ view, attrs, context }, dom) => updates(dom, [].concat(view(attrs, [], context)), context))
+  mounts.forEach(draw)
   idle = true
+}
+
+function draw({ view, attrs, context }, dom) {
+  updates(dom, [].concat(view(attrs, [], context)), context)
+  afterUpdate.forEach(fn => fn())
+  afterUpdate = []
 }
 
 function updates(parent, next, context, before, last = parent.lastChild) {
@@ -576,11 +583,13 @@ function setVars(dom, vars, args, init) {
 }
 
 function giveLife(dom, attrs, children, context, life) {
-  life = [].concat(life)
-    .map(x => typeof x === 'function' && x(dom, attrs, children, context))
-    .filter(x => typeof x === 'function')
+  afterUpdate.push(() => {
+    life = [].concat(life)
+      .map(x => typeof x === 'function' && x(dom, attrs, children, context))
+      .filter(x => typeof x === 'function')
 
-  life.length && lives.set(dom, (lives.get(dom) || []).concat(life))
+    life.length && lives.set(dom, (lives.get(dom) || []).concat(life))
+  })
 }
 
 function updateAttribute(dom, context, attrs, attr, old, value) { // eslint-disable-line

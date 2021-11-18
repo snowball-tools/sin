@@ -36,6 +36,7 @@ export function router(s, root, attrs) {
     if (typeof view === 'string')
       view = (await import((view[0] === '/' ? '' : route) + view)).default
 
+    attrs.route = route
     return () => typeof view === 'function'
       ? view(attrs, [], { ...context, route })
       : view

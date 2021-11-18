@@ -1,5 +1,5 @@
 ['get', 'put', 'post', 'delete', 'patch'].forEach(x =>
-  http[x] = function(url, object) {
+  http[x] = function(url, object = {}) {
     object.method = x
     return http(url, object)
   }
@@ -14,10 +14,10 @@ export default function http(url, {
   user = undefined,
   pass = undefined,
   headers = {},
-  config = (xhr) => { /* noop */ },
+  config = () => { /* noop */ },
   raw = false,
   background = false,
-  extract = x => x
+  extract = xhr => JSON.parse(xhr.responseText)
 } = {}) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
@@ -29,7 +29,7 @@ export default function http(url, {
 
         if (!raw) {
           try {
-            body = extract ? extract(xhr) : JSON.parse(xhr.responseText)
+            body = extract(xhr)
           } catch (e) {
             error = e
           }

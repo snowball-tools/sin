@@ -27,7 +27,7 @@ const pxCache = {
 }
 
 const properties = ['float']
-  .concat(Object.keys(div.style))
+  .concat(Object.keys(div.style.hasOwnProperty('width') ? div.style : Object.getPrototypeOf(div.style)))
   .reduce((acc, x) => (x.indexOf('-') === -1 && acc.push(x.match(vendorRegex) ? '-' + snake(x) : snake(x)), acc), [])
   .sort()
 

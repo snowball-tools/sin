@@ -51,6 +51,7 @@ s.http = http
 s.http.redraw = redraw
 s.medias = medias
 s.live = live
+s.on = on
 
 s.route = router(s, '', {
   url: typeof window !== 'undefined' && window.location,
@@ -74,6 +75,14 @@ s.trust = x => s(() => {
 
   return () => frag
 })
+
+function on(target, event, fn, options) {
+  return () => {
+    const handleEvent = e => callHandler(fn, e)
+    target.addEventListener(event, handleEvent, options)
+    return () => target.removeEventListener(event, handleEvent, options)
+  }
+}
 
 function animate(dom) {
   dom.setAttribute('animate', 'entry')
@@ -285,8 +294,8 @@ function insertBefore(parent, { first, last }, before) {
 
 function update(dom, view, context, parent, stack, create) {  // eslint-disable-line
   return typeof view === 'function'
-    ? typeof view.map === 'function'
-      ? updateStream(dom, view, context, parent)
+    ? view.constructor === live
+      ? updateLive(dom, view, context, parent, stack, create)
       : update(dom, view(), context, parent, stack, create)
     : view instanceof View
       ? updateView(dom, view, context, parent, stack, create)
@@ -303,21 +312,22 @@ function updateView(dom, view, context, parent, stack, create) {  // eslint-disa
     : updateElement(dom, view, context, parent, create)
 }
 
-function updateStream(dom, view, context, parent) {
+function updateLive(dom, view, context, parent) {
   if (streams.has(dom))
     return streams.get(dom)
 
-  let newDom
-    , first
+  let result
+  run(view())
+  view.observe(run)
 
-  view.map(x => {
-    newDom = update(dom, x, context, parent)
-    first = arrays.has(newDom) ? arrays.get(newDom).dom : newDom
-    dom !== first && (dom && streams.delete(dom), streams.set(first, newDom))
-    dom = first
-  })
+  return result
 
-  return Ret(newDom)
+  function run(x) {
+    result = update(dom, x, context, parent || dom && dom.parentNode)
+    streams.set(result.first, result)
+    dom && dom !== result.first && streams.delete(dom)
+    dom = result.first
+  }
 }
 
 function Ret(dom, first = dom, last = first) {
@@ -524,9 +534,9 @@ function empty(o) {
 }
 
 function attributes(dom, view, context, init) {
-  let has = false
-    , tag = view.tag
+  let tag = view.tag
     , attr
+    , value
 
   const prev = !init && attrs.has(dom) ? attrs.get(dom) : undefined
   prev && view.attrs && (view.attrs.handleEvent = prev.handleEvent)
@@ -541,10 +551,15 @@ function attributes(dom, view, context, init) {
   )
     dom.className = className(view)
 
+  init && view.attrs.class?.observe(() => dom.className = className(view))
+  init && view.attrs.className?.observe(() => dom.className = className(view))
+
   for (attr in view.attrs) {
     if (!ignoredAttr(attr) && (!prev || prev[attr] !== view.attrs[attr])) {
-      !has && (has = true)
-      updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], view.attrs[attr])
+      value = view.attrs[attr]
+      init && initLive(dom, attr, value, context)
+      updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value)
+      value = true
     }
   }
 
@@ -566,31 +581,39 @@ function attributes(dom, view, context, init) {
 
   init && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom)
 
-  has
+  value
     ? attrs.set(dom, view.attrs)
     : prev && empty(view.attrs) && attrs.delete(dom)
 
   return prev
 }
 
+function initLive(dom, attr, value, context) {
+  if (value && value.constructor === live)
+    value.observe(x => setAttribute(dom, attr, x, context))
+}
+
 function setVars(dom, vars, args, init) {
   for (const id in vars) {
     const { unit, index } = vars[id]
     const value = args[index]
-    if (typeof value === 'function') {
-      if (typeof value.constructor === s.live) {
-        if (init) {
-          value.observe(x => dom.style.setProperty(id, renderValue(x, unit)))
-          dom.style.setProperty(id, renderValue(value(), unit))
-          init && afterUpdate.push(() => dom.style.setProperty(id, renderValue(value(), unit)))
-        }
-      } else {
-        dom.style.setProperty(id, renderValue(value(dom), unit))
-        init && afterUpdate.push(() => dom.style.setProperty(id, renderValue(value(dom), unit)))
-      }
-    } else {
-      dom.style.setProperty(id, renderValue(value, unit))
-    }
+    setVar(dom, id, value, unit, init)
+  }
+}
+
+function setVar(dom, id, value, unit, init, after) {
+  if (typeof value !== 'function') {
+    dom.style.setProperty(id, renderValue(value, unit))
+    after && afterUpdate.push(() => dom.style.setProperty(id, renderValue(value, unit)))
+    return
+  }
+
+  if (value.constructor !== live)
+    return setVar(dom, id, value(dom), unit, init, init)
+
+  if (init) {
+    value.observe(x => dom.style.setProperty(id, renderValue(x, unit)))
+    setVar(dom, id, value(), unit, init, init)
   }
 }
 
@@ -621,11 +644,18 @@ function updateAttribute(dom, context, attrs, attr, old, value) { // eslint-disa
     ? value
       ? addEvent(dom, attrs, attr)
       : removeEvent(dom, attrs, attr)
-    : !value && value !== 0
-      ? dom.removeAttribute(attr)
-      : !context.NS && attr in dom && typeof value !== 'boolean'
-        ? dom[attr] = value
-        : dom.setAttribute(attr, value === true ? '' : value)
+    : setAttribute(dom, attr, value, context)
+}
+
+function setAttribute(dom, attr, value, context) {
+  if (typeof value === 'function')
+    return setAttribute(dom, attr, value(), context)
+
+  !value && value !== 0
+    ? dom.removeAttribute(attr)
+    : !context.NS && attr in dom && typeof value !== 'boolean'
+      ? dom[attr] = value
+      : dom.setAttribute(attr, value === true ? '' : value)
 }
 
 function isEvent(x) {
@@ -643,16 +673,17 @@ function addEvent(dom, attrs, name) {
 
 function handleEvent(dom) {
   return {
-    handleEvent: function(e) {
-      const handler = attrs.get(dom)['on' + e.type]
-      const result = typeof handler === 'function'
-        ? handler.call(e.currentTarget, e)
-        : handler && typeof handler.handleEvent === 'function' && handler.handleEvent(e)
-
-      e.redraw !== false && redraw()
-      result && typeof result.then === 'function' && result.then(redraw)
-    }
+    handleEvent: e => callHandler(attrs.get(dom)['on' + e.type], e)
   }
+}
+
+function callHandler(handler, e) {
+  const result = typeof handler === 'function'
+    ? handler.call(e.currentTarget, e)
+    : typeof handler.handleEvent === 'function' && handler.handleEvent(e)
+
+  e.redraw !== false && handler.constructor !== live && redraw()
+  result && typeof result.then === 'function' && result.then(redraw)
 }
 
 function replace(old, dom, parent) {
@@ -694,6 +725,8 @@ function removeArray(dom, parent, lives) {
 
   const after = last.nextSibling
   dom = dom.nextSibling
+  if (!dom)
+    return after
   do {
     const x = remove(dom, parent, false)
     x.life && lives.push(x.life)

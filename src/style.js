@@ -11,6 +11,7 @@ const doc = window.document
     , propCache = {}
     , unitCache = {}
 
+export const css = () => style.sheet.cssRules.join('')
 export const medias = x => Object.entries(x).forEach(([k, v]) => mediasCache['@' + k] = v)
 
 const pxCache = {

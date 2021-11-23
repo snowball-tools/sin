@@ -9,6 +9,9 @@ export function className(view) {
 }
 
 function classes(x) {
+  if (typeof x === 'function')
+    return classes(x())
+
   return x
     ? typeof x === 'object'
       ? Object.keys(x).reduce((acc, c) => acc + x[c] ? c + ' ' : '', '')

@@ -1,8 +1,12 @@
 import View from './view.js'
 import { className, ignoredAttr } from './shared.js'
-import { renderValue } from './parse.js'
+import { renderValue, css } from './style.js'
+import s from './index.js'
 
 let lastWasText = false
+
+const TIMEOUT = {}
+    , timeout = 1000 * 2
 
 const open = new Set([
   'area',
@@ -21,9 +25,22 @@ const open = new Set([
   'wbr'
 ])
 
-export default async function html(view, context) {
-  const result = await update(view, context)
-  return result
+export default async function html(view, context = {}) {
+  context.statusCode = () => ''
+  context.headers = () => ''
+  const body = await Promise.race([
+    p(await update(view, context)),
+    new Promise((r, e) => setTimeout(e, timeout, TIMEOUT))
+  ]).catch(err => {
+    context.statusCode(err === TIMEOUT ? 408 : 500)
+    return ''
+  })
+
+  return {
+    statusCode: context.statusCode(),
+    headers: context.headers(),
+    body: `<style>${ css() }</style>${ body }`
+  }
 }
 
 async function update(view, context) {
@@ -97,7 +114,7 @@ function updateComment(view) {
 async function updateComponent(view, context) {
   lastWasText = false
   let x = view.component(view.attrs, view.children, context)
-  if (typeof x.then === 'function')
+  if (x && typeof x.then === 'function')
     x = await x
 
   if (typeof x === 'function')
@@ -106,11 +123,14 @@ async function updateComponent(view, context) {
   return update(x, context)
 }
 
-/*
+
 console.time('w')
-s.html(
+html(
   s`h1`(
-    s(async() => () => s`h2`('woo')),
+    s(async() => {
+      await new Promise(r => setTimeout(r, 3000))
+      return () => s`h2`('woo')
+    }),
     s`button`({class:'wat'}, ['hej', s`input`, 'dig']),
       s`;bc white;br 0.5rem;p 1.5rem;@md{d flex}`(
       s`img;h 4rem;w 4rem;br 100%;m auto;@md{w 6rem;h 6rem;m 0;mr 1.5rem}`({
@@ -125,6 +145,7 @@ s.html(
     ),
     false,
     'wat',
+    'that',
     [
       s`h1`, s`h2`, s`h3`
     ],
@@ -135,4 +156,4 @@ s.html(
   console.timeEnd('w')
   p(x)
 })
-*/
+

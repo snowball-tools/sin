@@ -1,5 +1,11 @@
 ##
 
+context: {
+  ignore,
+  reload,
+  redraw
+}
+
 - Component end lifecycle - different from life?
 
 ## Todo

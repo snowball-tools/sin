@@ -21,7 +21,7 @@ All components in Sin are made to allow overriding styles of the first returned 
 
 ## The Stateful Component `s(fn => fn)`
 
-## The Async Component `s(async fn => fn)`
+## The Async Component `s(init, loading, error)`
 
 ## Routing `s.route`
 
@@ -46,10 +46,20 @@ s.mount(({ route }) => [
   ),
   s`main`(
     route({
-      '/': 'Welcome to the world',
+      '/': () => 'Welcome to the world',
       '/:user': ({ user }) => 'You are checking out ' + user,
-      '/profile': 'The glory of you'
+      '/profile': () => 'The glory of you'
     })
   )
 ])
 ```
+
+## The Helpers
+
+### Media queries
+
+### CSS units
+
+### CSS property shorthands
+
+### 

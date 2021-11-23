@@ -1,31 +1,44 @@
-export default function live(initial, fn) {
+export default function Live(value, fn) {
   const observers = new Set()
   typeof fn === 'function' && observers.add(fn)
-  v.observe = fn => (observers.add(fn), () => observers.delete(fn))
-  v.valueOf = v.toString = v.toJSON = () => v.value
-  v.constructor = live
-  v.detach = () => { /* noop */ }
-  return Object.defineProperty(v, 'value', {
-    get() {
-      return initial
-    },
-    set(x) {
-      observers.forEach(fn => fn(x, initial))
-      initial = x
-    }
+  live.observe = fn => (observers.add(fn), () => observers.delete(fn))
+  live.valueOf = live.toString = live.toJSON = () => value
+  live.constructor = Live
+  live.detach = () => { /* */ }
+  live.reduce = reduce
+  live.bind = x => e => (e && (e.redraw = false), live(typeof x === 'function' ? x() : (x || e)))
+  live.if = (equals, a = true, b = false) => Live.from(live, x => x === equals ? a : b)
+  live.to = prop => Live.from(live, x => typeof prop === 'function' ? prop(x) : x[prop])
+
+  return Object.defineProperty(live, 'value', {
+    get: () => value,
+    set
   })
 
-  function v(x) {
-    if (arguments.length)
-      v.value = x
+  function live(x) {
+    arguments.length && set(x)
+    return value
+  }
 
-    return initial
+  function set(x) {
+    if (x === value)
+      return
+
+    value = x
+    observers.forEach(fn => fn(x))
+  }
+
+  function reduce(fn, initial) {
+    let i = 1
+    const result = Live(arguments.length > 1 ? fn(initial, value, i++) : value)
+    live.observe(x => result.value = fn(result.value, x, i++))
+    return result
   }
 }
 
-live.from = function(...xs) {
+Live.from = function(...xs) {
   const fn = xs.pop()
-      , value = live(fn(...xs.map(call)))
+      , value = Live(fn(...xs.map(call)))
       , unobserve = xs.map(x => x.observe(() => value(fn(...xs.map(call)))))
 
   value.detach = () => unobserve.forEach(call)

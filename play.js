@@ -1,47 +1,30 @@
-import s from './src/stream.js'
+import s from './src/index.js'
 
-//window.run = s.redraw
-// stream naming?
+window.run = s.redraw
 
-const a = s(1)
-    , b = a.reduce((acc, x) => acc.concat(x), [])
+const mouse = s.live({ x: 0, y: 0 })
 
-p(a())
-a(2)
-a(3)
-p(b())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+s.mount(() => [
+  s`
+    position absolute
+    top 0
+    w 20
+    h 20
+    bc white
+    br 10
+    transition 0.2s
+    transform translateX(${ mouse.to(p => p.x - 16 ) }) translateY(${ mouse.to(p => p.y - 12 ) })
+  `,
+  s`
+    w 400
+    h 400
+    transition 0.2s
+    bc hsl(${ dom => mouse.to(p => Math.floor(360 / dom.clientWidth * p.x)) } 100% 50%)
+  `({
+    onmousemove: s.on(document, 'mousemove', mouse)
+  }),
+  Date.now()
+])
 
 
 
@@ -51,7 +34,7 @@ p(b())
 
 
 function nestedRouting() {
-  const nested = s(async({ route, id }) => {
+  const nested = s(async({ id }, children, { route }) => {
     await new Promise(r => setTimeout(r, 500))
     const items = [
       ...Array(
@@ -124,13 +107,17 @@ function modals() {
       h 100%
       bc rgba(0,0,0,0.75)
 
-      transition opacity 5s
+      transition opacity 0.3s
       [animate] {
         o 0
       }
+
+      [animate=exit] {
+        pointer-events none
+      }
     `({
       onclick: (e) => e.target === e.currentTarget && modal.close(),
-      life: s.animate
+      dom: s.animate
     },
       modals.map((modal, i) =>
         s`div
@@ -145,15 +132,19 @@ function modals() {
           transform translateY(${ (modals.length - 1 - i) * -26 }) scale(${ 1 + -(modals.length - 1 - i) * 0.1 })
           zi ${ i }
           bs 0 2px 20px -5px black
-          transition opacity 5s, transform 5s
+          transition opacity 0.3s, transform 0.3s
           [animate] {
             opacity 0
             transform scale(1.5) translateY(80)
           }
 
+          [animate=exit] {
+            pointer-events none
+          }
+
         `({
           key: i,
-          life: s.animate
+          dom: s.animate
         },
           modal.children
         )

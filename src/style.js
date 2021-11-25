@@ -340,7 +340,7 @@ function addUnit(i) {
   numberStart = -1
 }
 
-export function renderValue(x, unit) {
+export function formatValue(x, unit) {
   typeof x === 'function' && (x = value())
   return typeof x !== 'string' || !isUnit(x.charCodeAt(x.length - 1))
     ? x + unit

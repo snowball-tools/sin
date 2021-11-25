@@ -2,7 +2,7 @@ import window from './window.js'
 import View from './view.js'
 import http from './http.js'
 import live from './live.js'
-import { parse, medias, renderValue } from './style.js'
+import { parse, medias, formatValue } from './style.js'
 import { router, routeState, cleanSlash } from './router.js'
 import { className, ignoredAttr } from './shared.js'
 
@@ -603,8 +603,8 @@ function setVars(dom, vars, args, init) {
 
 function setVar(dom, id, value, unit, init, after) {
   if (typeof value !== 'function') {
-    dom.style.setProperty(id, renderValue(value, unit))
-    after && afterUpdate.push(() => dom.style.setProperty(id, renderValue(value, unit)))
+    dom.style.setProperty(id, formatValue(value, unit))
+    after && afterUpdate.push(() => dom.style.setProperty(id, formatValue(value, unit)))
     return
   }
 
@@ -612,7 +612,7 @@ function setVar(dom, id, value, unit, init, after) {
     return setVar(dom, id, value(dom), unit, init, init)
 
   if (init) {
-    value.observe(x => dom.style.setProperty(id, renderValue(x, unit)))
+    value.observe(x => dom.style.setProperty(id, formatValue(x, unit)))
     setVar(dom, id, value(), unit, init, init)
   }
 }

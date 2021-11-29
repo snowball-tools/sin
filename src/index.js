@@ -1,4 +1,3 @@
-import window from './window.js'
 import View from './view.js'
 import http from './http.js'
 import live from './live.js'
@@ -19,7 +18,7 @@ export default function s(...x) {
     ? S(Object.assign([x[0]], { raw: [] }))(...x.slice(1))
     : S.bind(
       type === 'function'
-        ? new View(x[0])
+        ? new View(x)
         : tagged(x)
     )
 }
@@ -431,7 +430,7 @@ function Stack(context) {
   let i = 0
     , top = 0
 
-  return {
+  const stack = {
     life,
     get exhausted() {
       return i >= xs.length
@@ -441,17 +440,36 @@ function Stack(context) {
         ? xs[i].key
         : null
     },
-    next(instance) {
-      if (arguments.length) {
-        xs.length = i
-        xs[i] = ({ key: null, instance })
+    add(view, context) {
+      const instance = {
+        id: window.count = (window.count || 0) + 1,
+        key: null,
+        view: view.component[0],
+        catch: view.component[1],
+        loading: view.component[2]
       }
+
+      const next = catchInstance(true, instance, view, context, stack)
+
+      instance.promise = next && typeof next.then === 'function' && next
+      instance.stateful = instance.promise || typeof next === 'function'
+      instance.view = instance.promise ? instance.loading : next
+      xs.length = i
+      xs[i] = instance
+      return this.next()
+    },
+    next() {
       return i < xs.length && xs[top = i++]
     },
     pop() {
       return --i === 0 && !(xs.length = top + 1, top = 0)
+    },
+    cut() {
+      return xs.length = top = i
     }
   }
+
+  return stack
 }
 
 function updateComponent( // eslint-disable-line
@@ -462,32 +480,32 @@ function updateComponent( // eslint-disable-line
   stack = components.has(dom) ? components.get(dom) : Stack(context),
   create = stack.exhausted || stack.key !== view.key
 ) {
-  const x = create
-    ? stack.next(view.component(view.attrs, view.children, context))
+  const instance = create
+    ? stack.add(view, context)
     : stack.next()
 
-  const promise = x.instance && typeof x.instance.then === 'function'
-  view.key && (x.key = view.key)
+  view.key && (instance.key = view.key)
   let next
 
-  if (promise) {
-    next = updateValue(dom, 'pending', parent, false, 8)
-    create && x.instance.catch(x => (console.error(x), x)).then(view => {
-      if (!components.has(next.first))
-        return
+  if (create && instance.promise) {
+    next = update(
+      dom,
+      catchInstance(create, instance, view, context, stack),
+      context,
+      parent,
+      stack,
+      create
+    )
 
-      x.instance = view
-      redraw()
-    })
+    instance.promise
+      .then(view => components.has(next.first) && (instance.view = view))
+      .catch(error => components.has(next.first) && (instance.error = error, instance.view = view.component[1]))
+      .then(redraw)
   } else {
     next = update(
       dom,
       mergeTag(
-        typeof x.instance === 'function'
-          ? x.instance(view.attrs, view.children, context)
-          : create
-            ? x.instance
-            : view.component(view.attrs, view.children, context),
+        catchInstance(create, instance, view, context, stack),
         view
       ),
       context,
@@ -499,13 +517,35 @@ function updateComponent( // eslint-disable-line
 
   const changed = dom !== next.first
 
-  stack.pop() && (changed || create) && (
-    changed && components.delete(dom),
-    components.set(next.first, stack),
-    !promise && giveLife(next.first, view.attrs, view.children, context, stack.life)
-  )
+  if (stack.pop() && (changed || create)) {
+    changed && components.delete(dom)
+    components.set(next.first, stack)
+    !instance.promise && giveLife(next.first, view.attrs, view.children, context, stack.life)
+  }
 
   return next
+}
+
+function catchInstance(create, instance, view, context, stack) {
+  try {
+    return resolveInstance(create, instance, view, context)
+  } catch (error) {
+    if (!instance.catch)
+      console.error(error)
+
+    instance.error = error
+    instance.view = instance.catch
+    stack.cut()
+    return resolveInstance(instance.stateful || create, instance, view, context)
+  }
+}
+
+function resolveInstance(create, instance, view, context) {
+  return instance.stateful || create
+    ? typeof instance.view === 'function'
+      ? instance.view(instance.error ? { ...view.attrs, error: instance.error } : view.attrs, view.children, context)
+      : instance.view
+    : view.component[0](view.attrs, view.children, context)
 }
 
 function mergeTag(a, b) {

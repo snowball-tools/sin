@@ -1,37 +1,3 @@
-// src/window.js
-var window_default = typeof window !== "undefined" ? window : proxy();
-function proxy() {
-  return {
-    location: {},
-    document: {
-      documentElement: {
-        style: {}
-      },
-      querySelector: () => null,
-      createElement: (x2) => {
-        const dom = {
-          tagName: x2.toUpperCase(),
-          setAttribute: (x3, v) => dom.x = v,
-          getAttribute: (x3) => dom[x3],
-          style: {
-            setProperty: () => true
-          }
-        };
-        x2 === "style" && Object.assign(dom, {
-          sheet: {
-            insertRule: (rule2, index) => index ? dom.sheet.cssRules.splice(index, 0, fixCurlies(rule2)) : dom.sheet.cssRules.push(fixCurlies(rule2)),
-            cssRules: []
-          }
-        });
-        return dom;
-      }
-    }
-  };
-}
-function fixCurlies(x2) {
-  return x2 + x2.match(/\{/g).map(() => "}").join("");
-}
-
 // src/view.js
 var View = class {
   constructor(component, tag = null, level = 0, attrs2 = {}, children = null) {
@@ -136,6 +102,40 @@ Live.from = function(...xs) {
 };
 function call(fn2) {
   return fn2();
+}
+
+// src/window.js
+var window_default = typeof window !== "undefined" ? window : proxy();
+function proxy() {
+  return {
+    location: {},
+    document: {
+      documentElement: {
+        style: {}
+      },
+      querySelector: () => null,
+      createElement: (x2) => {
+        const dom = {
+          tagName: x2.toUpperCase(),
+          setAttribute: (x3, v) => dom.x = v,
+          getAttribute: (x3) => dom[x3],
+          style: {
+            setProperty: () => true
+          }
+        };
+        x2 === "style" && Object.assign(dom, {
+          sheet: {
+            insertRule: (rule2, index) => index ? dom.sheet.cssRules.splice(index, 0, fixCurlies(rule2)) : dom.sheet.cssRules.push(fixCurlies(rule2)),
+            cssRules: []
+          }
+        });
+        return dom;
+      }
+    }
+  };
+}
+function fixCurlies(x2) {
+  return x2 + x2.match(/\{/g).map(() => "}").join("");
 }
 
 // src/shorthands.js
@@ -453,7 +453,7 @@ function addUnit(i) {
   }
   numberStart = -1;
 }
-function renderValue(x2, unit) {
+function formatValue(x2, unit) {
   typeof x2 === "function" && (x2 = value());
   return typeof x2 !== "string" || !isUnit(x2.charCodeAt(x2.length - 1)) ? x2 + unit : x2;
 }
@@ -579,7 +579,7 @@ function classes2(x2) {
 }
 
 // src/index.js
-var document = window_default.document;
+var document = window.document;
 var NS = {
   html: "http://www.w3.org/1999/xhtml",
   svg: "http://www.w3.org/2000/svg",
@@ -587,7 +587,7 @@ var NS = {
 };
 function s(...x2) {
   const type = typeof x2[0];
-  return type === "string" ? S(Object.assign([x2[0]], { raw: [] }))(...x2.slice(1)) : S.bind(type === "function" ? new View(x2[0]) : tagged(x2));
+  return type === "string" ? S(Object.assign([x2[0]], { raw: [] }))(...x2.slice(1)) : S.bind(type === "function" ? new View(x2) : tagged(x2));
 }
 function S(...x2) {
   return x2[0] && Array.isArray(x2[0].raw) ? S.bind(tagged(x2, this)) : execute(x2, this);
@@ -613,7 +613,7 @@ s.medias = medias;
 s.live = Live;
 s.on = on;
 s.route = router(s, "", {
-  url: typeof window_default !== "undefined" && window_default.location,
+  url: typeof window !== "undefined" && window.location,
   notFound: () => {
   },
   title: () => {
@@ -649,7 +649,7 @@ function link(dom) {
     if (!e.defaultPrevented && (e.button === 0 || e.which === 0 || e.which === 1) && (!e.currentTarget.target || e.currentTarget.target === "_self") && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
       e.preventDefault();
       const state = attrs.get(dom).state;
-      window_default.history.pushState(state, null, dom.getAttribute("href"));
+      window.history.pushState(state, null, dom.getAttribute("href"));
       routeState[dom.getAttribute("href")] = state;
       s.redraw();
     }
@@ -848,50 +848,92 @@ function removeChildren(dom, parent) {
     dom = remove(dom, parent).after;
   while (dom);
 }
-function Stack(context) {
-  const life = [];
-  context.onremove = (fn2) => life.push(() => fn2);
+function Stack() {
   const xs = [];
   let i = 0, top = 0;
-  return {
-    life,
+  const stack = {
+    life: [],
     get exhausted() {
       return i >= xs.length;
     },
     get key() {
       return i < xs.length ? xs[i].key : null;
     },
-    next(instance) {
-      if (arguments.length) {
-        xs.length = i;
-        xs[i] = { key: null, instance };
-      }
-      return i < xs.length && xs[top = i++];
+    add(view, context, parent, stack2) {
+      const instance = {
+        id: window.count = (window.count || 0) + 1,
+        key: null,
+        view: view.component[0],
+        catch: view.component[1],
+        loading: view.component[2]
+      };
+      instance.context = createContext(view, context, parent, stack2, instance);
+      const next = catchInstance(true, instance, view, instance.context, stack2);
+      instance.promise = next && typeof next.then === "function" && next;
+      instance.stateful = instance.promise || typeof next === "function";
+      instance.view = instance.promise ? instance.loading : next;
+      xs.length = i;
+      xs[i] = instance;
+      return xs[top = i++];
+    },
+    next(view, context, parent, stack2) {
+      const instance = i < xs.length && xs[top = i++];
+      instance && (instance.context = createContext(view, context, parent, stack2, instance));
+      return instance;
     },
     pop() {
       return --i === 0 && !(xs.length = top + 1, top = 0);
+    },
+    cut() {
+      return xs.length = top = i;
     }
   };
+  return stack;
 }
-function updateComponent(dom, view, context, parent, stack = components.has(dom) ? components.get(dom) : Stack(context), create = stack.exhausted || stack.key !== view.key) {
-  const x2 = create ? stack.next(view.component(view.attrs, view.children, context)) : stack.next();
-  const promise = x2.instance && typeof x2.instance.then === "function";
-  view.key && (x2.key = view.key);
+function createContext(view, context, parent, stack, instance) {
+  return Object.create(context, {
+    onremove: { value: (fn2) => stack.life.push(() => fn2) },
+    redraw: { value: () => updateComponent(stack.dom.first, view, context, parent, stack, false, true) },
+    reload: { value: () => updateComponent(stack.dom.first, view, context, parent, stack, true) },
+    ignore: { value: (x2) => instance.ignore = x2 }
+  });
+}
+function updateComponent(dom, view, context, parent, stack = components.has(dom) ? components.get(dom) : Stack(), create = stack.exhausted || stack.key !== view.key, force = false) {
+  const instance = create ? stack.add(view, context, parent, stack) : stack.next(view, context, parent, stack);
+  if (!create && !force && instance.ignore) {
+    stack.pop();
+    return stack.dom;
+  }
+  context = instance.context;
+  view.key && (instance.key = view.key);
   let next;
-  if (promise) {
-    next = updateValue(dom, "pending", parent, false, 8);
-    create && x2.instance.catch((x3) => (console.error(x3), x3)).then((view2) => {
-      if (!components.has(next.first))
-        return;
-      x2.instance = view2;
-      redraw();
-    });
+  if (create && instance.promise) {
+    next = update(dom, catchInstance(create, instance, view, context, stack), context, parent, stack, create);
+    instance.promise.then((view2) => components.has(next.first) && (instance.view = view2)).catch((error) => components.has(next.first) && (instance.error = error, instance.view = view.component[1])).then(redraw);
   } else {
-    next = update(dom, mergeTag(typeof x2.instance === "function" ? x2.instance(view.attrs, view.children, context) : create ? x2.instance : view.component(view.attrs, view.children, context), view), context, parent, stack, create || void 0);
+    next = update(dom, mergeTag(catchInstance(create, instance, view, context, stack), view), context, parent, stack, create || void 0);
   }
   const changed = dom !== next.first;
-  stack.pop() && (changed || create) && (changed && components.delete(dom), components.set(next.first, stack), !promise && giveLife(next.first, view.attrs, view.children, context, stack.life));
+  if (stack.pop() && (changed || create)) {
+    changed && components.delete(dom);
+    stack.dom = next;
+    components.set(next.first, stack);
+    !instance.promise && giveLife(next.first, view.attrs, view.children, context, stack.life);
+  }
   return next;
+}
+function catchInstance(create, instance, view, context, stack) {
+  try {
+    return resolveInstance(create, instance, view, context);
+  } catch (error) {
+    instance.error = error;
+    instance.view = instance.catch || context.catch;
+    stack.cut();
+    return resolveInstance(instance.stateful || create, instance, view, context);
+  }
+}
+function resolveInstance(create, instance, view, context) {
+  return instance.stateful || create ? typeof instance.view === "function" ? instance.view(instance.error ? { ...view.attrs, error: instance.error } : view.attrs, view.children, context) : instance.view : view.component[0](view.attrs, view.children, context);
 }
 function mergeTag(a, b) {
   if (!b?.tag)
@@ -959,14 +1001,14 @@ function setVars(dom, vars, args, init) {
 }
 function setVar(dom, id2, value2, unit, init, after) {
   if (typeof value2 !== "function") {
-    dom.style.setProperty(id2, renderValue(value2, unit));
-    after && afterUpdate.push(() => dom.style.setProperty(id2, renderValue(value2, unit)));
+    dom.style.setProperty(id2, formatValue(value2, unit));
+    after && afterUpdate.push(() => dom.style.setProperty(id2, formatValue(value2, unit)));
     return;
   }
   if (value2.constructor !== Live)
     return setVar(dom, id2, value2(dom), unit, init, init);
   if (init) {
-    value2.observe((x2) => dom.style.setProperty(id2, renderValue(x2, unit)));
+    value2.observe((x2) => dom.style.setProperty(id2, formatValue(x2, unit)));
     setVar(dom, id2, value2(), unit, init, init);
   }
 }

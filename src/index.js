@@ -474,7 +474,7 @@ function Stack() {
 
 function createContext(view, context, parent, stack, instance) {
   return Object.create(context, {
-    onremove: fn => stack.life.push(() => fn),
+    onremove: { value: fn => stack.life.push(() => fn) },
     redraw: { value: () => updateComponent(stack.dom.first, view, context, parent, stack, false, true) },
     reload: { value: () => updateComponent(stack.dom.first, view, context, parent, stack, true) },
     ignore: { value: x => instance.ignore = x }

@@ -422,16 +422,13 @@ function removeChildren(dom, parent) {
   while (dom)
 }
 
-function Stack(context) {
-  const life = []
-  context.onremove = fn => life.push(() => fn)
-
+function Stack() {
   const xs = []
   let i = 0
     , top = 0
 
   const stack = {
-    life,
+    life: [],
     get exhausted() {
       return i >= xs.length
     },
@@ -440,7 +437,7 @@ function Stack(context) {
         ? xs[i].key
         : null
     },
-    add(view, context) {
+    add(view, context, parent, stack) {
       const instance = {
         id: window.count = (window.count || 0) + 1,
         key: null,
@@ -449,17 +446,20 @@ function Stack(context) {
         loading: view.component[2]
       }
 
-      const next = catchInstance(true, instance, view, context, stack)
+      instance.context = createContext(view, context, parent, stack, instance)
+      const next = catchInstance(true, instance, view, instance.context, stack)
 
       instance.promise = next && typeof next.then === 'function' && next
       instance.stateful = instance.promise || typeof next === 'function'
       instance.view = instance.promise ? instance.loading : next
       xs.length = i
       xs[i] = instance
-      return this.next()
+      return xs[top = i++]
     },
-    next() {
-      return i < xs.length && xs[top = i++]
+    next(view, context, parent, stack) {
+      const instance = i < xs.length && xs[top = i++]
+      instance && (instance.context = createContext(view, context, parent, stack, instance))
+      return instance
     },
     pop() {
       return --i === 0 && !(xs.length = top + 1, top = 0)
@@ -472,18 +472,34 @@ function Stack(context) {
   return stack
 }
 
+function createContext(view, context, parent, stack, instance) {
+  return Object.create(context, {
+    onremove: fn => stack.life.push(() => fn),
+    redraw: { value: () => updateComponent(stack.dom.first, view, context, parent, stack, false, true) },
+    reload: { value: () => updateComponent(stack.dom.first, view, context, parent, stack, true) },
+    ignore: { value: x => instance.ignore = x }
+  })
+}
+
 function updateComponent( // eslint-disable-line
   dom,
   view,
   context,
   parent,
-  stack = components.has(dom) ? components.get(dom) : Stack(context),
-  create = stack.exhausted || stack.key !== view.key
+  stack = components.has(dom) ? components.get(dom) : Stack(),
+  create = stack.exhausted || stack.key !== view.key,
+  force = false
 ) {
   const instance = create
-    ? stack.add(view, context)
-    : stack.next()
+    ? stack.add(view, context, parent, stack)
+    : stack.next(view, context, parent, stack)
 
+  if (!create && !force && instance.ignore) {
+    stack.pop()
+    return stack.dom
+  }
+
+  context = instance.context
   view.key && (instance.key = view.key)
   let next
 
@@ -519,6 +535,7 @@ function updateComponent( // eslint-disable-line
 
   if (stack.pop() && (changed || create)) {
     changed && components.delete(dom)
+    stack.dom = next
     components.set(next.first, stack)
     !instance.promise && giveLife(next.first, view.attrs, view.children, context, stack.life)
   }
@@ -530,11 +547,8 @@ function catchInstance(create, instance, view, context, stack) {
   try {
     return resolveInstance(create, instance, view, context)
   } catch (error) {
-    if (!instance.catch)
-      console.error(error)
-
     instance.error = error
-    instance.view = instance.catch
+    instance.view = instance.catch || context.catch
     stack.cut()
     return resolveInstance(instance.stateful || create, instance, view, context)
   }

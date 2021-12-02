@@ -2,29 +2,35 @@ import s from './src/index.js'
 
 window.run = s.redraw
 
-const mouse = s.live({ x: 0, y: 0 })
-
 s.mount(() => [
-  s`
-    position absolute
-    top 0
-    w 20
-    h 20
-    bc white
-    br 10
-    transition 0.2s
-    transform translateX(${ mouse.to(p => p.x - 16 ) }) translateY(${ mouse.to(p => p.y - 12 ) })
-  `,
-  s`
-    w 400
-    h 400
-    transition 0.2s
-    bc hsl(${ dom => mouse.to(p => Math.floor(360 / dom.clientWidth * p.x)) } 100% 50%)
-  `({
-    onmousemove: s.on(document, 'mousemove', mouse)
-  }),
-  Date.now()
+  s`button`({
+    onclick: () => p('redraw')
+  },
+    Date.now()
+  ),
+  s((attrs, children, { reload, ignore, redraw }) => {
+    ignore(true)
+    const x = Date.now()
+    return () => s`button`({
+      onclick: e => {
+        redraw()
+        e.redraw = false
+      }
+    }, x + ' - ' + Date.now())
+  })
 ])
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

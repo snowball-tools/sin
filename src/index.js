@@ -192,7 +192,7 @@ function Ref(keys, dom, key, i) {
   keys.rev[key] = i
 }
 
-function nonKeyed(parent, context, next, keys, dom, after = null) { // eslint-disable-line
+function nonKeyed(parent, context, next, keys, dom, after = null) {
   let i = 0
     , temp
     , view
@@ -218,7 +218,7 @@ function nonKeyed(parent, context, next, keys, dom, after = null) { // eslint-di
     dom = remove(dom, parent).after
 }
 
-function keyed(parent, context, as, bs, keys, after) { // eslint-disable-line
+function keyed(parent, context, as, bs, keys, after) {
   const map = as.rev
 
   let ai = as.length - 1
@@ -227,7 +227,7 @@ function keyed(parent, context, as, bs, keys, after) { // eslint-disable-line
     , b = bs[bi]
     , temp = -1
 
-  outer: while (true) { // eslint-disable-line
+  outer: while (true) {
     while (a.key === b.key) {
       after = updateView(a.dom, b, context, parent).first
       Ref(keys, after, b.key, bi)
@@ -290,8 +290,7 @@ function insertBefore(parent, { first, last }, before) {
   } while (parent.insertBefore(dom, before) !== last)
 }
 
-
-function update(dom, view, context, parent, stack, create) {  // eslint-disable-line
+function update(dom, view, context, parent, stack, create) {
   return typeof view === 'function'
     ? view.constructor === live
       ? updateLive(dom, view, context, parent, stack, create)
@@ -305,7 +304,7 @@ function update(dom, view, context, parent, stack, create) {  // eslint-disable-
           : updateValue(dom, view, parent, create)
 }
 
-function updateView(dom, view, context, parent, stack, create) {  // eslint-disable-line
+function updateView(dom, view, context, parent, stack, create) {
   return view.component
     ? updateComponent(dom, view, context, parent, stack, create)
     : updateElement(dom, view, context, parent, create)
@@ -481,7 +480,7 @@ function createContext(view, context, parent, stack, instance) {
   })
 }
 
-function updateComponent( // eslint-disable-line
+function updateComponent(
   dom,
   view,
   context,

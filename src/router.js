@@ -114,6 +114,7 @@ export function router(s, root, attrs) {
 
     const subRoute = router(s, current.replace(/\/$/, ''), attrs)
     subRoute.parent = route
+    subRoute.root = route.parent ? route.parent.root : route
 
     return routed({
       key: current || '/',

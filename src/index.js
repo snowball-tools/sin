@@ -52,13 +52,6 @@ s.medias = medias
 s.live = live
 s.on = on
 
-s.route = router(s, '', {
-  url: typeof window !== 'undefined' && window.location,
-  notFound: () => { /* noop */ },
-  title: () => { /* noop */ },
-  head: () => { /* noop */ }
-})
-
 s.request = (url, o) => (o ? http(url, o) : http(url.url, url))
   .then(({ body }) => body)
   .catch(x => (x.response = x.body, Promise.reject(x)))
@@ -147,7 +140,12 @@ function mount(dom, view, attrs = {}, context = {}) {
     dom = document.body
   }
 
-  attrs.route = context.route = s.route
+  attrs.route = context.route = router(s, '', {
+    url: context.location || window.location,
+    notFound: () => { /* noop */ },
+    title: () => { /* noop */ },
+    head: () => { /* noop */ }
+  })
   mounts.set(dom, { view, attrs, context })
   draw({ view, attrs, context }, dom)
   return view

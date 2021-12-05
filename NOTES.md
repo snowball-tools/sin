@@ -6,6 +6,8 @@ context: {
   redraw
 }
 
+# Consider : s(init, { error, loading })
+ 
 - Component end lifecycle - different from life?
 
 ## Todo
@@ -17,10 +19,10 @@ context: {
 - Check anchor handling (#wee scroll etc)
 
 ## Ideas
-- support multilines without colon and semicolon (end would be next valid prop / eol)
+- add stylesheet on mount to the parent element and make it scoped to some container class
+- shallow delayed remove option on redraw? (eg on route change we don't want to wait for delayed removal of all items in a sublist)
+- support multilines without colon and semicolon (end would be next valid selector line, prop / eol)
 - traverse nonKeyed in reverse too
-- css vars as signals
-- signals as local redraws
 - signals as local redraws can include / exclude global redraw
 - ws
 - Scoped update

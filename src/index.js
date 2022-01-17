@@ -51,22 +51,25 @@ s.http.redraw = redraw
 s.medias = medias
 s.live = live
 s.on = on
+s.trust = trust
 
 s.request = (url, o) => (o ? http(url, o) : http(url.url, url))
   .then(({ body }) => body)
   .catch(x => (x.response = x.body, Promise.reject(x)))
 
-s.trust = x => s(() => {
-  const div = document.createElement('div')
-      , frag = new DocumentFragment()
+function trust(x) {
+  return s(() => {
+    const div = document.createElement('div')
+        , frag = new DocumentFragment()
 
-  div.innerHTML = x
+    div.innerHTML = x
 
-  while (div.lastChild)
-    frag.appendChild(div.lastChild)
+    while (div.lastChild)
+      frag.appendChild(div.lastChild)
 
-  return () => frag
-})
+    return () => frag
+  })
+}
 
 function on(target, event, fn, options) {
   return () => {

@@ -31,15 +31,16 @@ function params(path, current) {
   }, {})
 }
 
-export function router(s, root, attrs) {
-  const routed = s(async({ route, key, ...attrs }, [view], context) => { // eslint-disable
-    if (typeof view === 'string')
-      view = (await import((view[0] === '/' ? '' : route) + view)).default
+function resolve(view, attrs) {
+  return typeof view === 'function' ? view(attrs) : view
+}
 
-    attrs.route = route
-    return () => typeof view === 'function'
-      ? view(attrs, [], { ...context, route })
-      : view
+export function router(s, root, attrs) {
+  const routed = s((attrs, [view], context) => { // eslint-disable-line
+    context.route = attrs.route
+    return typeof view === 'string'
+      ? import((view[0] === '/' ? '' : route) + view).then(x => resolve(x.default, attrs))
+      : resolve(view, attrs)
   })
 
   Object.assign(route, attrs)

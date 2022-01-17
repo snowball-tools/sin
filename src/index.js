@@ -147,9 +147,14 @@ function mount(dom, view, attrs = {}, context = {}) {
     title: () => { /* noop */ },
     head: () => { /* noop */ }
   })
+  context.catch = catcher
   mounts.set(dom, { view, attrs, context })
   draw({ view, attrs, context }, dom)
   return view
+
+function catcher({ error }) {
+  console.error(error) // eslint-disable-line
+  return s`pre;c white;bc #ff0033;p 16;br 6;overflow auto;`(s`code`(error.stack))
 }
 
 function redraw() {
@@ -226,7 +231,7 @@ function keyed(parent, context, as, bs, keys, after) {
     , b = bs[bi]
     , temp = -1
 
-  outer: while (true) {
+  outer: while (true) { // eslint-disable-line
     while (a.key === b.key) {
       after = updateView(a.dom, b, context, parent).first
       Ref(keys, after, b.key, bi)
@@ -488,46 +493,27 @@ function updateComponent(
   create = stack.exhausted || stack.key !== view.key,
   force = false
 ) {
-  const instance = create
+  const x = create
     ? stack.add(view, context, parent, stack)
     : stack.next(view, context, parent, stack)
 
-  if (!create && !force && instance.ignore) {
+  if (!create && !force && x.ignore) {
     stack.pop()
     return stack.dom
   }
 
-  context = instance.context
-  view.key && (instance.key = view.key)
-  let next
+  view.key && create && (x.key = view.key)
 
-  if (create && instance.promise) {
-    next = update(
-      dom,
-      catchInstance(create, instance, view, context, stack),
-      context,
-      parent,
-      stack,
-      create
-    )
+  create && x.promise && x.promise
+    .then(view => components.has(next.first) && (x.promise = false, x.view = view))
+    .catch(error => components.has(next.first) && (x.promise = false, x.error = error, x.view = view.component[1]))
+    .then(redraw)
 
-    instance.promise
-      .then(view => components.has(next.first) && (instance.view = view))
-      .catch(error => components.has(next.first) && (instance.error = error, instance.view = view.component[1]))
-      .then(redraw)
-  } else {
-    next = update(
-      dom,
-      mergeTag(
-        catchInstance(create, instance, view, context, stack),
-        view
-      ),
-      context,
-      parent,
-      stack,
-      create || undefined
-    )
-  }
+  const next = dom && x.promise && context.ssr
+    ? Ret(dom)
+    : update(dom, mergeTag(
+      catchInstance(create, x, view, x.context, stack), view
+    ), x.context, parent, stack, create || undefined)
 
   const changed = dom !== next.first
 
@@ -535,7 +521,7 @@ function updateComponent(
     changed && components.delete(dom)
     stack.dom = next
     components.set(next.first, stack)
-    !instance.promise && giveLife(next.first, view.attrs, view.children, context, stack.life)
+    !x.promise && giveLife(next.first, view.attrs, view.children, x.context, stack.life)
   }
 
   return next
@@ -561,10 +547,10 @@ function resolveInstance(create, instance, view, context) {
 }
 
 function mergeTag(a, b) {
-  if (!b?.tag)
+  if (!b || !b.tag)
     return a
 
-  if (!a?.tag)
+  if (!a || !a.tag)
     return (a.tag = b.tag, a)
 
   a.tag = {

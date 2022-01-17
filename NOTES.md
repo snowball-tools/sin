@@ -1,24 +1,13 @@
-##
-
-context: {
-  ignore,
-  reload,
-  redraw
-}
-
-# Consider : s(init, { error, loading })
- 
-- Component end lifecycle - different from life?
-
 ## Todo
-- CSS features from BSS
 - SSR
 - Hydration
-- scroll memory
+- scroll restoration for async loaded content?
 - Consider error handling (also async components throwing) https://github.com/MithrilJS/mithril.js/issues/2621
 - Check anchor handling (#wee scroll etc)
 
 ## Ideas
+- document.querySelector(location.hash).scrollIntoView() on load
+- Consider : s(init, { error, loading })
 - add stylesheet on mount to the parent element and make it scoped to some container class
 - shallow delayed remove option on redraw? (eg on route change we don't want to wait for delayed removal of all items in a sublist)
 - support multilines without colon and semicolon (end would be next valid selector line, prop / eol)

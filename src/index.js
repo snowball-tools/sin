@@ -85,7 +85,7 @@ function animate(dom) {
   }
 }
 
-function link(dom) {
+function link(dom, route) {
   dom.addEventListener('click', e => {
     if (
       !e.defaultPrevented &&
@@ -95,9 +95,7 @@ function link(dom) {
     ) {
       e.preventDefault()
       const state = attrs.get(dom).state
-      window.history.pushState(state, null, dom.getAttribute('href'))
-      routeState[dom.getAttribute('href')] = state
-      s.redraw()
+      route(dom.getAttribute('href'), { state })
     }
   })
 }
@@ -684,7 +682,7 @@ function updateAttribute(dom, context, attrs, attr, old, value) { // eslint-disa
 
   if (attr === 'href' && value && !value.match(/^([a-z]+:)?\/\//)) {
     value = s.pathmode + cleanSlash(value)
-    link(dom)
+    link(dom, context.route)
   }
 
   const on = isEvent(attr)

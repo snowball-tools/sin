@@ -68,14 +68,22 @@ export function router(s, root, attrs) {
     ).replace(/(.)\/$/, '$1')
   }
 
-  function reroute(path, options = {}) {
+  function reroute(path, { state, replace = false, scroll = rootChange(path) } = {}) {
+    if (path === route.current)
+      return
+
     s.pathmode[0] === '#'
       ? window.location.hash = s.pathmode + path
       : s.pathmode[0] === '?'
         ? window.location.search = s.pathmode + path
-        : window.history[options.replace ? 'replaceState' : 'pushState'](options.state, null, s.pathmode + path)
-    routeState[path] = options.state
+        : window.history[replace ? 'replaceState' : 'pushState'](state, null, s.pathmode + path)
+    routeState[path] = state
     s.redraw()
+    scroll && scrollTo(0, 0)
+  }
+
+  function rootChange(path) {
+    return path.split('/')[1] !== route.current.split('/')[1]
   }
 
   function route(routes, options = {}) {

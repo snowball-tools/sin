@@ -172,7 +172,7 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
   if (hasRules) {
     if (root) {
       Object.entries(rules).forEach(([k, v]) =>
-        insert(k.replace(/&\s*/g, '') + '{' + v)
+        insert(k.replace(/&\s+/g, '') + '{' + v + '}')
       )
     } else {
       ts = prefix + Math.abs(hash).toString(31)
@@ -182,7 +182,7 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
         specificity += '.' + ts
 
       Object.entries(rules).forEach(([k, v]) => {
-        insert(k.replace(/&/g, '.' + ts + specificity) + '{' + v)
+        insert(k.replace(/&/g, '.' + ts + specificity) + '{' + v + '}')
       })
     }
   }
@@ -246,7 +246,7 @@ function parseStyles(idx, end) {
     char = x.charCodeAt(i)
     i < x.length && (hash = Math.imul(31, hash) + char | 0)
 
-    if (quote === -1 && valueStart >= 0 && ((colon ? char === 59 : valueEndChar(char) || (end && i === x.length)))) {
+    if (quote === -1 && valueStart >= 0 && ((colon ? (char === 59 || char === 125) : valueEndChar(char) || (end && i === x.length)))) {
       numberStart > -1 && !isUnit(char) && addUnit(i)
       prop === '@import'
         ? insert(prop + ' ' + x.slice(valueStart, i), 0)

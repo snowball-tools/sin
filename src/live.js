@@ -6,9 +6,9 @@ export default function Live(value, fn) {
   live.constructor = Live
   live.detach = () => { /* */ }
   live.reduce = reduce
-  live.bind = x => e => (e && (e.redraw = false), live(typeof x === 'function' ? x() : (x || e)))
+  live.set = x => e => (e && (e.redraw = false), live(typeof x === 'function' ? x(value) : (x || e)))
+  live.get = prop => Live.from(live, x => typeof prop === 'function' ? prop(x) : x[prop])
   live.if = (equals, a = true, b = false) => Live.from(live, x => x === equals ? a : b)
-  live.to = prop => Live.from(live, x => typeof prop === 'function' ? prop(x) : x[prop])
 
   return Object.defineProperty(live, 'value', {
     get: () => value,

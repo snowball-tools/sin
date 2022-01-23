@@ -53,10 +53,6 @@ s.live = live
 s.on = on
 s.trust = trust
 
-s.request = (url, o) => (o ? http(url, o) : http(url.url, url))
-  .then(({ body }) => body)
-  .catch(x => (x.response = x.body, Promise.reject(x)))
-
 function trust(x) {
   return s(() => {
     const div = document.createElement('div')

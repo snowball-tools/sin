@@ -13,23 +13,23 @@ function tokenizePath(x) {
   return x.split(/(?=\/)/)
 }
 
-function getScore(match, current) {
+function getScore(match, path) {
   return match.reduce((acc, x, i) =>
     acc + (
       x === '404' ? 1
-      : x === current[i] ? 6
-      : x && current[i] && x.toLowerCase() === current[i].toLowerCase() ? 5
-      : x[1] === ':' && current[i] && current[i].length > 1 ? 4
-      : x === '/' && !current[i] ? 3
+      : x === path[i] ? 6
+      : x && path[i] && x.toLowerCase() === path[i].toLowerCase() ? 5
+      : x[1] === ':' && path[i] && path[i].length > 1 ? 4
+      : x === '/' && !path[i] ? 3
       : x === '*' || x === '/*' ? 2
       : -Infinity
     )
   , 0)
 }
 
-function params(path, current) {
+function params(path, xs) {
   return path.reduce((acc, x, i) => {
-    x[1] === ':' && (acc[x.slice(2)] = decodeURIComponent(current[i].slice(1)))
+    x[1] === ':' && (acc[x.slice(2)] = decodeURIComponent(xs[i].slice(1)))
     return acc
   }, {})
 }
@@ -51,7 +51,7 @@ export function router(s, root, location) {
     ? (getPath(location) === root || (getPath(location) === '/' && root === ''))
     : getPath(location).indexOf(cleanSlash(root + '/' + x)) === 0
 
-  Object.defineProperty(route, 'current', {
+  Object.defineProperty(route, 'path', {
     get() {
       const path = getPath(location)
           , idx = path.indexOf('/', root.length + 1)
@@ -72,7 +72,7 @@ export function router(s, root, location) {
   }
 
   function reroute(path, { state, replace = false, scroll = rootChange(path) } = {}) {
-    if (path === route.current)
+    if (path === route.path)
       return
 
     s.pathmode[0] === '#'
@@ -86,7 +86,7 @@ export function router(s, root, location) {
   }
 
   function rootChange(path) {
-    return path.split('/')[1] !== route.current.split('/')[1]
+    return path.split('/')[1] !== route.path.split('/')[1]
   }
 
   function route(routes, options = {}) {

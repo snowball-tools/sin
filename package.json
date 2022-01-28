@@ -7,12 +7,12 @@
   "scripts": {
     "lint": "eslint *.js",
     "build": "pnpm run build:min && pnpm run build:bundle && pnpm run build:gzip",
-    "build:min": "esbuild src/index.js --minify --minify-syntax --minify-identifiers --format=esm --bundle --outfile=sin.min.js",
+    "build:min": "esbuild src/index.js --minify --format=esm --bundle --outfile=sin.min.js",
     "build:bundle": "esbuild src/index.js --format=esm --bundle --outfile=sin.js",
     "build:gzip": "gzip -c sin.min.js > sin.min.js.gz && ls -l sin.min.js.gz && rm sin.min.js.gz"
   },
   "author": "Rasmus Porsager <rasmus@porsager.com>",
   "devDependencies": {
-    "esbuild": "0.13.12"
+    "esbuild": "0.14.14"
   }
 }

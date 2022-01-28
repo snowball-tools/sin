@@ -55,6 +55,9 @@ function http(url, {
 
 // src/shared.js
 var isServer = typeof window === "undefined" || typeof window.document === "undefined";
+function isObservable(x2) {
+  return x2 && isFunction(x2.observe);
+}
 function isFunction(x2) {
   return typeof x2 === "function";
 }
@@ -67,10 +70,13 @@ function className(view) {
 function isEvent(x2) {
   return x2.charCodeAt(0) === 111 && x2.charCodeAt(1) === 110;
 }
+function asArray(x2) {
+  return Array.isArray(x2) ? x2 : [x2];
+}
 function classes(x2) {
   if (isFunction(x2))
     return classes(x2());
-  return x2 ? typeof x2 === "object" && !(x2 instanceof Observable) ? Object.keys(x2).reduce((acc, c) => acc + x2[c] ? c + " " : "", "") : x2 + " " : "";
+  return x2 ? typeof x2 === "object" && !isObservable(x2) ? Object.keys(x2).reduce((acc, c) => acc + x2[c] ? c + " " : "", "") : x2 + " " : "";
 }
 
 // src/live.js
@@ -96,9 +102,8 @@ var Observable = class {
   }
 };
 function Live(value2, fn2) {
-  const observers = new Set();
+  const observers = /* @__PURE__ */ new Set();
   isFunction("function") && observers.add(fn2);
-  live[Symbol.hasInstance] = (x2) => x2 === Observable;
   live.observe = (fn3) => (observers.add(fn3), () => observers.delete(fn3));
   live.valueOf = live.toString = live.toJSON = () => value2 || "";
   live.detach = () => {
@@ -225,7 +230,7 @@ var vendorMap = properties.reduce((acc, x2) => {
   }
   return acc;
 }, {});
-var cache = new Map();
+var cache = /* @__PURE__ */ new Map();
 var cssVars = typeof window_default !== "undefined" && window_default.CSS && CSS.supports("color", "var(--support-test)");
 var isStartChar = (x2) => x2 !== 32 && x2 !== 9 && x2 !== 10 && x2 !== 13 && x2 !== 59;
 var isNumber = (x2) => x2 >= 48 && x2 <= 57 || x2 === 46;
@@ -514,26 +519,27 @@ function cleanSlash(x2) {
 function tokenizePath(x2) {
   return x2.split(/(?=\/)/);
 }
-function getScore(match, current) {
-  return match.reduce((acc, x2, i) => acc + (x2 === "404" ? 1 : x2 === current[i] ? 6 : x2 && current[i] && x2.toLowerCase() === current[i].toLowerCase() ? 5 : x2[1] === ":" && current[i] && current[i].length > 1 ? 4 : x2 === "/" && !current[i] ? 3 : x2 === "*" || x2 === "/*" ? 2 : -Infinity), 0);
+function getScore(match, path2) {
+  return match.reduce((acc, x2, i) => acc + (x2 === "404" ? 1 : x2 === path2[i] ? 6 : x2 && path2[i] && x2.toLowerCase() === path2[i].toLowerCase() ? 5 : x2[1] === ":" && path2[i] && path2[i].length > 1 ? 4 : x2 === "/" && !path2[i] ? 3 : x2 === "*" || x2 === "/*" ? 2 : -Infinity), 0);
 }
-function params(path2, current) {
+function params(path2, xs) {
   return path2.reduce((acc, x2, i) => {
-    x2[1] === ":" && (acc[x2.slice(2)] = decodeURIComponent(current[i].slice(1)));
+    x2[1] === ":" && (acc[x2.slice(2)] = decodeURIComponent(xs[i].slice(1)));
     return acc;
   }, {});
 }
 function resolve(view, attrs2, context) {
   return isFunction(view) ? view(attrs2, [], context) : view;
 }
-function router(s2, root, location) {
+function router(s2, root, rootContext) {
+  const location = rootContext.location;
   const routed = s2((attrs2, [view], context) => {
     context.route = attrs2.route;
     return () => typeof view === "string" ? import((view[0] === "/" ? "" : route) + view).then((x2) => resolve(x2.default, attrs2, context)) : resolve(view, attrs2, context);
   });
   route.toString = route;
   route.has = (x2) => x2 === "/" ? getPath(location) === root || getPath(location) === "/" && root === "" : getPath(location).indexOf(cleanSlash(root + "/" + x2)) === 0;
-  Object.defineProperty(route, "current", {
+  Object.defineProperty(route, "path", {
     get() {
       const path2 = getPath(location), idx = path2.indexOf("/", root.length + 1);
       return idx === -1 ? path2 : path2.slice(0, idx);
@@ -544,7 +550,7 @@ function router(s2, root, location) {
     return (s2.pathmode[0] === "#" ? location2.hash.slice(s2.pathmode.length + x2) : s2.pathmode[0] === "?" ? location2.search.slice(s2.pathmode.length + x2) : location2.pathname.slice(s2.pathmode + x2)).replace(/(.)\/$/, "$1");
   }
   function reroute(path2, { state, replace: replace2 = false, scroll = rootChange(path2) } = {}) {
-    if (path2 === route.current)
+    if (path2 === route.path)
       return;
     s2.pathmode[0] === "#" ? window_default.location.hash = s2.pathmode + path2 : s2.pathmode[0] === "?" ? window_default.location.search = s2.pathmode + path2 : window_default.history[replace2 ? "replaceState" : "pushState"](state, null, s2.pathmode + path2);
     routeState[path2] = state;
@@ -552,7 +558,7 @@ function router(s2, root, location) {
     scroll && scrollTo(0, 0);
   }
   function rootChange(path2) {
-    return path2.split("/")[1] !== route.current.split("/")[1];
+    return path2.split("/")[1] !== route.path.split("/")[1];
   }
   function route(routes, options = {}) {
     if (typeof routes === "undefined")
@@ -565,15 +571,15 @@ function router(s2, root, location) {
     }
     const path2 = getPath(location, root.length);
     const pathTokens = tokenizePath(path2);
-    const [_, match, view = options.notFound] = Object.entries(routes).reduce((acc, [match2, view2]) => {
+    const [, match, view] = Object.entries(routes).reduce((acc, [match2, view2]) => {
       match2 = tokenizePath(cleanSlash(match2));
       const score = getScore(match2, pathTokens);
       return score > acc[0] ? [score, match2, view2] : acc;
     }, [0]);
     const current = root + (match && match[0] !== "*" ? match.map((x2, i) => pathTokens[i]).join("") : "");
-    if (view === void 0 || options.notFound)
-      route.notFound(true);
-    const subRoute = router(s2, current.replace(/\/$/, ""), location);
+    if (view === void 0 || match === "404")
+      rootContext.status(404);
+    const subRoute = router(s2, current.replace(/\/$/, ""), rootContext);
     subRoute.parent = route;
     subRoute.root = route.parent ? route.parent.root : route;
     return routed({
@@ -600,15 +606,15 @@ function s(...x2) {
 function S(...x2) {
   return x2[0] && Array.isArray(x2[0].raw) ? S.bind(tagged(x2, this)) : execute(x2, this);
 }
-var components = new WeakMap();
-var removing = new WeakSet();
-var observables = new WeakMap();
-var streams = new WeakMap();
-var arrays = new WeakMap();
-var lives = new WeakMap();
-var attrs = new WeakMap();
-var keyCache = new WeakMap();
-var mounts = new Map();
+var components = /* @__PURE__ */ new WeakMap();
+var removing = /* @__PURE__ */ new WeakSet();
+var observables = /* @__PURE__ */ new WeakMap();
+var streams = /* @__PURE__ */ new WeakMap();
+var arrays = /* @__PURE__ */ new WeakMap();
+var lives = /* @__PURE__ */ new WeakMap();
+var attrs = /* @__PURE__ */ new WeakMap();
+var keyCache = /* @__PURE__ */ new WeakMap();
+var mounts = /* @__PURE__ */ new Map();
 var idle = true;
 var afterUpdate = [];
 s.pathmode = "";
@@ -622,7 +628,6 @@ s.medias = medias;
 s.live = Live;
 s.on = on;
 s.trust = trust;
-s.route = router(s, "", window_default.location);
 function trust(x2) {
   return s(() => {
     const div2 = document.createElement("div"), frag = new DocumentFragment();
@@ -683,11 +688,12 @@ function mount(dom, view, attrs2 = {}, context = {}) {
   context.status = s.live(200);
   context.title = s.live(document.title);
   context.head = s.live("");
+  "location" in context || (context.location = window_default.location);
+  "catcher" in context || (context.catcher = catcher);
   if (isServer)
     return { view, attrs: attrs2, context };
   context.title.observe((x2) => document.title = x2);
-  attrs2.route = context.route = router(s, "", context.location || window_default.location);
-  "catcher" in context === false && (context.catcher = catcher);
+  attrs2.route = context.route = router(s, "", context);
   mounts.set(dom, { view, attrs: attrs2, context });
   draw({ view, attrs: attrs2, context }, dom);
 }
@@ -703,7 +709,12 @@ function globalRedraw() {
   idle = true;
 }
 function draw({ view, attrs: attrs2, context }, dom) {
-  updates(dom, [].concat(view(attrs2, [], context)), context);
+  try {
+    const x2 = view(attrs2, [], context);
+    updates(dom, asArray(x2), context);
+  } catch (error) {
+    updates(dom, asArray(context.catcher(error, attrs2, [], context)), context);
+  }
   afterUpdate.forEach((fn2) => fn2());
   afterUpdate = [];
 }
@@ -799,7 +810,7 @@ function insertBefore(parent, { first, last: last2 }, before) {
   } while (parent.insertBefore(dom, before) !== last2);
 }
 function update(dom, view, context, parent, stack, create) {
-  return isFunction(view) ? view instanceof Observable ? updateLive(dom, view, context, parent, stack, create) : update(dom, view(), context, parent, stack, create) : view instanceof View ? updateView(dom, view, context, parent, stack, create) : Array.isArray(view) ? updateArray(dom, view, context, parent) : view instanceof Node ? Ret(view) : updateValue(dom, view, parent, create);
+  return isFunction(view) ? isObservable(view) ? updateLive(dom, view, context, parent, stack, create) : update(dom, view(), context, parent, stack, create) : view instanceof View ? updateView(dom, view, context, parent, stack, create) : Array.isArray(view) ? updateArray(dom, view, context, parent) : view instanceof Node ? Ret(view) : updateValue(dom, view, parent, create);
 }
 function updateView(dom, view, context, parent, stack, create) {
   return view.component ? updateComponent(dom, view, context, parent, stack, create) : updateElement(dom, view, context, parent, create);
@@ -862,9 +873,8 @@ function updateValue(dom, view, parent, create, nodeType = typeof view === "bool
 function updateElement(dom, view, context, parent, create = dom === null || tagChanged(dom, view)) {
   const previousNS = context.NS;
   create && replace(dom, dom = createElement(view, context), parent);
-  const prev = attributes(dom, view, context, create);
-  view.attrs.domSize = view.children && view.children.length;
-  true ? updates(dom, view.children, context) : prev && prev.domSize && dom.hasChildNodes() && removeChildren(dom.firstChild, dom);
+  attributes(dom, view, context, create);
+  updates(dom, view.children, context);
   context.NS = previousNS;
   return Ret(dom);
 }
@@ -1022,10 +1032,10 @@ function attributes(dom, view, context, init) {
   return prev;
 }
 function observe(dom, x2, fn2) {
-  if (!(x2 instanceof Observable))
+  if (!isObservable(x2))
     return;
   const has = observables.has(dom);
-  const xs = has ? observables.get(dom) : new Set();
+  const xs = has ? observables.get(dom) : /* @__PURE__ */ new Set();
   !has && observables.set(dom, xs);
   xs.add(x2.observe(fn2));
 }
@@ -1041,17 +1051,17 @@ function setVars(dom, vars, args, init) {
   }
 }
 function setVar(dom, id2, value2, unit, init, after) {
-  if (!isFunction(value2)) {
-    dom.style.setProperty(id2, formatValue(value2, unit));
-    after && afterUpdate.push(() => dom.style.setProperty(id2, formatValue(value2, unit)));
+  if (isObservable(value2)) {
+    if (init) {
+      value2.observe((x2) => dom.style.setProperty(id2, formatValue(p(x2), unit)));
+      setVar(dom, id2, value2.value, unit, init, init);
+    }
     return;
   }
-  if (!(value2 instanceof Observable))
+  if (isFunction(value2))
     return setVar(dom, id2, value2(dom), unit, init, init);
-  if (init) {
-    value2.observe((x2) => dom.style.setProperty(id2, formatValue(x2, unit)));
-    setVar(dom, id2, value2.value, unit, init, init);
-  }
+  dom.style.setProperty(id2, formatValue(value2, unit));
+  after && afterUpdate.push(() => dom.style.setProperty(id2, formatValue(value2, unit)));
 }
 function giveLife(dom, attrs2, children, context, life) {
   afterUpdate.push(() => {
@@ -1090,7 +1100,7 @@ function handleEvent(dom) {
 }
 function callHandler(handler, e) {
   const result = isFunction(handler) ? handler.call(e.currentTarget, e) : isFunction(handler.handleEvent) && handler.handleEvent(e);
-  e.redraw !== false && !(handler instanceof Observable) && redraw();
+  e.redraw !== false && !isObservable(handler) && redraw();
   result && isFunction(result.then) && result.then(redraw);
 }
 function replace(old, dom, parent) {

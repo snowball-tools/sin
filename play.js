@@ -2,30 +2,19 @@ import s from './src/index.js'
 
 window.run = s.redraw
 
-let toggled = true
-
-s.mount(() => s`;w 100;h 100;bc blue`({
-  onclick: () => toggled = !toggled
-},
-  (toggled ? [] : [1, 2, 3].map(x => s`li`({ key: x }, x)))
-))
-
-
-
-
-
+cssFun()
 
 
 function cssFun() {
   s.css`
     * {
-      animation 1s {
+      animation 5s {
         from { o 0 }
       }
     }
   `
 
-  const bc = s(({ bc }, _, { route }) => {
+  const bc = s(({ bc = '0' }, _, { route }) => {
     return () => [...Array(10)].map((x, i) =>
       s`a
         d grid
@@ -125,9 +114,9 @@ function nestedRouting() {
         '/:id': nested
       })
     )
-  }, 'Loading')
+  }, null, 'Loading')
 
-  s.mount(({ route }) =>
+  s.mount(({}, [], { route }) =>
     s`main
       ff sans-serif
     `(
@@ -143,7 +132,7 @@ function nestedRouting() {
         bc #eee
         mb 16
       `(
-        location.pathname.split('/').join(' / ')
+        route.path.split('/').join(' / ')
       ),
       nested({ route })
     )
@@ -342,21 +331,25 @@ function udomdiffTest() {
   function start() {
     current = 0
     console.time('udomdiff')
-    const timer = setInterval(() => {
-      if (document.body.textContent !== xs[current]) {
-        p('OH NO', current, xs[current], '!==', document.body.textContent)
-        clearInterval(timer)
-        return
-      }
+    s.redraw()
+    requestAnimationFrame(run)
+  }
 
-      if (current + 1 === xs.length) {
-        console.timeEnd('udomdiff')
-        console.log('all good')
-        return clearInterval(timer)
-      }
+  function run() {
+    if (document.body.textContent !== xs[current]) {
+      p('OH NO', current, xs[current], '!==', document.body.textContent)
+      console.timeEnd('udomdiff')
+      return
+    }
 
-      current++
-      s.redraw()
-    }, 0)
+    if (current + 1 === xs.length) {
+      console.timeEnd('udomdiff')
+      p('all good')
+      return
+    }
+
+    current++
+    s.redraw()
+    requestAnimationFrame(run)
   }
 }

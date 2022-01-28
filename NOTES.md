@@ -11,6 +11,7 @@
 - scroll restoration for async loaded content?
 - Consider error handling (also async components throwing) https://github.com/MithrilJS/mithril.js/issues/2621
 - Check anchor handling (#wee scroll etc)
+- shorthand `d` in svg should be d instead of display
 
 ## Ideas
 - add catcher and loader to route???

@@ -1,44 +1,60 @@
 import s from '../../src/index.js'
 
-export default s.mount(({ route }) => [
-  s`div`(
-    'hej', wat, 'patrick'
-  )
-])
+const nested = s(async({}, [], { route }) => {
+  await new Promise(r => setTimeout(r, 500))
+  const items = [
+    ...Array(
+      5 + Math.ceil(Math.random() * 5)
+    ).keys()
+  ]
 
-
-/*
-console.time('w')
-html(
-  s`h1`(
-    s(async() => {
-      await new Promise(r => setTimeout(r, 3000))
-      return () => s`h2`('woo')
-    }),
-    s`button`({class:'wat'}, ['hej', s`input`, 'dig']),
-      s`;bc white;br 0.5rem;p 1.5rem;@md{d flex}`(
-      s`img;h 4rem;w 4rem;br 100%;m auto;@md{w 6rem;h 6rem;m 0;mr 1.5rem}`({
-        src:'https://randomuser.me/api/portraits/women/17.jpg'
-      }),
-      s`div;ta center;@md{ta left}`(
-        s`h2;fs 1.125rem`('Erin Lindford'),
-        s`;c var(--purple500)`('Customer Support'),
-        s`;c var(--gray600)`('erinlindford@example.com'),
-        s`;c var(--gray600)`('(555) 765-4321')
+  return () => s`
+    d flex
+  `(
+    s`nav
+      w 100
+      mr 4m
+    `(
+      items.map(x =>
+        s`a
+          p 4
+          c black
+          display block
+          [selected] {
+            bc hsl(200, 100%, 50%)
+            c white
+          }
+        `({
+          selected: route.has(x),
+          href: route + x
+        }, x)
       )
     ),
-    false,
-    'wat',
-    'that',
-    [
-      s`h1`, s`h2`, s`h3`
-    ],
-    'what',
-    s`button`
+    route({
+      '/:id': nested
+    })
   )
-).then(x => {
-  console.timeEnd('w')
-  p(x)
-})
+}, null, 'Loading')
 
-*/
+export default s.mount(({}, [], { route }) =>
+  s`main
+    ff sans-serif
+  `(
+    s`a
+      d block
+      p 8
+    `({
+      href: '/4/1//2/3/0/4/2'
+    }, 'long test'),
+    s`
+      p 6 16
+      br 20
+      bc #eee
+      mb 16
+    `(
+      route.path.split('/').join(' / ')
+    ),
+    nested({ route })
+  )
+)
+

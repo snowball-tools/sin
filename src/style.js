@@ -49,13 +49,13 @@ const vendorMap = properties.reduce((acc, x) => {
 
 const cache = new Map()
     , cssVars = typeof window !== 'undefined' && window.CSS && CSS.supports('color', 'var(--support-test)')
-    , isStartChar = x => x !== 32 && x !== 9 && x !== 10 && x !== 13 && x !== 59
+    , isStartChar = x => x !== 32 && x !== 9 && x !== 10 && x !== 13 && x !== 59 // ws \t \n \r ;
     , isNumber = x => (x >= 48 && x <= 57) || x === 46 // 0-9-.
-    , isUnit = x => x === 37 || (x >= 65 && x <= 90) || (x >= 97 && x <= 122)
-    , quoteChar = x => x === 34 || x === 39
-    , propEndChar = x => x === 32 || x === 58 || x === 9
-    , valueEndChar = x => x === 59 || x === 10 || x === 125
-    , noSpace = x => x === 58 || x === 64 || x === 38 || x === 91
+    , isUnit = x => x === 37 || (x >= 65 && x <= 90) || (x >= 97 && x <= 122) // % a-z A-Z
+    , quoteChar = x => x === 34 || x === 39 // '"
+    , propEndChar = x => x === 32 || x === 58 || x === 9 // ws : \t
+    , valueEndChar = x => x === 59 || x === 10 || x === 125 // ; \n }
+    , noSpace = x => x === 58 || x === 64 || x === 38 || x === 91 // : @ & [
     , last = xs => xs[xs.length - 1]
     , selectors = []
     , fn = []
@@ -272,7 +272,7 @@ function parseStyles(idx, end) {
         rule = ''
       } else {
         rule && (rules[path || '&'] = rule)
-        selector = startChar === 64
+        selector = startChar === 64 // @
           ? atHelper(prop + value + x.slice(valueStart, i).trim())
           : x.slice(start, i).trim()
         selector.indexOf(',') !== -1 && (selector = splitSelector(selector))

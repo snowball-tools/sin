@@ -20,6 +20,10 @@ export function isEvent(x) {
   return x.charCodeAt(0) === 111 && x.charCodeAt(1) === 110 // on
 }
 
+export function asArray(x) {
+  return Array.isArray(x) ? x : [x]
+}
+
 function classes(x) {
   if (isFunction(x))
     return classes(x())

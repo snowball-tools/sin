@@ -1,7 +1,7 @@
 import './window.js'
 import View from '../view.js'
-import { className, ignoredAttr, isEvent, isFunction } from '../shared.js'
-import { formatValue, css } from '../style.js'
+import { className, ignoredAttr, isEvent, isFunction, asArray } from '../shared.js'
+import { formatValue, cssRules } from '../style.js'
 import { router } from '../router.js'
 import s from '../index.js'
 
@@ -37,9 +37,15 @@ export default async function({ view, attrs, context }, serverAttrs = {}, server
   attrs.route = context.route = router(s, '', context)
   context.uid = 1
 
-  const x = view(attrs, [], context)
+  let x
+  try {
+    x = view(attrs, [], context)
+  } catch (error) {
+    x = context.catcher(error, attrs, [], context)
+  }
+
   const html = await Promise.race([
-    updateChildren([].concat(x), context),
+    updateChildren(asArray(x), context),
     new Promise((r, e) => setTimeout(e, 'timeout' in context ? context.timeout : defaultTimeout, new TimeoutError()))
   ]).catch(async error => {
     context.status(error instanceof TimeoutError ? 408 : 500)
@@ -49,7 +55,7 @@ export default async function({ view, attrs, context }, serverAttrs = {}, server
   return {
     status: context.status(),
     title: context.title(),
-    css: css(), // perhaps remove classes according to names in html
+    css: '<style class="sin">' + cssRules().join('') + '</style>', // perhaps remove classes according to names in html
     html,
     head
   }

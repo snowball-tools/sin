@@ -4,7 +4,15 @@ import live from './live.js'
 import window from './window.js'
 import { parse, medias, formatValue } from './style.js'
 import { router, cleanSlash } from './router.js'
-import { className, ignoredAttr, isEvent, isServer, isFunction, isObservable } from './shared.js'
+import {
+  className,
+  ignoredAttr,
+  isEvent,
+  isServer,
+  isFunction,
+  isObservable,
+  asArray
+} from './shared.js'
 
 const document = window.document
     , NS = {
@@ -183,7 +191,12 @@ function globalRedraw() {
 }
 
 function draw({ view, attrs, context }, dom) {
-  updates(dom, [].concat(view(attrs, [], context)), context)
+  try {
+    const x = view(attrs, [], context)
+    updates(dom, asArray(x), context)
+  } catch (error) {
+    updates(dom, asArray(context.catcher(error, attrs, [], context)), context)
+  }
   afterUpdate.forEach(fn => fn())
   afterUpdate = []
 }

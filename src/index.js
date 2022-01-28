@@ -4,6 +4,7 @@ import live from './live.js'
 import { parse, medias, formatValue } from './style.js'
 import { router, routeState, cleanSlash } from './router.js'
 import { className, ignoredAttr } from './shared.js'
+import { className, ignoredAttr, isEvent, isServer, isFunction } from './shared.js'
 
 const document = window.document
     , NS = {

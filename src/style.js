@@ -369,7 +369,7 @@ selectors.toString = function() {
       ? (a += x)
       : (b += x)
   )
-  return (a ? a + '{' : '') + (b === '@font-face' ? '' : '&') + b
+  return (a ? a + '{' : '') + (b === '@font-face' || b === ':root' ? '' : '&') + b
 }
 
 function px(x) {

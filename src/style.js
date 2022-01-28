@@ -59,9 +59,6 @@ const cache = new Map()
     , last = xs => xs[xs.length - 1]
     , selectors = []
     , fn = []
-    , arg = cssVars
-      ? (j, vars, args) => 'var(--' + prefix + vars.push(args[j]) + ')'
-      : (j, vars, args) => args[j]
 
 let start = -1
   , valueStart = -1
@@ -156,7 +153,7 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
 
     x = xs[j + 1]
     if (j < args.length) {
-      if (valueStart >= 0) {
+      if (cssVars && valueStart >= 0) {
         const before = xs[j].slice(valueStart)
         ts = prefix + Math.abs(hash).toString(31)
         vars[varName = '--' + ts + j] = { unit: getUnit(prop, last(fn)), index: j }

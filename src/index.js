@@ -13,6 +13,8 @@ const document = window.document
       math: 'http://www.w3.org/1998/Math/MathML'
     }
 
+s.isServer = isServer
+
 export default function s(...x) {
   const type = typeof x[0]
   return type === 'string'

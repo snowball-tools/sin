@@ -38,7 +38,8 @@ function resolve(view, attrs, context) {
   return isFunction(view) ? view(attrs, [], context) : view
 }
 
-export function router(s, root, location) {
+export function router(s, root, rootContext) {
+  const location = rootContext.location
   const routed = s((attrs, [view], context) => { // eslint-disable-line
     context.route = attrs.route
     return () => typeof view === 'string'
@@ -106,7 +107,7 @@ export function router(s, root, location) {
     const path = getPath(location, root.length)
     const pathTokens = tokenizePath(path)
 
-    const [_, match, view = options.notFound] = Object // eslint-disable-line
+    const [, match, view] = Object
       .entries(routes)
       .reduce((acc, [match, view]) => {
         match = tokenizePath(cleanSlash(match))
@@ -120,10 +121,10 @@ export function router(s, root, location) {
       ? match.map((x, i) => pathTokens[i]).join('')
       : '')
 
-    if (view === undefined || options.notFound)
-      route.notFound(true)
+    if (view === undefined || match === '404')
+      rootContext.status(404)
 
-    const subRoute = router(s, current.replace(/\/$/, ''), location)
+    const subRoute = router(s, current.replace(/\/$/, ''), rootContext)
     subRoute.parent = route
     subRoute.root = route.parent ? route.parent.root : route
 

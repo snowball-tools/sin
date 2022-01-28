@@ -155,14 +155,15 @@ function mount(dom, view, attrs = {}, context = {}) {
   context.status = s.live(200)
   context.title = s.live(document.title)
   context.head = s.live('')
+  'location' in context || (context.location = window.location)
+  'catcher' in context || (context.catcher = catcher)
 
   if (isServer)
     return { view, attrs, context }
 
   context.title.observe(x => document.title = x)
 
-  attrs.route = context.route = router(s, '', context.location || window.location)
-  'catcher' in context === false && (context.catcher = catcher)
+  attrs.route = context.route = router(s, '', context)
   mounts.set(dom, { view, attrs, context })
   draw({ view, attrs, context }, dom)
 }

@@ -1,9 +1,9 @@
 import View from './view.js'
 import http from './http.js'
-import live from './live.js'
+import live, { Observable } from './live.js'
+import window from './window.js'
 import { parse, medias, formatValue } from './style.js'
-import { router, routeState, cleanSlash } from './router.js'
-import { className, ignoredAttr } from './shared.js'
+import { router, cleanSlash } from './router.js'
 import { className, ignoredAttr, isEvent, isServer, isFunction } from './shared.js'
 
 const document = window.document
@@ -34,6 +34,7 @@ function S(...x) {
 
 const components = new WeakMap()
     , removing = new WeakSet()
+    , observables = new WeakMap()
     , streams = new WeakMap()
     , arrays = new WeakMap()
     , lives = new WeakMap()
@@ -55,6 +56,7 @@ s.medias = medias
 s.live = live
 s.on = on
 s.trust = trust
+s.route = router(s, '', window.location)
 
 function trust(x) {
   return s(() => {
@@ -143,27 +145,31 @@ function isAttrs(x) {
 }
 
 function mount(dom, view, attrs = {}, context = {}) {
-  if (typeof view !== 'function') {
+  if (!isFunction(view)) {
     context = attrs || {}
     attrs = view || {}
     view = dom
     dom = document.body
   }
 
-  attrs.route = context.route = router(s, '', {
-    url: context.location || window.location,
-    notFound: () => { /* noop */ },
-    title: () => { /* noop */ },
-    head: () => { /* noop */ }
-  })
-  context.catch = catcher
+  context.status = s.live(200)
+  context.title = s.live(document.title)
+  context.head = s.live('')
+
+  if (isServer)
+    return { view, attrs, context }
+
+  context.title.observe(x => document.title = x)
+
+  attrs.route = context.route = router(s, '', context.location || window.location)
+  'catcher' in context === false && (context.catcher = catcher)
   mounts.set(dom, { view, attrs, context })
   draw({ view, attrs, context }, dom)
-  return view
+}
 
-function catcher({ error }) {
+function catcher(error) {
   console.error(error) // eslint-disable-line
-  return s`pre;c white;bc #ff0033;p 16;br 6;overflow auto;`(s`code`(error.stack))
+  return s`pre;m 0;c white;bc #ff0033;p 16;br 6;overflow auto`(s`code`(error.stack))
 }
 
 function redraw() {
@@ -304,8 +310,8 @@ function insertBefore(parent, { first, last }, before) {
 }
 
 function update(dom, view, context, parent, stack, create) {
-  return typeof view === 'function'
-    ? view.constructor === live
+  return isFunction(view)
+    ? view instanceof Observable
       ? updateLive(dom, view, context, parent, stack, create)
       : update(dom, view(), context, parent, stack, create)
     : view instanceof View
@@ -345,8 +351,28 @@ function Ret(dom, first = dom, last = first) {
   return { dom, first, last }
 }
 
+function nthAfter(dom, n) {
+  while (dom && --n > 0)
+    dom = dom.nextSibling
+  return dom
+}
+
+function fromComment(dom) {
+  if (!dom)
+    return
+
+  const last = dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91
+      && nthAfter(dom.nextSibling, parseInt(dom.nodeValue.slice(1)))
+  last && arrays.set(dom, last)
+  return last
+}
+
+function getArray(dom) {
+  return arrays.has(dom) ? arrays.get(dom) : fromComment(dom)
+}
+
 function updateArray(dom, view, context, parent) {
-  const last = arrays.has(dom) ? arrays.get(dom) : dom
+  const last = getArray(dom) || dom
   const comment = updateValue(dom, '[' + view.length, parent, false, 8)
 
   if (parent) {
@@ -405,7 +431,7 @@ function updateElement(
   const prev = attributes(dom, view, context, create)
   view.attrs.domSize = view.children && view.children.length
 
-  view.attrs.domSize
+  true //view.attrs.domSize
     ? updates(dom, view.children, context)
     : prev && prev.domSize && dom.hasChildNodes() && removeChildren(dom.firstChild, dom)
 
@@ -454,16 +480,16 @@ function Stack() {
         id: window.count = (window.count || 0) + 1,
         key: null,
         view: view.component[0],
-        catch: view.component[1],
-        loading: view.component[2]
+        catcher: view.component[1] || context.catcher,
+        loader: view.component[2] || context.loader
       }
 
       instance.context = createContext(view, context, parent, stack, instance)
       const next = catchInstance(true, instance, view, instance.context, stack)
 
-      instance.promise = next && typeof next.then === 'function' && next
-      instance.stateful = instance.promise || typeof next === 'function'
-      instance.view = instance.promise ? instance.loading : next
+      instance.promise = next && isFunction(next.then) && next
+      instance.stateful = instance.promise || isFunction(next)
+      instance.view = instance.promise ? instance.loader : next
       xs.length = i
       xs[i] = instance
       return xs[top = i++]
@@ -493,44 +519,69 @@ function createContext(view, context, parent, stack, instance) {
   })
 }
 
+function hydrate(dom) {
+  let last = dom.nextSibling
+  while (last && (last.nodeType !== 8 || last.nodeValue !== dom.nodeValue))
+    last = last.nextSibling
+  return Ret(dom, dom, last)
+}
+
+function dehydrate(x, stack) {
+  components.delete(x.first)
+  components.set(x.first.nextSibling, stack)
+  x.first.remove()
+  x.last.remove()
+}
+
 function updateComponent(
   dom,
-  view,
+  component,
   context,
   parent,
   stack = components.has(dom) ? components.get(dom) : Stack(),
-  create = stack.exhausted || stack.key !== view.key,
+  create = stack.exhausted || stack.key !== component.key,
   force = false
 ) {
-  const x = create
-    ? stack.add(view, context, parent, stack)
-    : stack.next(view, context, parent, stack)
+  const instance = create
+    ? stack.add(component, context, parent, stack)
+    : stack.next(component, context, parent, stack)
 
-  if (!create && !force && x.ignore) {
+  if (!create && !force && instance.ignore) {
     stack.pop()
     return stack.dom
   }
 
-  view.key && create && (x.key = view.key)
+  component.key && create && (instance.key = component.key)
 
-  create && x.promise && x.promise
-    .then(view => components.has(next.first) && (x.promise = false, x.view = view))
-    .catch(error => components.has(next.first) && (x.promise = false, x.error = error, x.view = view.component[1]))
-    .then(redraw)
+  const hydrating = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.endsWith('async')
+  const next = instance.next = hydrating
+    ? hydrate(dom)
+    : update(
+      dom,
+      mergeTag(catchInstance(create, instance, component, instance.context, stack), component),
+      instance.context,
+      parent,
+      stack,
+      //instance.promise === false ||
+      create || undefined
+    )
 
-  const next = dom && x.promise && context.ssr
-    ? Ret(dom)
-    : update(dom, mergeTag(
-      catchInstance(create, x, view, x.context, stack), view
-    ), x.context, parent, stack, create || undefined)
+  create && instance.promise && instance.promise
+    .then(view => instance.view = view)
+    .catch(error => instance.view = instance.catcher.bind(null, error))
+    .then(() => components.has(instance.next.first) && (
+      hydrating && dehydrate(next, stack),
+      instance.promise = false,
+      redraw()
+    ))
 
   const changed = dom !== next.first
 
   if (stack.pop() && (changed || create)) {
     changed && components.delete(dom)
-    stack.dom = next
+    stack.dom = instance.next = next
     components.set(next.first, stack)
-    !x.promise && giveLife(next.first, view.attrs, view.children, x.context, stack.life)
+    !instance.promise && giveLife(next.first, component.attrs, component.children, instance.context, stack.life)
   }
 
   return next
@@ -540,8 +591,7 @@ function catchInstance(create, instance, view, context, stack) {
   try {
     return resolveInstance(create, instance, view, context)
   } catch (error) {
-    instance.error = error
-    instance.view = instance.catch || context.catch
+    instance.view = instance.catcher.bind(null, error)
     stack.cut()
     return resolveInstance(instance.stateful || create, instance, view, context)
   }
@@ -549,8 +599,8 @@ function catchInstance(create, instance, view, context, stack) {
 
 function resolveInstance(create, instance, view, context) {
   return instance.stateful || create
-    ? typeof instance.view === 'function'
-      ? instance.view(instance.error ? { ...view.attrs, error: instance.error } : view.attrs, view.children, context)
+    ? isFunction(instance.view)
+      ? instance.view(view.attrs, view.children, context)
       : instance.view
     : view.component[0](view.attrs, view.children, context)
 }
@@ -582,7 +632,6 @@ function empty(o) {
 
 function attributes(dom, view, context, init) {
   let tag = view.tag
-    , attr
     , value
 
   const prev = !init && attrs.has(dom) ? attrs.get(dom) : undefined
@@ -594,17 +643,18 @@ function attributes(dom, view, context, init) {
 
   if ((init && view.tag.classes) ||
      view.attrs.class !== (prev && prev.class) ||
-     view.attrs.className !== (prev && prev.className)
+     view.attrs.className !== (prev && prev.className) ||
+     dom.className !== view.tag.classes
   )
-    dom.className = className(view)
+    setClass(dom, view)
 
-  init && view.attrs.class?.observe(() => dom.className = className(view))
-  init && view.attrs.className?.observe(() => dom.className = className(view))
+  init && observe(dom, view.attrs.class, () => setClass(dom, view))
+  init && observe(dom, view.attrs.className, () => setClass(dom, view))
 
-  for (attr in view.attrs) {
+  for (const attr in view.attrs) {
     if (!ignoredAttr(attr) && (!prev || prev[attr] !== view.attrs[attr])) {
       value = view.attrs[attr]
-      init && initLive(dom, attr, value, context)
+      init && observe(dom, value, x => setAttribute(dom, attr, x, context))
       updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value)
       value = true
     }
@@ -635,9 +685,23 @@ function attributes(dom, view, context, init) {
   return prev
 }
 
-function initLive(dom, attr, value, context) {
-  if (value && value.constructor === live)
-    value.observe(x => setAttribute(dom, attr, x, context))
+function observe(dom, x, fn) {
+  if (!(x instanceof Observable))
+    return
+
+  const has = observables.has(dom)
+  const xs = has
+    ? observables.get(dom)
+    : new Set()
+  !has && observables.set(dom, xs)
+  xs.add(x.observe(fn))
+}
+
+function setClass(dom, view) {
+  const x = className(view)
+  x
+    ? dom.className = x
+    : dom.removeAttribute('class')
 }
 
 function setVars(dom, vars, args, init) {
@@ -649,26 +713,26 @@ function setVars(dom, vars, args, init) {
 }
 
 function setVar(dom, id, value, unit, init, after) {
-  if (typeof value !== 'function') {
+  if (!isFunction(value)) {
     dom.style.setProperty(id, formatValue(value, unit))
     after && afterUpdate.push(() => dom.style.setProperty(id, formatValue(value, unit)))
     return
   }
 
-  if (value.constructor !== live)
+  if (!(value instanceof Observable))
     return setVar(dom, id, value(dom), unit, init, init)
 
   if (init) {
     value.observe(x => dom.style.setProperty(id, formatValue(x, unit)))
-    setVar(dom, id, value(), unit, init, init)
+    setVar(dom, id, value.value, unit, init, init)
   }
 }
 
 function giveLife(dom, attrs, children, context, life) {
   afterUpdate.push(() => {
     life = [].concat(life)
-      .map(x => typeof x === 'function' && x(dom, attrs, children, context))
-      .filter(x => typeof x === 'function')
+      .map(x => isFunction(x) && x(dom, attrs, children, context))
+      .filter(x => isFunction(x))
 
     life.length && lives.set(dom, (lives.get(dom) || []).concat(life))
   })
@@ -695,7 +759,7 @@ function updateAttribute(dom, context, attrs, attr, old, value) { // eslint-disa
 }
 
 function setAttribute(dom, attr, value, context) {
-  if (typeof value === 'function')
+  if (isFunction(value))
     return setAttribute(dom, attr, value(), context)
 
   !value && value !== 0
@@ -703,10 +767,6 @@ function setAttribute(dom, attr, value, context) {
     : !context.NS && attr in dom && typeof value !== 'boolean'
       ? dom[attr] = value
       : dom.setAttribute(attr, value === true ? '' : value)
-}
-
-function isEvent(x) {
-  return x.charCodeAt(0) === 111 && x.charCodeAt(1) === 110 // on
 }
 
 function removeEvent(dom, attrs, name) {
@@ -725,12 +785,12 @@ function handleEvent(dom) {
 }
 
 function callHandler(handler, e) {
-  const result = typeof handler === 'function'
+  const result = isFunction(handler)
     ? handler.call(e.currentTarget, e)
-    : typeof handler.handleEvent === 'function' && handler.handleEvent(e)
+    : isFunction(handler.handleEvent) && handler.handleEvent(e)
 
-  e.redraw !== false && handler.constructor !== live && redraw()
-  result && typeof result.then === 'function' && result.then(redraw)
+  e.redraw !== false && !(handler instanceof Observable) && redraw()
+  result && isFunction(result.then) && result.then(redraw)
 }
 
 function replace(old, dom, parent) {
@@ -745,28 +805,42 @@ function replace(old, dom, parent) {
   return dom
 }
 
-function defer(dom, parent, children) {
-  if (!lives.has(dom))
-    return children.length && (removing.add(dom), Promise.allSettled(children))
-
-  const life = lives.get(dom).map(x => x()).filter(x => x && typeof x.then === 'function')
-
-  lives.delete(dom)
-
-  if (life.length === 0)
-    return children.length && (removing.add(dom), Promise.allSettled(children))
-
+function deferredRemove(dom, parent, xs) {
   removing.add(dom)
-  return Promise.allSettled(life.concat(children)).then(() => {
+  return Promise.allSettled(xs).then(() => {
     removing.delete(dom)
     remove(dom, parent)
   })
 }
+
+function callLogThrow(x) {
+  try {
+    return x()
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+function deferRemove(dom, parent, children) {
+  if (!lives.has(dom))
+    return children.length && deferredRemove(dom, parent, children)
+
+  const life = lives.get(dom).map(callLogThrow).filter(x => x && isFunction(x.then))
+
+  lives.delete(dom)
+
+  if (life.length === 0)
+    return children.length && deferredRemove(dom, parent, children)
+
+  return deferredRemove(dom, parent, life.concat(children))
+}
+
 function removeArray(dom, parent, lives, instant) {
-  if (!arrays.has(dom))
+  const last = getArray(dom)
+
+  if (!last)
     return dom.nextSibling
 
-  const last = arrays.get(dom)
   if (dom === last)
     return dom.nextSibling
 
@@ -783,6 +857,12 @@ function removeArray(dom, parent, lives, instant) {
   return after
 }
 
+function removeChild(parent, dom) {
+  observables.has(dom) && observables.get(dom).forEach(x => x())
+  components.delete(dom)
+  parent.removeChild(dom)
+}
+
 function remove(dom, parent, instant = true) {
   if (!parent || removing.has(dom))
     return { after: dom.nextSibling, life: null }
@@ -790,11 +870,19 @@ function remove(dom, parent, instant = true) {
   const lives = []
 
   let after = dom.nextSibling
-  if (dom.nodeType === 8)
+
+  if (dom.nodeType === 8 && dom.nodeValue.endsWith('async')) {
+    after = dom.nextSibling
+    removeChild(parent, dom)
+    dom = after
+    after = dom.nextSibling
+  }
+
+  if (dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91) // [
     after = removeArray(dom, parent, lives, instant)
 
   if (dom.nodeType !== 1) {
-    instant && parent.removeChild(dom)
+    instant && removeChild(parent, dom)
     return { after, life: null }
   }
 
@@ -805,8 +893,8 @@ function remove(dom, parent, instant = true) {
     child = child.nextSibling
   }
 
-  const life = defer(dom, parent, lives)
-  instant && !life && parent.removeChild(dom)
+  const life = deferRemove(dom, parent, lives)
+  instant && !life && removeChild(parent, dom)
 
   return {
     after,

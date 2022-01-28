@@ -1,3 +1,10 @@
+# considerations
+- Support `s(view, { catcher, loader })` and `s({ catcher, loader, }, view)`
+- Support route({ ... }, { catcher, loader }
+- Support s.mount({ ...routes })
+- waitForChildren: false ? how?
+- Consider children in context instead
+
 ## Todo
 - SSR
 - Hydration
@@ -6,6 +13,7 @@
 - Check anchor handling (#wee scroll etc)
 
 ## Ideas
+- add catcher and loader to route???
 - document.querySelector(location.hash).scrollIntoView() on load
 - Consider : s(init, { error, loading })
 - add stylesheet on mount to the parent element and make it scoped to some container class

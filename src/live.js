@@ -1,14 +1,32 @@
+import { isFunction } from './shared.js'
+
+export class Observable {
+  constructor(live, transform) {
+    this.live = live
+    this.transform = transform
+  }
+
+  get value() { return this.transform(this.live.value) }
+  toString() { return this.value || '' }
+  valueOf() { return this.value || '' }
+  toJSON() { return this.value || '' }
+
+  observe(fn) {
+    return this.live.observe(x => fn(this.transform(x)))
+  }
+}
+
 export default function Live(value, fn) {
   const observers = new Set()
-  typeof fn === 'function' && observers.add(fn)
+  isFunction('function') && observers.add(fn)
+  live[Symbol.hasInstance] = x => x === Observable
   live.observe = fn => (observers.add(fn), () => observers.delete(fn))
-  live.valueOf = live.toString = live.toJSON = () => value
-  live.constructor = Live
+  live.valueOf = live.toString = live.toJSON = () => value || ''
   live.detach = () => { /* */ }
   live.reduce = reduce
-  live.set = x => e => (e && (e.redraw = false), live(typeof x === 'function' ? x(value) : (x || e)))
-  live.get = prop => Live.from(live, x => typeof prop === 'function' ? prop(x) : x[prop])
-  live.if = (equals, a = true, b = false) => Live.from(live, x => x === equals ? a : b)
+  live.set = x => e => (e && (e.redraw = false), live(isFunction(x) ? x(value) : (x || e)))
+  live.get = prop => new Observable(live, x => isFunction(prop) ? prop(x) : x[prop])
+  live.if = (equals, a = true, b = false) => new Observable(live, x => x === equals ? a : b)
 
   return Object.defineProperty(live, 'value', {
     get: () => value,

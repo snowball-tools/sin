@@ -1,6 +1,9 @@
+import window from './window.js'
+import { isFunction } from './shared.js'
+
 let routing = false
 
-export const routeState = {}
+const routeState = {}
 
 export function cleanSlash(x) {
   return String(x).replace(/\/+/g, '/').replace(/(.)\/$/, '$1')
@@ -31,27 +34,26 @@ function params(path, current) {
   }, {})
 }
 
-function resolve(view, attrs) {
-  return typeof view === 'function' ? view(attrs) : view
+function resolve(view, attrs, context) {
+  return isFunction(view) ? view(attrs, [], context) : view
 }
 
-export function router(s, root, attrs) {
+export function router(s, root, location) {
   const routed = s((attrs, [view], context) => { // eslint-disable-line
     context.route = attrs.route
-    return typeof view === 'string'
-      ? import((view[0] === '/' ? '' : route) + view).then(x => resolve(x.default, attrs))
-      : resolve(view, attrs)
+    return () => typeof view === 'string'
+      ? import((view[0] === '/' ? '' : route) + view).then(x => resolve(x.default, attrs, context))
+      : resolve(view, attrs, context)
   })
 
-  Object.assign(route, attrs)
   route.toString = route
   route.has = x => x === '/'
-    ? (getPath(route.url) === root || (getPath(route.url) === '/' && root === ''))
-    : getPath(route.url).indexOf(cleanSlash(root + '/' + x)) === 0
+    ? (getPath(location) === root || (getPath(location) === '/' && root === ''))
+    : getPath(location).indexOf(cleanSlash(root + '/' + x)) === 0
 
   Object.defineProperty(route, 'current', {
     get() {
-      const path = getPath(route.url)
+      const path = getPath(location)
           , idx = path.indexOf('/', root.length + 1)
 
       return idx === -1 ? path : path.slice(0, idx)
@@ -97,11 +99,11 @@ export function router(s, root, attrs) {
     if (!routing) {
       routing = true
       s.pathmode[0] === '#'
-        ? window.addEventListener('hashchange', () => s.redraw())
-        : typeof window.history.pushState === 'function' && window.addEventListener('popstate', s.redraw)
+        ? window.addEventListener('hashchange', s.redraw, { passive: true })
+        : isFunction(window.history.pushState) && window.addEventListener('popstate', s.redraw, { passive: true })
     }
 
-    const path = getPath(route.url, root.length)
+    const path = getPath(location, root.length)
     const pathTokens = tokenizePath(path)
 
     const [_, match, view = options.notFound] = Object // eslint-disable-line
@@ -121,7 +123,7 @@ export function router(s, root, attrs) {
     if (view === undefined || options.notFound)
       route.notFound(true)
 
-    const subRoute = router(s, current.replace(/\/$/, ''), attrs)
+    const subRoute = router(s, current.replace(/\/$/, ''), location)
     subRoute.parent = route
     subRoute.root = route.parent ? route.parent.root : route
 

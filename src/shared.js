@@ -1,3 +1,5 @@
+import { Observable } from './live.js'
+
 export const isServer = typeof window === 'undefined' || typeof window.document === 'undefined'
 
 export function isFunction(x) {
@@ -9,9 +11,7 @@ export function ignoredAttr(x) {
 }
 
 export function className(view) {
-  return (
-    classes(view.attrs.class) + classes(view.attrs.className) + view.tag.classes
-  ).trim()
+  return (classes(view.attrs.class) + classes(view.attrs.className) + view.tag.classes).trim()
 }
 
 export function isEvent(x) {
@@ -19,11 +19,11 @@ export function isEvent(x) {
 }
 
 function classes(x) {
-  if (typeof x === 'function')
+  if (isFunction(x))
     return classes(x())
 
   return x
-    ? typeof x === 'object'
+    ? typeof x === 'object' && !(x instanceof Observable)
       ? Object.keys(x).reduce((acc, c) => acc + x[c] ? c + ' ' : '', '')
       : x + ' '
     : ''

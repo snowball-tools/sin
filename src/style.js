@@ -1,8 +1,9 @@
 import window from './window.js'
+import { isFunction } from './shared.js'
 import { popular, initials } from './shorthands.js'
 
 const doc = window.document
-    , style = doc && doc.querySelector && (doc.querySelector('.sin-styles') || doc.createElement('style'))
+    , style = doc && doc.querySelector && (doc.querySelector('style.sin') || doc.createElement('style'))
     , vendorRegex = /^(o|O|ms|MS|Ms|moz|Moz|webkit|Webkit|WebKit)([A-Z])/
     , snake = x => x.replace(/(\B[A-Z])/g, '-$1').toLowerCase()
     , prefix = style && style.getAttribute('id') || 'sin-'
@@ -11,13 +12,12 @@ const doc = window.document
     , propCache = {}
     , unitCache = {}
 
-export const css = () => style.sheet.cssRules.join('')
+export const cssRules = () => style.sheet.cssRules
 export const medias = x => Object.entries(x).forEach(([k, v]) => mediasCache['@' + k] = v)
 
 const pxCache = {
   flex: '',
   border: 'px',
-  transform: 'px',
   'line-height': '',
   'box-shadow': 'px',
   'border-top': 'px',
@@ -213,7 +213,7 @@ function parseSelector(xs, j, args, parent) {
       classes = (classIdx !== -1
         ? x.slice(classIdx + 1, i).replace(/\./g, ' ')
         : ''
-      ) + classes + (parent ? parent.classes : '')
+      ) + classes + (parent ? ' ' + parent.classes : '')
 
       id === '' && (id = (idIdx !== -1
         ? x.slice(idIdx, classIdx === -1 ? i : classIdx)
@@ -338,10 +338,15 @@ function addUnit(i) {
 }
 
 export function formatValue(x, unit) {
-  typeof x === 'function' && (x = value())
+  if (!x && x !== 0)
+    return ''
+
+  isFunction(x) && (x = value())
   return typeof x !== 'string' || !isUnit(x.charCodeAt(x.length - 1))
     ? x + unit
-    : x
+    : x.charCodeAt(0) === 36
+      ? 'var(--' + x.slice(1) + ')'
+      : x
 }
 
 function getUnit(prop, fn = '') {

@@ -25,55 +25,88 @@ function http(url, {
   user = void 0,
   pass = void 0,
   headers = {},
-  config = () => {
-  },
-  raw = false,
-  background = false,
-  extract = (xhr) => JSON.parse(xhr.responseText)
+  config,
+  parse: parse2 = (x2) => JSON.parse(x2.responseText),
+  serialize = (x2) => JSON.stringify(x2)
 } = {}) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve2, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function() {
       if (xhr.readyState === XMLHttpRequest.DONE) {
         let body2 = xhr.responseText, error;
-        if (!raw) {
-          try {
-            body2 = extract(xhr);
-          } catch (e) {
-            error = e;
-          }
+        try {
+          body2 = parse2(xhr);
+        } catch (e) {
+          error = e;
         }
-        (error || xhr.status >= 300 ? reject : resolve)({
-          status: xhr.status,
-          body: body2,
-          xhr
-        });
-        redraw2 && !background && http.redraw();
+        error || xhr.status >= 300 ? reject(error || xhr.status) : resolve2(body2);
+        redraw2 && http.redraw();
       }
     };
-    xhr.onerror = xhr.onabort = (event) => reject({ event, xhr });
+    xhr.onerror = xhr.onabort = reject;
     xhr.open(method.toUpperCase(), url, true, user, pass);
-    Object.keys(headers).forEach((x2) => headers[x2] && xhr.setRequestHeader(x2, headers[x2]));
+    Object.keys(headers).forEach((xhr2) => headers[xhr2] && xhr2.setRequestHeader(xhr2, headers[xhr2]));
     "Content-Type" in headers === false && xhr.setRequestHeader("Content-Type", "application/json; charset=utf-8");
     "Accept" in headers === false && xhr.setRequestHeader("Accept", "application/json, text/*");
-    config(xhr);
-    body === null ? xhr.send() : xhr.send(raw ? body : JSON.stringify(body));
+    config && config(xhr);
+    body === null ? xhr.send() : xhr.send(serialize(body));
   });
 }
 
+// src/shared.js
+var isServer = typeof window === "undefined" || typeof window.document === "undefined";
+function isFunction(x2) {
+  return typeof x2 === "function";
+}
+function ignoredAttr(x2) {
+  return x2 === "dom" || x2 === "is" || x2 === "key" || x2 === "handleEvent" || x2 === "class" || x2 === "className";
+}
+function className(view) {
+  return (classes(view.attrs.class) + classes(view.attrs.className) + view.tag.classes).trim();
+}
+function isEvent(x2) {
+  return x2.charCodeAt(0) === 111 && x2.charCodeAt(1) === 110;
+}
+function classes(x2) {
+  if (isFunction(x2))
+    return classes(x2());
+  return x2 ? typeof x2 === "object" && !(x2 instanceof Observable) ? Object.keys(x2).reduce((acc, c) => acc + x2[c] ? c + " " : "", "") : x2 + " " : "";
+}
+
 // src/live.js
+var Observable = class {
+  constructor(live, transform) {
+    this.live = live;
+    this.transform = transform;
+  }
+  get value() {
+    return this.transform(this.live.value);
+  }
+  toString() {
+    return this.value || "";
+  }
+  valueOf() {
+    return this.value || "";
+  }
+  toJSON() {
+    return this.value || "";
+  }
+  observe(fn2) {
+    return this.live.observe((x2) => fn2(this.transform(x2)));
+  }
+};
 function Live(value2, fn2) {
   const observers = new Set();
-  typeof fn2 === "function" && observers.add(fn2);
+  isFunction("function") && observers.add(fn2);
+  live[Symbol.hasInstance] = (x2) => x2 === Observable;
   live.observe = (fn3) => (observers.add(fn3), () => observers.delete(fn3));
-  live.valueOf = live.toString = live.toJSON = () => value2;
-  live.constructor = Live;
+  live.valueOf = live.toString = live.toJSON = () => value2 || "";
   live.detach = () => {
   };
   live.reduce = reduce;
-  live.bind = (x2) => (e) => (e && (e.redraw = false), live(typeof x2 === "function" ? x2() : x2 || e));
-  live.if = (equals, a = true, b = false) => Live.from(live, (x2) => x2 === equals ? a : b);
-  live.to = (prop2) => Live.from(live, (x2) => typeof prop2 === "function" ? prop2(x2) : x2[prop2]);
+  live.set = (x2) => (e) => (e && (e.redraw = false), live(isFunction(x2) ? x2(value2) : x2 || e));
+  live.get = (prop2) => new Observable(live, (x2) => isFunction(prop2) ? prop2(x2) : x2[prop2]);
+  live.if = (equals, a = true, b = false) => new Observable(live, (x2) => x2 === equals ? a : b);
   return Object.defineProperty(live, "value", {
     get: () => value2,
     set
@@ -105,38 +138,7 @@ function call(fn2) {
 }
 
 // src/window.js
-var window_default = typeof window !== "undefined" ? window : proxy();
-function proxy() {
-  return {
-    location: {},
-    document: {
-      documentElement: {
-        style: {}
-      },
-      querySelector: () => null,
-      createElement: (x2) => {
-        const dom = {
-          tagName: x2.toUpperCase(),
-          setAttribute: (x3, v) => dom.x = v,
-          getAttribute: (x3) => dom[x3],
-          style: {
-            setProperty: () => true
-          }
-        };
-        x2 === "style" && Object.assign(dom, {
-          sheet: {
-            insertRule: (rule2, index) => index ? dom.sheet.cssRules.splice(index, 0, fixCurlies(rule2)) : dom.sheet.cssRules.push(fixCurlies(rule2)),
-            cssRules: []
-          }
-        });
-        return dom;
-      }
-    }
-  };
-}
-function fixCurlies(x2) {
-  return x2 + x2.match(/\{/g).map(() => "}").join("");
-}
+var window_default = isServer ? {} : window;
 
 // src/shorthands.js
 var initials = (acc, x2) => (acc[x2.split("-").map((x3) => x3[0]).join("")] = x2, acc);
@@ -149,10 +151,18 @@ var popular = [
   "background-image",
   "color",
   "display",
+  "flex-grow",
+  "flex-basis",
   "float",
   "flex-direction",
   "font-family",
   "font-size",
+  "font-weight",
+  "gap",
+  "grid-gap",
+  "grid-template-area",
+  "grid-template-columns",
+  "grid-template-rows",
   "height",
   "justify-content",
   "left",
@@ -169,17 +179,19 @@ var popular = [
   "padding-left",
   "padding-right",
   "padding-top",
+  "place-items",
   "right",
   "top",
   "text-align",
   "text-decoration",
   "text-transform",
-  "width"
+  "width",
+  "z-index"
 ];
 
 // src/style.js
 var doc = window_default.document;
-var style = doc && doc.querySelector && (doc.querySelector(".sin-styles") || doc.createElement("style"));
+var style = doc && doc.querySelector && (doc.querySelector("style.sin") || doc.createElement("style"));
 var vendorRegex = /^(o|O|ms|MS|Ms|moz|Moz|webkit|Webkit|WebKit)([A-Z])/;
 var snake = (x2) => x2.replace(/(\B[A-Z])/g, "-$1").toLowerCase();
 var prefix = style && style.getAttribute("id") || "sin-";
@@ -191,7 +203,6 @@ var medias = (x2) => Object.entries(x2).forEach(([k, v]) => mediasCache["@" + k]
 var pxCache = {
   flex: "",
   border: "px",
-  transform: "px",
   "line-height": "",
   "box-shadow": "px",
   "border-top": "px",
@@ -246,7 +257,7 @@ var rule = "";
 var keyframes = "";
 var name = "";
 var id = "";
-var classes = "";
+var classes2 = "";
 var x = "";
 var value = "";
 var varName = "";
@@ -292,7 +303,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
     };
   }
   const vars = {};
-  name = id = classes = rule = value = "";
+  name = id = classes2 = rule = value = "";
   selectors.length = hash = 0;
   valueStart = fontFaces = -1;
   rules = root ? {} : null;
@@ -304,35 +315,35 @@ function parse([xs, ...args], parent, nesting = 0, root) {
     rules ? parseStyles(0, j === xs.length - 1) : parseSelector(xs, j, args, parent);
     x = xs[j + 1];
     if (j < args.length) {
-      if (valueStart >= 0) {
+      if (cssVars && valueStart >= 0) {
         const before = xs[j].slice(valueStart);
         ts = prefix + Math.abs(hash).toString(31);
         vars[varName = "--" + ts + j] = { unit: getUnit(prop, last(fn)), index: j };
         value += before + "var(" + varName + ")";
         valueStart = 0;
-      } else if (args[j]) {
-        x += args[j] + ";";
+      } else {
+        args[j] && (x = args[j] + x);
         cacheable = false;
       }
     }
   }
   if (hasRules) {
     if (root) {
-      Object.entries(rules).forEach(([k, v]) => insert(k.replace(/&\s*/g, "") + "{" + v));
+      Object.entries(rules).forEach(([k, v]) => insert(k.replace(/&\s+/g, "") + "{" + v + "}"));
     } else {
       ts = prefix + Math.abs(hash).toString(31);
-      classes += (classes ? " " : "") + ts;
+      classes2 += (classes2 ? " " : "") + ts;
       specificity = "";
       for (let i = 0; i < nesting; i++)
         specificity += "." + ts;
       Object.entries(rules).forEach(([k, v]) => {
-        insert(k.replace(/&/g, "." + ts + specificity) + "{" + v);
+        insert(k.replace(/&/g, "." + ts + specificity) + "{" + v + "}");
       });
     }
   }
   const result = {
     name,
-    classes,
+    classes: classes2,
     id,
     args,
     vars,
@@ -352,7 +363,7 @@ function parseSelector(xs, j, args, parent) {
         break;
       }
     } else if (!isStartChar(char) || i === x.length) {
-      classes = (classIdx !== -1 ? x.slice(classIdx + 1, i).replace(/\./g, " ") : "") + classes + (parent ? parent.classes : "");
+      classes2 = (classIdx !== -1 ? x.slice(classIdx + 1, i).replace(/\./g, " ") : "") + classes2 + (parent ? " " + parent.classes : "");
       id === "" && (id = (idIdx !== -1 ? x.slice(idIdx, classIdx === -1 ? i : classIdx) : "") || (parent ? parent.id : null));
       name = x.slice(0, id ? idIdx - 1 : classIdx !== -1 ? classIdx : i) || parent && parent.name;
       idIdx = classIdx = -1;
@@ -371,7 +382,7 @@ function parseStyles(idx, end) {
   for (let i = idx; i <= x.length; i++) {
     char = x.charCodeAt(i);
     i < x.length && (hash = Math.imul(31, hash) + char | 0);
-    if (quote === -1 && valueStart >= 0 && (colon ? char === 59 : valueEndChar(char) || end && i === x.length)) {
+    if (quote === -1 && valueStart >= 0 && (colon ? char === 59 || char === 125 : valueEndChar(char) || end && i === x.length)) {
       numberStart > -1 && !isUnit(char) && addUnit(i);
       prop === "@import" ? insert(prop + " " + x.slice(valueStart, i), 0) : rule += propValue(prop, value + x.slice(valueStart, i));
       hasRules = true;
@@ -454,8 +465,10 @@ function addUnit(i) {
   numberStart = -1;
 }
 function formatValue(x2, unit) {
-  typeof x2 === "function" && (x2 = value());
-  return typeof x2 !== "string" || !isUnit(x2.charCodeAt(x2.length - 1)) ? x2 + unit : x2;
+  if (!x2 && x2 !== 0)
+    return "";
+  isFunction(x2) && (x2 = value());
+  return typeof x2 !== "string" || !isUnit(x2.charCodeAt(x2.length - 1)) ? x2 + unit : x2.charCodeAt(0) === 36 ? "var(--" + x2.slice(1) + ")" : x2;
 }
 function getUnit(prop2, fn2 = "") {
   prop2 = shorthand(prop2);
@@ -467,7 +480,7 @@ function getUnit(prop2, fn2 = "") {
 selectors.toString = function() {
   let a = "", b = "";
   selectors.forEach((x2) => x2.charCodeAt(0) === 64 && x2 !== "@font-face" ? a += x2 : b += x2);
-  return (a ? a + "{" : "") + (b === "@font-face" ? "" : "&") + b;
+  return (a ? a + "{" : "") + (b === "@font-face" || b === ":root" ? "" : "&") + b;
 };
 function px(x2) {
   x2 = shorthand(x2);
@@ -510,30 +523,36 @@ function params(path2, current) {
     return acc;
   }, {});
 }
-function router(s2, root, attrs2) {
-  const routed = s2(async ({ route: route2, key, ...attrs3 }, [view], context) => {
-    if (typeof view === "string")
-      view = (await import((view[0] === "/" ? "" : route2) + view)).default;
-    attrs3.route = route2;
-    return () => typeof view === "function" ? view(attrs3, [], { ...context, route: route2 }) : view;
+function resolve(view, attrs2, context) {
+  return isFunction(view) ? view(attrs2, [], context) : view;
+}
+function router(s2, root, location) {
+  const routed = s2((attrs2, [view], context) => {
+    context.route = attrs2.route;
+    return () => typeof view === "string" ? import((view[0] === "/" ? "" : route) + view).then((x2) => resolve(x2.default, attrs2, context)) : resolve(view, attrs2, context);
   });
-  Object.assign(route, attrs2);
   route.toString = route;
-  route.has = (x2) => x2 === "/" ? getPath(route.url) === root || getPath(route.url) === "/" && root === "" : getPath(route.url).indexOf(cleanSlash(root + "/" + x2)) === 0;
+  route.has = (x2) => x2 === "/" ? getPath(location) === root || getPath(location) === "/" && root === "" : getPath(location).indexOf(cleanSlash(root + "/" + x2)) === 0;
   Object.defineProperty(route, "current", {
     get() {
-      const path2 = getPath(route.url), idx = path2.indexOf("/", root.length + 1);
+      const path2 = getPath(location), idx = path2.indexOf("/", root.length + 1);
       return idx === -1 ? path2 : path2.slice(0, idx);
     }
   });
   return route;
-  function getPath(location, x2 = 0) {
-    return (s2.pathmode[0] === "#" ? location.hash.slice(s2.pathmode.length + x2) : s2.pathmode[0] === "?" ? location.search.slice(s2.pathmode.length + x2) : location.pathname.slice(s2.pathmode + x2)).replace(/(.)\/$/, "$1");
+  function getPath(location2, x2 = 0) {
+    return (s2.pathmode[0] === "#" ? location2.hash.slice(s2.pathmode.length + x2) : s2.pathmode[0] === "?" ? location2.search.slice(s2.pathmode.length + x2) : location2.pathname.slice(s2.pathmode + x2)).replace(/(.)\/$/, "$1");
   }
-  function reroute(path2, options = {}) {
-    s2.pathmode[0] === "#" ? window.location.hash = s2.pathmode + path2 : s2.pathmode[0] === "?" ? window.location.search = s2.pathmode + path2 : window.history[options.replace ? "replaceState" : "pushState"](options.state, null, s2.pathmode + path2);
-    routeState[path2] = options.state;
+  function reroute(path2, { state, replace: replace2 = false, scroll = rootChange(path2) } = {}) {
+    if (path2 === route.current)
+      return;
+    s2.pathmode[0] === "#" ? window_default.location.hash = s2.pathmode + path2 : s2.pathmode[0] === "?" ? window_default.location.search = s2.pathmode + path2 : window_default.history[replace2 ? "replaceState" : "pushState"](state, null, s2.pathmode + path2);
+    routeState[path2] = state;
     s2.redraw();
+    scroll && scrollTo(0, 0);
+  }
+  function rootChange(path2) {
+    return path2.split("/")[1] !== route.current.split("/")[1];
   }
   function route(routes, options = {}) {
     if (typeof routes === "undefined")
@@ -542,9 +561,9 @@ function router(s2, root, attrs2) {
       return reroute(cleanSlash(routes[0] === "/" ? routes : "/" + routes), options);
     if (!routing) {
       routing = true;
-      s2.pathmode[0] === "#" ? window.addEventListener("hashchange", () => s2.redraw()) : typeof window.history.pushState === "function" && window.addEventListener("popstate", s2.redraw);
+      s2.pathmode[0] === "#" ? window_default.addEventListener("hashchange", s2.redraw, { passive: true }) : isFunction(window_default.history.pushState) && window_default.addEventListener("popstate", s2.redraw, { passive: true });
     }
-    const path2 = getPath(route.url, root.length);
+    const path2 = getPath(location, root.length);
     const pathTokens = tokenizePath(path2);
     const [_, match, view = options.notFound] = Object.entries(routes).reduce((acc, [match2, view2]) => {
       match2 = tokenizePath(cleanSlash(match2));
@@ -554,8 +573,9 @@ function router(s2, root, attrs2) {
     const current = root + (match && match[0] !== "*" ? match.map((x2, i) => pathTokens[i]).join("") : "");
     if (view === void 0 || options.notFound)
       route.notFound(true);
-    const subRoute = router(s2, current.replace(/\/$/, ""), attrs2);
+    const subRoute = router(s2, current.replace(/\/$/, ""), location);
     subRoute.parent = route;
+    subRoute.root = route.parent ? route.parent.root : route;
     return routed({
       key: current || "/",
       route: subRoute,
@@ -565,26 +585,14 @@ function router(s2, root, attrs2) {
   }
 }
 
-// src/shared.js
-function ignoredAttr(x2) {
-  return x2 === "dom" || x2 === "is" || x2 === "key" || x2 === "handleEvent" || x2 === "class" || x2 === "className";
-}
-function className(view) {
-  return (classes2(view.attrs.class) + classes2(view.attrs.className) + view.tag.classes).trim();
-}
-function classes2(x2) {
-  if (typeof x2 === "function")
-    return classes2(x2());
-  return x2 ? typeof x2 === "object" ? Object.keys(x2).reduce((acc, c) => acc + x2[c] ? c + " " : "", "") : x2 + " " : "";
-}
-
 // src/index.js
-var document = window.document;
+var document = window_default.document;
 var NS = {
   html: "http://www.w3.org/1999/xhtml",
   svg: "http://www.w3.org/2000/svg",
   math: "http://www.w3.org/1998/Math/MathML"
 };
+s.isServer = isServer;
 function s(...x2) {
   const type = typeof x2[0];
   return type === "string" ? S(Object.assign([x2[0]], { raw: [] }))(...x2.slice(1)) : S.bind(type === "function" ? new View(x2) : tagged(x2));
@@ -594,6 +602,7 @@ function S(...x2) {
 }
 var components = new WeakMap();
 var removing = new WeakSet();
+var observables = new WeakMap();
 var streams = new WeakMap();
 var arrays = new WeakMap();
 var lives = new WeakMap();
@@ -612,23 +621,17 @@ s.http.redraw = redraw;
 s.medias = medias;
 s.live = Live;
 s.on = on;
-s.route = router(s, "", {
-  url: typeof window !== "undefined" && window.location,
-  notFound: () => {
-  },
-  title: () => {
-  },
-  head: () => {
-  }
-});
-s.request = (url, o) => (o ? http(url, o) : http(url.url, url)).then(({ body }) => body).catch((x2) => (x2.response = x2.body, Promise.reject(x2)));
-s.trust = (x2) => s(() => {
-  const div2 = document.createElement("div"), frag = new DocumentFragment();
-  div2.innerHTML = x2;
-  while (div2.lastChild)
-    frag.appendChild(div2.lastChild);
-  return () => frag;
-});
+s.trust = trust;
+s.route = router(s, "", window_default.location);
+function trust(x2) {
+  return s(() => {
+    const div2 = document.createElement("div"), frag = new DocumentFragment();
+    div2.innerHTML = x2;
+    while (div2.lastChild)
+      frag.appendChild(div2.lastChild);
+    return () => frag;
+  });
+}
 function on(target, event, fn2, options) {
   return () => {
     const handleEvent2 = (e) => callHandler(fn2, e);
@@ -639,19 +642,23 @@ function on(target, event, fn2, options) {
 function animate(dom) {
   dom.setAttribute("animate", "entry");
   requestAnimationFrame(() => dom.removeAttribute("animate"));
-  return () => {
+  return () => new Promise((r) => {
+    let running = false;
     dom.setAttribute("animate", "exit");
-    return new Promise((r) => dom.addEventListener("transitionend", r));
-  };
+    dom.addEventListener("transitionrun", () => (running = true, end(r)), { once: true, passive: true });
+    raf3(() => running ? end(r) : r());
+  });
+  function end(r) {
+    dom.addEventListener("transitionend", r, { once: true, passive: true });
+    dom.addEventListener("transitioncancel", r, { once: true, passive: true });
+  }
 }
-function link(dom) {
+function link(dom, route) {
   dom.addEventListener("click", (e) => {
     if (!e.defaultPrevented && (e.button === 0 || e.which === 0 || e.which === 1) && (!e.currentTarget.target || e.currentTarget.target === "_self") && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
       e.preventDefault();
       const state = attrs.get(dom).state;
-      window.history.pushState(state, null, dom.getAttribute("href"));
-      routeState[dom.getAttribute("href")] = state;
-      s.redraw();
+      route(dom.getAttribute("href"), { state });
     }
   });
 }
@@ -667,16 +674,26 @@ function isAttrs(x2) {
   return x2 && typeof x2 === "object" && !(x2 instanceof Date) && !Array.isArray(x2) && !(x2 instanceof View);
 }
 function mount(dom, view, attrs2 = {}, context = {}) {
-  if (typeof view !== "function") {
+  if (!isFunction(view)) {
     context = attrs2 || {};
     attrs2 = view || {};
     view = dom;
     dom = document.body;
   }
-  attrs2.route = context.route = s.route;
+  context.status = s.live(200);
+  context.title = s.live(document.title);
+  context.head = s.live("");
+  if (isServer)
+    return { view, attrs: attrs2, context };
+  context.title.observe((x2) => document.title = x2);
+  attrs2.route = context.route = router(s, "", context.location || window_default.location);
+  "catcher" in context === false && (context.catcher = catcher);
   mounts.set(dom, { view, attrs: attrs2, context });
   draw({ view, attrs: attrs2, context }, dom);
-  return view;
+}
+function catcher(error) {
+  console.error(error);
+  return s`pre;m 0;c white;bc #ff0033;p 16;br 6;overflow auto`(s`code`(error.stack));
 }
 function redraw() {
   idle && (requestAnimationFrame(globalRedraw), idle = false);
@@ -782,7 +799,7 @@ function insertBefore(parent, { first, last: last2 }, before) {
   } while (parent.insertBefore(dom, before) !== last2);
 }
 function update(dom, view, context, parent, stack, create) {
-  return typeof view === "function" ? view.constructor === Live ? updateLive(dom, view, context, parent, stack, create) : update(dom, view(), context, parent, stack, create) : view instanceof View ? updateView(dom, view, context, parent, stack, create) : Array.isArray(view) ? updateArray(dom, view, context, parent) : view instanceof Node ? Ret(view) : updateValue(dom, view, parent, create);
+  return isFunction(view) ? view instanceof Observable ? updateLive(dom, view, context, parent, stack, create) : update(dom, view(), context, parent, stack, create) : view instanceof View ? updateView(dom, view, context, parent, stack, create) : Array.isArray(view) ? updateArray(dom, view, context, parent) : view instanceof Node ? Ret(view) : updateValue(dom, view, parent, create);
 }
 function updateView(dom, view, context, parent, stack, create) {
   return view.component ? updateComponent(dom, view, context, parent, stack, create) : updateElement(dom, view, context, parent, create);
@@ -804,8 +821,23 @@ function updateLive(dom, view, context, parent) {
 function Ret(dom, first = dom, last2 = first) {
   return { dom, first, last: last2 };
 }
+function nthAfter(dom, n) {
+  while (dom && --n > 0)
+    dom = dom.nextSibling;
+  return dom;
+}
+function fromComment(dom) {
+  if (!dom)
+    return;
+  const last2 = dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91 && nthAfter(dom.nextSibling, parseInt(dom.nodeValue.slice(1)));
+  last2 && arrays.set(dom, last2);
+  return last2;
+}
+function getArray(dom) {
+  return arrays.has(dom) ? arrays.get(dom) : fromComment(dom);
+}
 function updateArray(dom, view, context, parent) {
-  const last2 = arrays.has(dom) ? arrays.get(dom) : dom;
+  const last2 = getArray(dom) || dom;
   const comment = updateValue(dom, "[" + view.length, parent, false, 8);
   if (parent) {
     const after = last2 ? last2.nextSibling : null;
@@ -832,7 +864,7 @@ function updateElement(dom, view, context, parent, create = dom === null || tagC
   create && replace(dom, dom = createElement(view, context), parent);
   const prev = attributes(dom, view, context, create);
   view.attrs.domSize = view.children && view.children.length;
-  view.attrs.domSize ? updates(dom, view.children, context) : prev && prev.domSize && dom.hasChildNodes() && removeChildren(dom.firstChild, dom);
+  true ? updates(dom, view.children, context) : prev && prev.domSize && dom.hasChildNodes() && removeChildren(dom.firstChild, dom);
   context.NS = previousNS;
   return Ret(dom);
 }
@@ -842,11 +874,6 @@ function tagChanged(dom, view) {
 function createElement(view, context) {
   const is = view.attrs.is;
   return context.NS || (context.NS = view.attrs.xmlns || NS[view.tag.name]) ? is ? document.createElementNS(context.NS, view.tag.name, { is }) : document.createElementNS(context.NS, view.tag.name) : is ? document.createElement(view.tag.name || "DIV", { is }) : document.createElement(view.tag.name || "DIV");
-}
-function removeChildren(dom, parent) {
-  do
-    dom = remove(dom, parent).after;
-  while (dom);
 }
 function Stack() {
   const xs = [];
@@ -861,17 +888,17 @@ function Stack() {
     },
     add(view, context, parent, stack2) {
       const instance = {
-        id: window.count = (window.count || 0) + 1,
+        id: window_default.count = (window_default.count || 0) + 1,
         key: null,
         view: view.component[0],
-        catch: view.component[1],
-        loading: view.component[2]
+        catcher: view.component[1] || context.catcher,
+        loader: view.component[2] || context.loader
       };
       instance.context = createContext(view, context, parent, stack2, instance);
       const next = catchInstance(true, instance, view, instance.context, stack2);
-      instance.promise = next && typeof next.then === "function" && next;
-      instance.stateful = instance.promise || typeof next === "function";
-      instance.view = instance.promise ? instance.loading : next;
+      instance.promise = next && isFunction(next.then) && next;
+      instance.stateful = instance.promise || isFunction(next);
+      instance.view = instance.promise ? instance.loader : next;
       xs.length = i;
       xs[i] = instance;
       return xs[top = i++];
@@ -898,27 +925,34 @@ function createContext(view, context, parent, stack, instance) {
     ignore: { value: (x2) => instance.ignore = x2 }
   });
 }
-function updateComponent(dom, view, context, parent, stack = components.has(dom) ? components.get(dom) : Stack(), create = stack.exhausted || stack.key !== view.key, force = false) {
-  const instance = create ? stack.add(view, context, parent, stack) : stack.next(view, context, parent, stack);
+function hydrate(dom) {
+  let last2 = dom.nextSibling;
+  while (last2 && (last2.nodeType !== 8 || last2.nodeValue !== dom.nodeValue))
+    last2 = last2.nextSibling;
+  return Ret(dom, dom, last2);
+}
+function dehydrate(x2, stack) {
+  components.delete(x2.first);
+  components.set(x2.first.nextSibling, stack);
+  x2.first.remove();
+  x2.last.remove();
+}
+function updateComponent(dom, component, context, parent, stack = components.has(dom) ? components.get(dom) : Stack(), create = stack.exhausted || stack.key !== component.key, force = false) {
+  const instance = create ? stack.add(component, context, parent, stack) : stack.next(component, context, parent, stack);
   if (!create && !force && instance.ignore) {
     stack.pop();
     return stack.dom;
   }
-  context = instance.context;
-  view.key && (instance.key = view.key);
-  let next;
-  if (create && instance.promise) {
-    next = update(dom, catchInstance(create, instance, view, context, stack), context, parent, stack, create);
-    instance.promise.then((view2) => components.has(next.first) && (instance.view = view2)).catch((error) => components.has(next.first) && (instance.error = error, instance.view = view.component[1])).then(redraw);
-  } else {
-    next = update(dom, mergeTag(catchInstance(create, instance, view, context, stack), view), context, parent, stack, create || void 0);
-  }
+  component.key && create && (instance.key = component.key);
+  const hydrating = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.endsWith("async");
+  const next = instance.next = hydrating ? hydrate(dom) : update(dom, mergeTag(catchInstance(create, instance, component, instance.context, stack), component), instance.context, parent, stack, create || void 0);
+  create && instance.promise && instance.promise.then((view) => instance.view = view).catch((error) => instance.view = instance.catcher.bind(null, error)).then(() => components.has(instance.next.first) && (hydrating && dehydrate(next, stack), instance.promise = false, redraw()));
   const changed = dom !== next.first;
   if (stack.pop() && (changed || create)) {
     changed && components.delete(dom);
-    stack.dom = next;
+    stack.dom = instance.next = next;
     components.set(next.first, stack);
-    !instance.promise && giveLife(next.first, view.attrs, view.children, context, stack.life);
+    !instance.promise && giveLife(next.first, component.attrs, component.children, instance.context, stack.life);
   }
   return next;
 }
@@ -926,19 +960,18 @@ function catchInstance(create, instance, view, context, stack) {
   try {
     return resolveInstance(create, instance, view, context);
   } catch (error) {
-    instance.error = error;
-    instance.view = instance.catch || context.catch;
+    instance.view = instance.catcher.bind(null, error);
     stack.cut();
     return resolveInstance(instance.stateful || create, instance, view, context);
   }
 }
 function resolveInstance(create, instance, view, context) {
-  return instance.stateful || create ? typeof instance.view === "function" ? instance.view(instance.error ? { ...view.attrs, error: instance.error } : view.attrs, view.children, context) : instance.view : view.component[0](view.attrs, view.children, context);
+  return instance.stateful || create ? isFunction(instance.view) ? instance.view(view.attrs, view.children, context) : instance.view : view.component[0](view.attrs, view.children, context);
 }
 function mergeTag(a, b) {
-  if (!b?.tag)
+  if (!b || !b.tag)
     return a;
-  if (!a?.tag)
+  if (!a || !a.tag)
     return a.tag = b.tag, a;
   a.tag = {
     id: b.tag.id || a.tag.id,
@@ -956,26 +989,26 @@ function empty(o) {
   return true;
 }
 function attributes(dom, view, context, init) {
-  let tag = view.tag, attr, value2;
+  let tag = view.tag, value2;
   const prev = !init && attrs.has(dom) ? attrs.get(dom) : void 0;
   prev && view.attrs && (view.attrs.handleEvent = prev.handleEvent);
   "id" in view.attrs === false && view.tag.id && (view.attrs.id = view.tag.id);
-  if (init && view.tag.classes || view.attrs.class !== (prev && prev.class) || view.attrs.className !== (prev && prev.className))
-    dom.className = className(view);
-  init && view.attrs.class?.observe(() => dom.className = className(view));
-  init && view.attrs.className?.observe(() => dom.className = className(view));
-  for (attr in view.attrs) {
+  if (init && view.tag.classes || view.attrs.class !== (prev && prev.class) || view.attrs.className !== (prev && prev.className) || dom.className !== view.tag.classes)
+    setClass(dom, view);
+  init && observe(dom, view.attrs.class, () => setClass(dom, view));
+  init && observe(dom, view.attrs.className, () => setClass(dom, view));
+  for (const attr in view.attrs) {
     if (!ignoredAttr(attr) && (!prev || prev[attr] !== view.attrs[attr])) {
       value2 = view.attrs[attr];
-      init && initLive(dom, attr, value2, context);
+      init && observe(dom, value2, (x2) => setAttribute(dom, attr, x2, context));
       updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value2);
       value2 = true;
     }
   }
   if (prev) {
-    for (const attr2 in prev) {
-      if (attr2 in view.attrs === false) {
-        isEvent(attr2) ? removeEvent(dom, attrs, attr2) : dom.removeAttribute(attr2);
+    for (const attr in prev) {
+      if (attr in view.attrs === false) {
+        isEvent(attr) ? removeEvent(dom, attrs, attr) : dom.removeAttribute(attr);
       }
     }
   }
@@ -988,9 +1021,17 @@ function attributes(dom, view, context, init) {
   value2 ? attrs.set(dom, view.attrs) : prev && empty(view.attrs) && attrs.delete(dom);
   return prev;
 }
-function initLive(dom, attr, value2, context) {
-  if (value2 && value2.constructor === Live)
-    value2.observe((x2) => setAttribute(dom, attr, x2, context));
+function observe(dom, x2, fn2) {
+  if (!(x2 instanceof Observable))
+    return;
+  const has = observables.has(dom);
+  const xs = has ? observables.get(dom) : new Set();
+  !has && observables.set(dom, xs);
+  xs.add(x2.observe(fn2));
+}
+function setClass(dom, view) {
+  const x2 = className(view);
+  x2 ? dom.className = x2 : dom.removeAttribute("class");
 }
 function setVars(dom, vars, args, init) {
   for (const id2 in vars) {
@@ -1000,21 +1041,21 @@ function setVars(dom, vars, args, init) {
   }
 }
 function setVar(dom, id2, value2, unit, init, after) {
-  if (typeof value2 !== "function") {
+  if (!isFunction(value2)) {
     dom.style.setProperty(id2, formatValue(value2, unit));
     after && afterUpdate.push(() => dom.style.setProperty(id2, formatValue(value2, unit)));
     return;
   }
-  if (value2.constructor !== Live)
+  if (!(value2 instanceof Observable))
     return setVar(dom, id2, value2(dom), unit, init, init);
   if (init) {
     value2.observe((x2) => dom.style.setProperty(id2, formatValue(x2, unit)));
-    setVar(dom, id2, value2(), unit, init, init);
+    setVar(dom, id2, value2.value, unit, init, init);
   }
 }
 function giveLife(dom, attrs2, children, context, life) {
   afterUpdate.push(() => {
-    life = [].concat(life).map((x2) => typeof x2 === "function" && x2(dom, attrs2, children, context)).filter((x2) => typeof x2 === "function");
+    life = [].concat(life).map((x2) => isFunction(x2) && x2(dom, attrs2, children, context)).filter((x2) => isFunction(x2));
     life.length && lives.set(dom, (lives.get(dom) || []).concat(life));
   });
 }
@@ -1023,7 +1064,7 @@ function updateAttribute(dom, context, attrs2, attr, old, value2) {
     return;
   if (attr === "href" && value2 && !value2.match(/^([a-z]+:)?\/\//)) {
     value2 = s.pathmode + cleanSlash(value2);
-    link(dom);
+    link(dom, context.route);
   }
   const on2 = isEvent(attr);
   if (on2 && typeof old === typeof value2)
@@ -1031,12 +1072,9 @@ function updateAttribute(dom, context, attrs2, attr, old, value2) {
   on2 ? value2 ? addEvent(dom, attrs2, attr) : removeEvent(dom, attrs2, attr) : setAttribute(dom, attr, value2, context);
 }
 function setAttribute(dom, attr, value2, context) {
-  if (typeof value2 === "function")
+  if (isFunction(value2))
     return setAttribute(dom, attr, value2(), context);
   !value2 && value2 !== 0 ? dom.removeAttribute(attr) : !context.NS && attr in dom && typeof value2 !== "boolean" ? dom[attr] = value2 : dom.setAttribute(attr, value2 === true ? "" : value2);
-}
-function isEvent(x2) {
-  return x2.charCodeAt(0) === 111 && x2.charCodeAt(1) === 110;
 }
 function removeEvent(dom, attrs2, name2) {
   dom.removeEventListener(name2.slice(2), attrs2.handleEvent);
@@ -1051,9 +1089,9 @@ function handleEvent(dom) {
   };
 }
 function callHandler(handler, e) {
-  const result = typeof handler === "function" ? handler.call(e.currentTarget, e) : typeof handler.handleEvent === "function" && handler.handleEvent(e);
-  e.redraw !== false && handler.constructor !== Live && redraw();
-  result && typeof result.then === "function" && result.then(redraw);
+  const result = isFunction(handler) ? handler.call(e.currentTarget, e) : isFunction(handler.handleEvent) && handler.handleEvent(e);
+  e.redraw !== false && !(handler instanceof Observable) && redraw();
+  result && isFunction(result.then) && result.then(redraw);
 }
 function replace(old, dom, parent) {
   if (!parent)
@@ -1064,23 +1102,33 @@ function replace(old, dom, parent) {
   }
   return dom;
 }
-function defer(dom, parent, children) {
-  if (!lives.has(dom))
-    return children.length && (removing.add(dom), Promise.allSettled(children));
-  const life = lives.get(dom).map((x2) => x2()).filter((x2) => x2 && typeof x2.then === "function");
-  lives.delete(dom);
-  if (life.length === 0)
-    return children.length && (removing.add(dom), Promise.allSettled(children));
+function deferredRemove(dom, parent, xs) {
   removing.add(dom);
-  return Promise.allSettled(life.concat(children)).then(() => {
+  return Promise.allSettled(xs).then(() => {
     removing.delete(dom);
     remove(dom, parent);
   });
 }
-function removeArray(dom, parent, lives2) {
-  if (!arrays.has(dom))
+function callLogThrow(x2) {
+  try {
+    return x2();
+  } catch (error) {
+    console.error(error);
+  }
+}
+function deferRemove(dom, parent, children) {
+  if (!lives.has(dom))
+    return children.length && deferredRemove(dom, parent, children);
+  const life = lives.get(dom).map(callLogThrow).filter((x2) => x2 && isFunction(x2.then));
+  lives.delete(dom);
+  if (life.length === 0)
+    return children.length && deferredRemove(dom, parent, children);
+  return deferredRemove(dom, parent, life.concat(children));
+}
+function removeArray(dom, parent, lives2, instant) {
+  const last2 = getArray(dom);
+  if (!last2)
     return dom.nextSibling;
-  const last2 = arrays.get(dom);
   if (dom === last2)
     return dom.nextSibling;
   const after = last2.nextSibling;
@@ -1088,21 +1136,32 @@ function removeArray(dom, parent, lives2) {
   if (!dom)
     return after;
   do {
-    const x2 = remove(dom, parent, false);
+    const x2 = remove(dom, parent, instant);
     x2.life && lives2.push(x2.life);
     dom = x2.after;
   } while (dom && dom !== after);
   return after;
+}
+function removeChild(parent, dom) {
+  observables.has(dom) && observables.get(dom).forEach((x2) => x2());
+  components.delete(dom);
+  parent.removeChild(dom);
 }
 function remove(dom, parent, instant = true) {
   if (!parent || removing.has(dom))
     return { after: dom.nextSibling, life: null };
   const lives2 = [];
   let after = dom.nextSibling;
-  if (dom.nodeType === 8)
-    after = removeArray(dom, parent, lives2);
+  if (dom.nodeType === 8 && dom.nodeValue.endsWith("async")) {
+    after = dom.nextSibling;
+    removeChild(parent, dom);
+    dom = after;
+    after = dom.nextSibling;
+  }
+  if (dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91)
+    after = removeArray(dom, parent, lives2, instant);
   if (dom.nodeType !== 1) {
-    instant && parent.removeChild(dom);
+    instant && removeChild(parent, dom);
     return { after, life: null };
   }
   let child = dom.firstChild;
@@ -1111,12 +1170,15 @@ function remove(dom, parent, instant = true) {
     life2 && lives2.push(life2);
     child = child.nextSibling;
   }
-  const life = defer(dom, parent, lives2);
-  instant && !life && parent.removeChild(dom);
+  const life = deferRemove(dom, parent, lives2);
+  instant && !life && removeChild(parent, dom);
   return {
     after,
     life
   };
+}
+function raf3(fn2) {
+  requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(fn2)));
 }
 export {
   s as default

@@ -2,42 +2,93 @@ import s from './src/index.js'
 
 window.run = s.redraw
 
-s.mount(() => [
-  s`button`({
-    onclick: () => p('redraw')
-  },
-    Date.now()
-  ),
-  s((attrs, children, { reload, ignore, redraw }) => {
-    ignore(true)
-    const x = Date.now()
-    return () => s`button`({
-      onclick: e => {
-        redraw()
-        e.redraw = false
+let toggled = true
+
+s.mount(() => s`;w 100;h 100;bc blue`({
+  onclick: () => toggled = !toggled
+},
+  (toggled ? [] : [1, 2, 3].map(x => s`li`({ key: x }, x)))
+))
+
+
+
+
+
+
+
+function cssFun() {
+  s.css`
+    * {
+      animation 1s {
+        from { o 0 }
       }
-    }, x + ' - ' + Date.now())
+    }
+  `
+
+  const bc = s(({ bc }, _, { route }) => {
+    return () => [...Array(10)].map((x, i) =>
+      s`a
+        d grid
+        pi center
+        ff sans-serif
+        w 300
+        h 300
+        m 80
+        bc ${ bc }
+        fs 100
+      `({
+        href: '/yellow'
+      },
+        s`nav
+          fs 20
+        `(
+          ['one', 'two', 'three'].map(x =>
+            s`a`({ href: route + i + '/' + x }, x)
+          )
+        ),
+        route({
+          ['/' + i + '/']: 0,
+          ['/' + i + '/one']: 1,
+          ['/' + i + '/two']: 2,
+          ['/' + i + '/three']: 3,
+          '*': 7
+        })
+      )
+    )
   })
-])
 
+  s.mount(({ route }) => [
+    s`nav`(
+      ['/', '/red', '/blue', '/yellow'].map(x =>
+        s`a
+          d inline-block
+          m 20
+        `({ href: x }, x)
+      )
+    ),
+    s`main`(
+      route({
+        '/': bc,
+        '/:bc': bc
+      })
+    )
+  ])
+}
 
+function liveTest() {
+  const counter = s.live(1, p)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  s.mount(() => [
+    s`button
+      background ${ counter.if(5, 'blue', 'red') }
+    `({
+      onclick: counter.set(x => x + 1)
+    },
+      'Increment', Date.now()
+    ),
+    counter
+  ])
+}
 
 function nestedRouting() {
   const nested = s(async({ id }, children, { route }) => {

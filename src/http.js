@@ -14,10 +14,9 @@ export default function http(url, {
   user = undefined,
   pass = undefined,
   headers = {},
-  config = () => { /* noop */ },
-  raw = false,
-  background = false,
-  extract = xhr => JSON.parse(xhr.responseText)
+  config,
+  parse = x => JSON.parse(x.responseText),
+  serialize = x => JSON.stringify(x)
 } = {}) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
@@ -27,30 +26,27 @@ export default function http(url, {
         let body = xhr.responseText
           , error
 
-        if (!raw) {
-          try {
-            body = extract(xhr)
-          } catch (e) {
-            error = e
-          }
+        try {
+          body = parse(xhr)
+        } catch (e) {
+          error = e
         }
 
-        (error || xhr.status >= 300 ? reject : resolve)({
-          status: xhr.status,
-          body,
-          xhr
-        })
-        redraw && !background && http.redraw()
+        error || xhr.status >= 300
+          ? reject(error || xhr.status)
+          : resolve(body)
+
+        redraw && http.redraw()
       }
     }
-    xhr.onerror = xhr.onabort = event => reject({ event, xhr })
+    xhr.onerror = xhr.onabort = reject
     xhr.open(method.toUpperCase(), url, true, user, pass)
-    Object.keys(headers).forEach(x => headers[x] && xhr.setRequestHeader(x, headers[x]))
+    Object.keys(headers).forEach(xhr => headers[xhr] && xhr.setRequestHeader(xhr, headers[xhr]))
     'Content-Type' in headers === false && xhr.setRequestHeader('Content-Type', 'application/json; charset=utf-8')
     'Accept' in headers === false && xhr.setRequestHeader('Accept', 'application/json, text/*')
-    config(xhr)
+    config && config(xhr)
     body === null
       ? xhr.send()
-      : xhr.send(raw ? body : JSON.stringify(body))
+      : xhr.send(serialize(body))
   })
 }

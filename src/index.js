@@ -428,12 +428,8 @@ function updateElement(
     parent
   )
 
-  const prev = attributes(dom, view, context, create)
-  view.attrs.domSize = view.children && view.children.length
-
-  true //view.attrs.domSize
-    ? updates(dom, view.children, context)
-    : prev && prev.domSize && dom.hasChildNodes() && removeChildren(dom.firstChild, dom)
+  attributes(dom, view, context, create)
+  updates(dom, view.children, context)
 
   context.NS = previousNS
 
@@ -562,7 +558,6 @@ function updateComponent(
       instance.context,
       parent,
       stack,
-      //instance.promise === false ||
       create || undefined
     )
 

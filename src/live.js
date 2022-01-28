@@ -19,7 +19,6 @@ export class Observable {
 export default function Live(value, fn) {
   const observers = new Set()
   isFunction('function') && observers.add(fn)
-  live[Symbol.hasInstance] = x => x === Observable
   live.observe = fn => (observers.add(fn), () => observers.delete(fn))
   live.valueOf = live.toString = live.toJSON = () => value || ''
   live.detach = () => { /* */ }

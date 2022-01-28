@@ -1,10 +1,10 @@
 import View from './view.js'
 import http from './http.js'
-import live, { Observable } from './live.js'
+import live from './live.js'
 import window from './window.js'
 import { parse, medias, formatValue } from './style.js'
 import { router, cleanSlash } from './router.js'
-import { className, ignoredAttr, isEvent, isServer, isFunction } from './shared.js'
+import { className, ignoredAttr, isEvent, isServer, isFunction, isObservable } from './shared.js'
 
 const document = window.document
     , NS = {
@@ -311,7 +311,7 @@ function insertBefore(parent, { first, last }, before) {
 
 function update(dom, view, context, parent, stack, create) {
   return isFunction(view)
-    ? view instanceof Observable
+    ? isObservable(view)
       ? updateLive(dom, view, context, parent, stack, create)
       : update(dom, view(), context, parent, stack, create)
     : view instanceof View
@@ -686,7 +686,7 @@ function attributes(dom, view, context, init) {
 }
 
 function observe(dom, x, fn) {
-  if (!(x instanceof Observable))
+  if (!(isObservable(x)))
     return
 
   const has = observables.has(dom)
@@ -719,7 +719,7 @@ function setVar(dom, id, value, unit, init, after) {
     return
   }
 
-  if (!(value instanceof Observable))
+  if (!(isObservable(value)))
     return setVar(dom, id, value(dom), unit, init, init)
 
   if (init) {
@@ -789,7 +789,7 @@ function callHandler(handler, e) {
     ? handler.call(e.currentTarget, e)
     : isFunction(handler.handleEvent) && handler.handleEvent(e)
 
-  e.redraw !== false && !(handler instanceof Observable) && redraw()
+  e.redraw !== false && !(isObservable(handler)) && redraw()
   result && isFunction(result.then) && result.then(redraw)
 }
 

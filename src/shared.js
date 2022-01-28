@@ -1,6 +1,8 @@
-import { Observable } from './live.js'
-
 export const isServer = typeof window === 'undefined' || typeof window.document === 'undefined'
+
+export function isObservable(x) {
+  return x && isFunction(x.observe)
+}
 
 export function isFunction(x) {
   return typeof x === 'function'
@@ -23,7 +25,7 @@ function classes(x) {
     return classes(x())
 
   return x
-    ? typeof x === 'object' && !(x instanceof Observable)
+    ? typeof x === 'object' && !(isObservable(x))
       ? Object.keys(x).reduce((acc, c) => acc + x[c] ? c + ' ' : '', '')
       : x + ' '
     : ''

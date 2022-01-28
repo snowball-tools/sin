@@ -78,9 +78,19 @@ function on(target, event, fn, options) {
 function animate(dom) {
   dom.setAttribute('animate', 'entry')
   requestAnimationFrame(() => dom.removeAttribute('animate'))
-  return () => {
+  return () => new Promise(r => {
+    let running = false
     dom.setAttribute('animate', 'exit')
-    return new Promise(r => dom.addEventListener('transitionend', r))
+    dom.addEventListener('transitionrun', () => (running = true, end(r)), { once: true, passive: true })
+    raf3(() => running
+      ? end(r)
+      : r()
+    )
+  })
+
+  function end(r) {
+    dom.addEventListener('transitionend', r, { once: true, passive: true })
+    dom.addEventListener('transitioncancel', r, { once: true, passive: true })
   }
 }
 
@@ -799,4 +809,8 @@ function remove(dom, parent, instant = true) {
     after,
     life
   }
+}
+
+function raf3(fn) {
+  requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(fn)))
 }

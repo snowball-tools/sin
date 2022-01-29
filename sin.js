@@ -11,6 +11,41 @@ var View = class {
   }
 };
 
+// src/shared.js
+var isServer = typeof window === "undefined" || typeof window.document === "undefined";
+function snake(x2) {
+  return x2.replace(/(\B[A-Z])/g, "-$1").toLowerCase();
+}
+function isObservable(x2) {
+  return x2 && isFunction(x2.observe);
+}
+function isFunction(x2) {
+  return typeof x2 === "function";
+}
+function isEvent(x2) {
+  return x2.charCodeAt(0) === 111 && x2.charCodeAt(1) === 110;
+}
+function isCssVar(x2) {
+  return x2[0] === "-" && x2[1] === "-";
+}
+function ignoredAttr(x2) {
+  return x2 === "dom" || x2 === "is" || x2 === "key" || x2 === "handleEvent" || x2 === "class" || x2 === "className" || x2 === "style";
+}
+function className(view) {
+  return (classes(view.attrs.class) + classes(view.attrs.className) + view.tag.classes).trim();
+}
+function asArray(x2) {
+  return Array.isArray(x2) ? x2 : [x2];
+}
+function classes(x2) {
+  if (isFunction(x2))
+    return classes(x2());
+  return x2 ? typeof x2 === "object" && !isObservable(x2) ? Object.keys(x2).reduce((acc, c) => acc + x2[c] ? c + " " : "", "") : x2 + " " : "";
+}
+
+// src/window.js
+var window_default = isServer ? {} : window;
+
 // src/http.js
 ["get", "put", "post", "delete", "patch"].forEach((x2) => http[x2] = function(url, object = {}) {
   object.method = x2;
@@ -30,9 +65,9 @@ function http(url, {
   serialize = (x2) => JSON.stringify(x2)
 } = {}) {
   return new Promise((resolve2, reject) => {
-    const xhr = new XMLHttpRequest();
+    const xhr = new window_default.XMLHttpRequest();
     xhr.onreadystatechange = function() {
-      if (xhr.readyState === XMLHttpRequest.DONE) {
+      if (xhr.readyState === xhr.DONE) {
         let body2 = xhr.responseText, error;
         try {
           body2 = parse2(xhr);
@@ -40,10 +75,10 @@ function http(url, {
           error = e;
         }
         error || xhr.status >= 300 ? reject(error || xhr.status) : resolve2(body2);
-        redraw2 && http.redraw();
+        redraw2 && http.redraw && http.redraw();
       }
     };
-    xhr.onerror = xhr.onabort = reject;
+    xhr.onerror = xhr.onabort = (error) => reject(error || xhr.statusText);
     xhr.open(method.toUpperCase(), url, true, user, pass);
     Object.keys(headers).forEach((xhr2) => headers[xhr2] && xhr2.setRequestHeader(xhr2, headers[xhr2]));
     "Content-Type" in headers === false && xhr.setRequestHeader("Content-Type", "application/json; charset=utf-8");
@@ -51,32 +86,6 @@ function http(url, {
     config && config(xhr);
     body === null ? xhr.send() : xhr.send(serialize(body));
   });
-}
-
-// src/shared.js
-var isServer = typeof window === "undefined" || typeof window.document === "undefined";
-function isObservable(x2) {
-  return x2 && isFunction(x2.observe);
-}
-function isFunction(x2) {
-  return typeof x2 === "function";
-}
-function ignoredAttr(x2) {
-  return x2 === "dom" || x2 === "is" || x2 === "key" || x2 === "handleEvent" || x2 === "class" || x2 === "className";
-}
-function className(view) {
-  return (classes(view.attrs.class) + classes(view.attrs.className) + view.tag.classes).trim();
-}
-function isEvent(x2) {
-  return x2.charCodeAt(0) === 111 && x2.charCodeAt(1) === 110;
-}
-function asArray(x2) {
-  return Array.isArray(x2) ? x2 : [x2];
-}
-function classes(x2) {
-  if (isFunction(x2))
-    return classes(x2());
-  return x2 ? typeof x2 === "object" && !isObservable(x2) ? Object.keys(x2).reduce((acc, c) => acc + x2[c] ? c + " " : "", "") : x2 + " " : "";
 }
 
 // src/live.js
@@ -142,9 +151,6 @@ function call(fn2) {
   return fn2();
 }
 
-// src/window.js
-var window_default = isServer ? {} : window;
-
 // src/shorthands.js
 var initials = (acc, x2) => (acc[x2.split("-").map((x3) => x3[0]).join("")] = x2, acc);
 var popular = [
@@ -198,7 +204,6 @@ var popular = [
 var doc = window_default.document;
 var style = doc && doc.querySelector && (doc.querySelector("style.sin") || doc.createElement("style"));
 var vendorRegex = /^(ms|moz|webkit)[-A-Z]/i;
-var snake = (x2) => x2.replace(/(\B[A-Z])/g, "-$1").toLowerCase();
 var prefix = style && style.getAttribute("id") || "sin-";
 var div = doc.createElement("div");
 var mediasCache = {};
@@ -239,6 +244,7 @@ var quoteChar = (x2) => x2 === 34 || x2 === 39;
 var propEndChar = (x2) => x2 === 32 || x2 === 58 || x2 === 9;
 var valueEndChar = (x2) => x2 === 59 || x2 === 10 || x2 === 125;
 var noSpace = (x2) => x2 === 58 || x2 === 64 || x2 === 38 || x2 === 91;
+var strict = (x2) => x2 === 59 || x2 === 125;
 var last = (xs) => xs[xs.length - 1];
 var selectors = [];
 var fn = [];
@@ -387,7 +393,7 @@ function parseStyles(idx, end) {
   for (let i = idx; i <= x.length; i++) {
     char = x.charCodeAt(i);
     i < x.length && (hash = Math.imul(31, hash) + char | 0);
-    if (quote === -1 && valueStart >= 0 && (colon ? char === 59 || char === 125 : valueEndChar(char) || end && i === x.length)) {
+    if (quote === -1 && valueStart >= 0 && (colon ? strict(char) : valueEndChar(char) || end && i === x.length)) {
       numberStart > -1 && !isUnit(char) && addUnit(i);
       prop === "@import" ? insert(prop + " " + x.slice(valueStart, i), 0) : rule += propValue(prop, value + x.slice(valueStart, i));
       hasRules = true;
@@ -489,7 +495,7 @@ selectors.toString = function() {
 };
 function px(x2) {
   x2 = shorthand(x2);
-  if (x2[0] === "-" && x2[1] === "-" || x2 in pxCache)
+  if (isCssVar(x2) || x2 in pxCache)
     return pxCache[x2];
   try {
     div.style[x2] = "1px";
@@ -508,6 +514,24 @@ function vendor(x2) {
     x2.indexOf("--") !== 0 && console.log(x2, "not found");
   }
   return x2;
+}
+
+// src/query.js
+function Query(s2, l) {
+  const U = URLSearchParams;
+  let last2 = l.search;
+  let usp = new U(last2);
+  const query = { replace: (x2) => (usp = new U(x2), update2()) };
+  for (let key in U.prototype)
+    query[key] = (...xs) => (key = USP()[key](...xs), update2(), key);
+  return query;
+  function USP() {
+    return last2 === l.search ? usp : (last2 = l.search, usp = new U(last2));
+  }
+  function update2() {
+    window_default.history.pushState(window_default.history.state, null, l.pathname + (usp + "" ? "?" + (usp + "").replace(/=$/g, "") : "") + l.hash);
+    s2.redraw();
+  }
 }
 
 // src/router.js
@@ -537,6 +561,7 @@ function router(s2, root, rootContext) {
     context.route = attrs2.route;
     return () => typeof view === "string" ? import((view[0] === "/" ? "" : route) + view).then((x2) => resolve(x2.default, attrs2, context)) : resolve(view, attrs2, context);
   });
+  route.query = Query(s2, rootContext.location);
   route.toString = route;
   route.has = (x2) => x2 === "/" ? getPath(location) === root || getPath(location) === "/" && root === "" : getPath(location).indexOf(cleanSlash(root + "/" + x2)) === 0;
   Object.defineProperty(route, "path", {
@@ -623,7 +648,7 @@ s.mount = mount;
 s.css = (...x2) => parse(x2, null, 0, true);
 s.animate = animate;
 s.http = http;
-s.http.redraw = redraw;
+s.http.redraw = !s.isServer && redraw;
 s.medias = medias;
 s.live = Live;
 s.on = on;
@@ -688,6 +713,7 @@ function mount(dom, view, attrs2 = {}, context = {}) {
   context.status = s.live(200);
   context.title = s.live(document.title);
   context.head = s.live("");
+  context.headers = s.live({});
   "location" in context || (context.location = window_default.location);
   "catcher" in context || (context.catcher = catcher);
   if (isServer)
@@ -699,7 +725,7 @@ function mount(dom, view, attrs2 = {}, context = {}) {
 }
 function catcher(error) {
   console.error(error);
-  return s`pre;m 0;c white;bc #ff0033;p 16;br 6;overflow auto`(s`code`(error.message + "\n" + error.stack));
+  return s`pre;m 0;c white;bc #ff0033;p 16;br 6;overflow auto`(s`code`(error && error.stack || error || new Error("Unknown Error").stack));
 }
 function redraw() {
   idle && (requestAnimationFrame(globalRedraw), idle = false);
@@ -999,7 +1025,7 @@ function empty(o) {
   return true;
 }
 function attributes(dom, view, context, init) {
-  let tag = view.tag, value2;
+  let tag = view.tag, store = false;
   const prev = !init && attrs.has(dom) ? attrs.get(dom) : void 0;
   prev && view.attrs && (view.attrs.handleEvent = prev.handleEvent);
   "id" in view.attrs === false && view.tag.id && (view.attrs.id = view.tag.id);
@@ -1009,27 +1035,56 @@ function attributes(dom, view, context, init) {
   init && observe(dom, view.attrs.className, () => setClass(dom, view));
   for (const attr in view.attrs) {
     if (!ignoredAttr(attr) && (!prev || prev[attr] !== view.attrs[attr])) {
-      value2 = view.attrs[attr];
+      const value2 = view.attrs[attr];
       init && observe(dom, value2, (x2) => setAttribute(dom, attr, x2, context));
       updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value2);
-      value2 = true;
+      store = true;
     }
   }
   if (prev) {
     for (const attr in prev) {
       if (attr in view.attrs === false) {
-        isEvent(attr) ? removeEvent(dom, attrs, attr) : dom.removeAttribute(attr);
+        isEvent(attr) ? removeEvent(dom, attrs, attr) : !ignoredAttr(attr) && dom.removeAttribute(attr);
       }
     }
   }
+  const reapply = updateStyle(dom, view.attrs.style, prev.style);
   if (view.tag) {
-    setVars(dom, view.tag.vars, view.tag.args, init);
+    setVars(dom, view.tag.vars, view.tag.args, init, reapply);
     while (tag = tag.parent)
-      setVars(dom, tag.vars, tag.args, init);
+      setVars(dom, tag.vars, tag.args, init, reapply);
   }
   init && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom);
-  value2 ? attrs.set(dom, view.attrs) : prev && empty(view.attrs) && attrs.delete(dom);
-  return prev;
+  store ? attrs.set(dom, view.attrs) : prev && empty(view.attrs) && attrs.delete(dom);
+}
+function updateStyle(dom, style2, old) {
+  if (old === style2)
+    return;
+  if (style2 == null)
+    return dom.style.cssText = "", true;
+  if (typeof style2 !== "object")
+    return dom.style.cssText = style2, true;
+  if (old == null || typeof old !== "object") {
+    dom.style.cssText = "";
+    for (const prop2 in style2) {
+      const value2 = style2[prop2];
+      value2 != null && dom.style.setProperty(normalizeProp(prop2), value2 + "");
+    }
+    return true;
+  }
+  for (const prop2 in style2) {
+    let value2 = style2[prop2];
+    if (value2 != null && (value2 = value2 + "") !== old[prop2] + "")
+      dom.style.setProperty(normalizeProp(prop2), value2);
+  }
+  for (const prop2 in old) {
+    if (old[prop2] != null && style2[prop2] == null)
+      dom.style.removeProperty(normalizeProp(prop2));
+  }
+  return true;
+}
+function normalizeProp(prop2) {
+  return isCssVar(prop2) ? prop2 : prop2 === "cssFloat" ? "float" : snake(prop2);
 }
 function observe(dom, x2, fn2) {
   if (!isObservable(x2))
@@ -1043,23 +1098,21 @@ function setClass(dom, view) {
   const x2 = className(view);
   x2 ? dom.className = x2 : dom.removeAttribute("class");
 }
-function setVars(dom, vars, args, init) {
+function setVars(dom, vars, args, init, reapply) {
   for (const id2 in vars) {
     const { unit, index } = vars[id2];
     const value2 = args[index];
-    setVar(dom, id2, value2, unit, init);
+    setVar(dom, id2, value2, unit, init, reapply);
   }
 }
-function setVar(dom, id2, value2, unit, init, after) {
+function setVar(dom, id2, value2, unit, init, reapply, after) {
   if (isObservable(value2)) {
-    if (init) {
-      value2.observe((x2) => dom.style.setProperty(id2, formatValue(p(x2), unit)));
-      setVar(dom, id2, value2.value, unit, init, init);
-    }
+    init && value2.observe((x2) => dom.style.setProperty(id2, formatValue(x2, unit)));
+    init || reapply && setVar(dom, id2, value2.value, unit, init, init);
     return;
   }
   if (isFunction(value2))
-    return setVar(dom, id2, value2(dom), unit, init, init);
+    return setVar(dom, id2, value2(dom), unit, init, reapply, after);
   dom.style.setProperty(id2, formatValue(value2, unit));
   after && afterUpdate.push(() => dom.style.setProperty(id2, formatValue(value2, unit)));
 }

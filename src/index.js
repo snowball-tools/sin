@@ -61,7 +61,7 @@ s.mount = mount
 s.css = (...x) => parse(x, null, 0, true)
 s.animate = animate
 s.http = http
-s.http.redraw = redraw
+s.http.redraw = !s.isServer && redraw
 s.medias = medias
 s.live = live
 s.on = on
@@ -165,6 +165,7 @@ function mount(dom, view, attrs = {}, context = {}) {
   context.status = s.live(200)
   context.title = s.live(document.title)
   context.head = s.live('')
+  context.headers = s.live({})
   'location' in context || (context.location = window.location)
   'catcher' in context || (context.catcher = catcher)
 
@@ -180,7 +181,7 @@ function mount(dom, view, attrs = {}, context = {}) {
 
 function catcher(error) {
   console.error(error) // eslint-disable-line
-  return s`pre;m 0;c white;bc #ff0033;p 16;br 6;overflow auto`(s`code`(error.stack))
+  return s`pre;m 0;c white;bc #ff0033;p 16;br 6;overflow auto`(s`code`(error && error.stack || error || new Error('Unknown Error').stack))
 }
 
 function redraw() {

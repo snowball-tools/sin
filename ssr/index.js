@@ -1,15 +1,15 @@
 import './window.js'
-import View from '../view.js'
-import { className, ignoredAttr, isEvent, isFunction, asArray } from '../shared.js'
-import { formatValue, cssRules } from '../style.js'
-import { router } from '../router.js'
-import s from '../index.js'
+import View from '../src/view.js'
+import { className, ignoredAttr, isEvent, isFunction, asArray } from '../src/shared.js'
+import { formatValue, cssRules } from '../src/style.js'
+import { router } from '../src/router.js'
+import s from '../src/index.js'
 
 let lastWasText = false
 
 class TimeoutError extends Error {}
 
-const defaultTimeout = 1000 * 30
+const defaultTimeout = 1000 * 60 * 2
 const voidTags = new Set([
   'area',
   'base',
@@ -28,11 +28,17 @@ const voidTags = new Set([
 ])
 
 export default async function({ view, attrs, context }, serverAttrs = {}, serverContext = {}) {
+  const headers = {
+    Server: 'Sin',
+    'Content-Type': 'text/html; charset=UTF-8',
+    ...(serverContext.headers || {})
+  }
   let head = ''
   Object.assign(attrs, serverAttrs)
   Object.assign(context, serverContext)
 
   context.head.observe(x => head += x instanceof View ? headElement(x) : x)
+  context.headers.observe(x => Object.assign(headers, x))
 
   context.route = router(s, '', context)
   context.uid = 1
@@ -54,13 +60,12 @@ export default async function({ view, attrs, context }, serverAttrs = {}, server
 
   return {
     status: context.status(),
+    headers,
     title: context.title(),
     css: '<style class="sin">' + cssRules().join('') + '</style>', // perhaps remove classes according to names in html
     html,
     head
   }
-
-  // '<style class="sin">' + css() + '</style>'
 }
 
 async function update(view, context) {
@@ -110,31 +115,39 @@ function openingTag(view, tag) {
   return '<'
     + tag
     + getClassName(view)
-    + Object.entries(view.attrs).reduce((acc, [k, v]) =>
-      acc += renderAttr(k, v),
-      ''
-    )
-    + (view.tag.args.length ? Object.entries(view.tag.vars).reduce((acc, [k, v]) =>
-      acc += k + ':' + formatValue(view.tag.args[v.index], v.unit) + ';',
-      ' style="'
-    ) + '"' : '')
+    + Object.entries(view.attrs).reduce((acc, [k, v]) => acc += renderAttr(k, v), '')
+    + getCssVars(view)
     + '>'
+}
+
+function getCssVars(view) {
+  if (!view.tag.args.length)
+    return ''
+
+  return ' style="'
+    + escapeAttrValue(
+      Object.entries(view.tag.vars).reduce((acc, [k, v]) =>
+        acc += k + ':' + formatValue(view.tag.args[v.index], v.unit) + ';', ''
+      )
+      + (view.attrs.style || '')
+    )
+    + '"'
 }
 
 function renderAttr(k, v) {
   return ignoredAttr(k) || isEvent(k) || v === false
     ? ''
-    : (' ' + k + (
+    : (' ' + escapeAttr(k) + (
       v === true
         ? ''
-        : '="' + v + '"'
+        : '="' + escapeAttrValue(v) + '"'
     ))
 }
 
 function getClassName(view) {
   const classes = className(view)
   return classes
-    ? ' class="' + classes + '"'
+    ? ' class="' + escape(classes) + '"'
     : ''
 }
 
@@ -149,14 +162,14 @@ async function updateArray(xs, context) {
 }
 
 function updateText(view) {
-  const x = (lastWasText ? '<!--,-->' : '') + view
+  const x = (lastWasText ? '<!--,-->' : '') + escape(view)
   lastWasText = true
   return x
 }
 
 function updateComment(view) {
   lastWasText = false
-  return '<!--' + (typeof view === 'string' ? view.replace(/--/g, '- -') : view) + '-->'
+  return '<!--' + view + '-->'
 }
 
 async function updateComponent(view, context) {
@@ -166,4 +179,42 @@ async function updateComponent(view, context) {
   isAsync && (x = await x)
   isFunction(x) && (x = x())
   return isAsync + (await update(x, context)) + isAsync
+}
+
+function escape(x = '') {
+  let s = ''
+  let c = -1
+  let l = -1
+  for (let i = 0; i < x.length; i++) {
+    c = x.charCodeAt(i)
+    c === 60 ? s += x.slice(l + 1, l = i) + '&lt;' :   // <
+      c === 62 ? s += x.slice(l + 1, l = i) + '&gt;' :   // >
+      c === 38 && (s += x.slice(l + 1, l = i) + '&amp;') // &
+  }
+  return s || x
+}
+
+function escapeAttr(x = '') {
+  let s = ''
+  let c = -1
+  let l = -1
+  for (let i = 0; i < x.length; i++) {
+    c = x.charCodeAt(i)
+    c !== 45 && (c < 97 || c > 122) && (c < 65 || c > 90) && (s += x.slice(l + 1, l = i))  // -a-zA-Z
+  }
+  return s || x
+}
+
+function escapeAttrValue(x = '') {
+  let s = ''
+  let c = -1
+  let l = -1
+  for (let i = 0; i < x.length; i++) {
+    c = x.charCodeAt(i)
+    c === 34 ? s += x.slice(l + 1, l = i) + '&quot;' :   // "
+      c === 60 ? s += x.slice(l + 1, l = i) + '&lt;' :   // <
+      c === 62 ? s += x.slice(l + 1, l = i) + '&gt;' :   // >
+      c === 38 && (s += x.slice(l + 1, l = i) + '&amp;') // &
+  }
+  return s || x
 }

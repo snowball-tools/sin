@@ -1,3 +1,5 @@
+import window from './window.js'
+
 ['get', 'put', 'post', 'delete', 'patch'].forEach(x =>
   http[x] = function(url, object = {}) {
     object.method = x
@@ -19,10 +21,10 @@ export default function http(url, {
   serialize = x => JSON.stringify(x)
 } = {}) {
   return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
+    const xhr = new window.XMLHttpRequest()
 
     xhr.onreadystatechange = function() {
-      if (xhr.readyState === XMLHttpRequest.DONE) {
+      if (xhr.readyState === xhr.DONE) {
         let body = xhr.responseText
           , error
 
@@ -36,10 +38,10 @@ export default function http(url, {
           ? reject(error || xhr.status)
           : resolve(body)
 
-        redraw && http.redraw()
+        redraw && http.redraw && http.redraw()
       }
     }
-    xhr.onerror = xhr.onabort = reject
+    xhr.onerror = xhr.onabort = error => reject(error || xhr.statusText)
     xhr.open(method.toUpperCase(), url, true, user, pass)
     Object.keys(headers).forEach(xhr => headers[xhr] && xhr.setRequestHeader(xhr, headers[xhr]))
     'Content-Type' in headers === false && xhr.setRequestHeader('Content-Type', 'application/json; charset=utf-8')

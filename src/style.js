@@ -1,11 +1,10 @@
 import window from './window.js'
-import { isFunction } from './shared.js'
+import { isFunction, snake, isCssVar } from './shared.js'
 import { popular, initials } from './shorthands.js'
 
 const doc = window.document
     , style = doc && doc.querySelector && (doc.querySelector('style.sin') || doc.createElement('style'))
     , vendorRegex = /^(ms|moz|webkit)[-A-Z]/i
-    , snake = x => x.replace(/(\B[A-Z])/g, '-$1').toLowerCase()
     , prefix = style && style.getAttribute('id') || 'sin-'
     , div = doc.createElement('div')
     , mediasCache = {}
@@ -56,6 +55,7 @@ const cache = new Map()
     , propEndChar = x => x === 32 || x === 58 || x === 9 // ws : \t
     , valueEndChar = x => x === 59 || x === 10 || x === 125 // ; \n }
     , noSpace = x => x === 58 || x === 64 || x === 38 || x === 91 // : @ & [
+    , strict = x => x === 59 || x === 125
     , last = xs => xs[xs.length - 1]
     , selectors = []
     , fn = []
@@ -243,7 +243,7 @@ function parseStyles(idx, end) {
     char = x.charCodeAt(i)
     i < x.length && (hash = Math.imul(31, hash) + char | 0)
 
-    if (quote === -1 && valueStart >= 0 && ((colon ? (char === 59 || char === 125) : valueEndChar(char) || (end && i === x.length)))) {
+    if (quote === -1 && valueStart >= 0 && ((colon ? strict(char) : valueEndChar(char) || (end && i === x.length)))) {
       numberStart > -1 && !isUnit(char) && addUnit(i)
       prop === '@import'
         ? insert(prop + ' ' + x.slice(valueStart, i), 0)
@@ -379,7 +379,7 @@ selectors.toString = function() {
 
 function px(x) {
   x = shorthand(x)
-  if ((x[0] === '-' && x[1] === '-') || x in pxCache)
+  if (isCssVar(x) || x in pxCache)
     return pxCache[x]
 
   try {

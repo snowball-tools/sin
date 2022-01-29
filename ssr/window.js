@@ -1,4 +1,4 @@
-import window from '../window.js'
+import window from '../src/window.js'
 import px from './px.js'
 
 const noop = () => { /* noop */ }
@@ -21,12 +21,6 @@ Object.assign(window, {
     state: null
   },
   document: {
-    title: '',
-    documentElement: {
-      style: {
-      }
-    },
-    getElementById: () => null,
     querySelector: () => null,
     createElement: x => {
       const dom = {

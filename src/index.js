@@ -7,11 +7,13 @@ import { router, cleanSlash } from './router.js'
 import {
   className,
   ignoredAttr,
-  isEvent,
-  isServer,
-  isFunction,
   isObservable,
-  asArray
+  isFunction,
+  isCssVar,
+  isServer,
+  isEvent,
+  asArray,
+  snake
 } from './shared.js'
 
 const document = window.document
@@ -641,7 +643,7 @@ function empty(o) {
 
 function attributes(dom, view, context, init) {
   let tag = view.tag
-    , value
+    , store = false
 
   const prev = !init && attrs.has(dom) ? attrs.get(dom) : undefined
   prev && view.attrs && (view.attrs.handleEvent = prev.handleEvent)
@@ -662,10 +664,10 @@ function attributes(dom, view, context, init) {
 
   for (const attr in view.attrs) {
     if (!ignoredAttr(attr) && (!prev || prev[attr] !== view.attrs[attr])) {
-      value = view.attrs[attr]
+      const value = view.attrs[attr]
       init && observe(dom, value, x => setAttribute(dom, attr, x, context))
       updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value)
-      value = true
+      store = true
     }
   }
 
@@ -674,24 +676,65 @@ function attributes(dom, view, context, init) {
       if (attr in view.attrs === false) {
         isEvent(attr)
           ? removeEvent(dom, attrs, attr)
-          : dom.removeAttribute(attr)
+          : !ignoredAttr(attr) && dom.removeAttribute(attr)
       }
     }
   }
 
+  const reapply = updateStyle(dom, view.attrs.style, prev.style)
+
   if (view.tag) {
-    setVars(dom, view.tag.vars, view.tag.args, init)
+    setVars(dom, view.tag.vars, view.tag.args, init, reapply)
     while ((tag = tag.parent))
-      setVars(dom, tag.vars, tag.args, init)
+      setVars(dom, tag.vars, tag.args, init, reapply)
   }
 
   init && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom)
 
-  value
+  store
     ? attrs.set(dom, view.attrs)
     : prev && empty(view.attrs) && attrs.delete(dom)
+}
 
-  return prev
+function updateStyle(dom, style, old) {
+  if (old === style)
+    return
+
+  if (style == null)
+    return (dom.style.cssText = '', true)
+
+  if (typeof style !== 'object')
+    return (dom.style.cssText = style, true)
+
+  if (old == null || typeof old !== 'object') {
+    dom.style.cssText = ''
+    for (const prop in style) {
+      const value = style[prop]
+      value != null && dom.style.setProperty(normalizeProp(prop), value + '')
+    }
+    return true
+  }
+
+  for (const prop in style) {
+    let value = style[prop]
+    if (value != null && (value = (value + '')) !== (old[prop] + ''))
+      dom.style.setProperty(normalizeProp(prop), value)
+  }
+
+  for (const prop in old) {
+    if (old[prop] != null && style[prop] == null)
+      dom.style.removeProperty(normalizeProp(prop))
+  }
+
+  return true
+}
+
+function normalizeProp(prop) {
+  return isCssVar(prop)
+    ? prop
+    : prop === 'cssFloat'
+      ? 'float'
+      : snake(prop)
 }
 
 function observe(dom, x, fn) {
@@ -713,25 +756,23 @@ function setClass(dom, view) {
     : dom.removeAttribute('class')
 }
 
-function setVars(dom, vars, args, init) {
+function setVars(dom, vars, args, init, reapply) {
   for (const id in vars) {
     const { unit, index } = vars[id]
     const value = args[index]
-    setVar(dom, id, value, unit, init)
+    setVar(dom, id, value, unit, init, reapply)
   }
 }
 
-function setVar(dom, id, value, unit, init, after) {
+function setVar(dom, id, value, unit, init, reapply, after) {
   if (isObservable(value)) {
-    if (init) {
-      value.observe(x => dom.style.setProperty(id, formatValue(p(x), unit)))
-      setVar(dom, id, value.value, unit, init, init)
-    }
+    init && value.observe(x => dom.style.setProperty(id, formatValue(x, unit)))
+    init || reapply && setVar(dom, id, value.value, unit, init, init)
     return
   }
 
   if (isFunction(value))
-    return setVar(dom, id, value(dom), unit, init, init)
+    return setVar(dom, id, value(dom), unit, init, reapply, after)
 
   dom.style.setProperty(id, formatValue(value, unit))
   after && afterUpdate.push(() => dom.style.setProperty(id, formatValue(value, unit)))

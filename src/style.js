@@ -4,7 +4,7 @@ import { popular, initials } from './shorthands.js'
 
 const doc = window.document
     , style = doc && doc.querySelector && (doc.querySelector('style.sin') || doc.createElement('style'))
-    , vendorRegex = /^(o|O|ms|MS|Ms|moz|Moz|webkit|Webkit|WebKit)([A-Z])/
+    , vendorRegex = /^(ms|moz|webkit)[-A-Z]/i
     , snake = x => x.replace(/(\B[A-Z])/g, '-$1').toLowerCase()
     , prefix = style && style.getAttribute('id') || 'sin-'
     , div = doc.createElement('div')
@@ -27,10 +27,10 @@ const pxCache = {
   '@media': 'px'
 }
 
-const properties = ['float']
-  .concat(Object.keys(div.style.hasOwnProperty('width') ? div.style : Object.getPrototypeOf(div.style)))
-  .reduce((acc, x) => (x.indexOf('-') === -1 && acc.push(x.match(vendorRegex) ? '-' + snake(x) : snake(x)), acc), [])
-  .sort()
+const properties = Array.from(
+  Object.keys(div.style.hasOwnProperty('width') ? div.style : Object.getPrototypeOf(div.style))
+  .reduce((acc, x) => (acc.add(x.match(vendorRegex) ? '-' + snake(x) : snake(x)), acc), new Set(['float']))
+)
 
 const shorthands = Object.assign(properties.reduce(initials, {}), popular.reduce(initials, {}))
 

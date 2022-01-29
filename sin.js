@@ -197,7 +197,7 @@ var popular = [
 // src/style.js
 var doc = window_default.document;
 var style = doc && doc.querySelector && (doc.querySelector("style.sin") || doc.createElement("style"));
-var vendorRegex = /^(o|O|ms|MS|Ms|moz|Moz|webkit|Webkit|WebKit)([A-Z])/;
+var vendorRegex = /^(ms|moz|webkit)[-A-Z]/i;
 var snake = (x2) => x2.replace(/(\B[A-Z])/g, "-$1").toLowerCase();
 var prefix = style && style.getAttribute("id") || "sin-";
 var div = doc.createElement("div");
@@ -216,7 +216,7 @@ var pxCache = {
   "border-bottom": "px",
   "@media": "px"
 };
-var properties = ["float"].concat(Object.keys(div.style.hasOwnProperty("width") ? div.style : Object.getPrototypeOf(div.style))).reduce((acc, x2) => (x2.indexOf("-") === -1 && acc.push(x2.match(vendorRegex) ? "-" + snake(x2) : snake(x2)), acc), []).sort();
+var properties = Array.from(Object.keys(div.style.hasOwnProperty("width") ? div.style : Object.getPrototypeOf(div.style)).reduce((acc, x2) => (acc.add(x2.match(vendorRegex) ? "-" + snake(x2) : snake(x2)), acc), /* @__PURE__ */ new Set(["float"])));
 var shorthands = Object.assign(properties.reduce(initials, {}), popular.reduce(initials, {}));
 var vendorMap = properties.reduce((acc, x2) => {
   const vendor2 = x2.match(/-(ms|o|webkit|moz)-/g);
@@ -693,13 +693,13 @@ function mount(dom, view, attrs2 = {}, context = {}) {
   if (isServer)
     return { view, attrs: attrs2, context };
   context.title.observe((x2) => document.title = x2);
-  attrs2.route = context.route = router(s, "", context);
+  context.route = router(s, "", context);
   mounts.set(dom, { view, attrs: attrs2, context });
   draw({ view, attrs: attrs2, context }, dom);
 }
 function catcher(error) {
   console.error(error);
-  return s`pre;m 0;c white;bc #ff0033;p 16;br 6;overflow auto`(s`code`(error.stack));
+  return s`pre;m 0;c white;bc #ff0033;p 16;br 6;overflow auto`(s`code`(error.message + "\n" + error.stack));
 }
 function redraw() {
   idle && (requestAnimationFrame(globalRedraw), idle = false);

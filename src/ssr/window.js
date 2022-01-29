@@ -22,6 +22,7 @@ Object.assign(window, {
         setAttribute: (x, v) => dom.x = v,
         getAttribute: x => dom[x],
         style: {
+          ...px,
           setProperty: function(prop) {
             this[prop] = '1' + (px[prop] || '')
           }

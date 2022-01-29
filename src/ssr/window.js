@@ -5,8 +5,20 @@ const noop = () => { /* noop */ }
 
 Object.assign(window, {
   addEventListener: noop,
+  location: {
+    pathname: '',
+    hash: '',
+    search: ''
+  },
   history: {
-    pushState: noop
+    pushState(state, title, path) {
+      window.history.state = state
+      const url = new URL(path, 'http://x')
+      window.location.pathname = url.pathname
+      window.location.hash = url.hash
+      window.location.search = url.search
+    },
+    state: null
   },
   document: {
     title: '',

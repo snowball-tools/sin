@@ -1,5 +1,6 @@
 import window from './window.js'
 import { isFunction } from './shared.js'
+import query from './query.js'
 
 let routing = false
 
@@ -47,6 +48,7 @@ export function router(s, root, rootContext) {
       : resolve(view, attrs, context)
   })
 
+  route.query = query(s, rootContext.location)
   route.toString = route
   route.has = x => x === '/'
     ? (getPath(location) === root || (getPath(location) === '/' && root === ''))

@@ -171,7 +171,7 @@ function mount(dom, view, attrs = {}, context = {}) {
 
   context.title.observe(x => document.title = x)
 
-  attrs.route = context.route = router(s, '', context)
+  context.route = router(s, '', context)
   mounts.set(dom, { view, attrs, context })
   draw({ view, attrs, context }, dom)
 }

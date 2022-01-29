@@ -34,7 +34,7 @@ export default async function({ view, attrs, context }, serverAttrs = {}, server
 
   context.head.observe(x => head += x instanceof View ? headElement(x) : x)
 
-  attrs.route = context.route = router(s, '', context)
+  context.route = router(s, '', context)
   context.uid = 1
 
   let x

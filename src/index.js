@@ -866,19 +866,19 @@ function deferredRemove(dom, parent, xs) {
   })
 }
 
-function callLogThrow(x) {
-  try {
-    return x()
-  } catch (error) {
-    console.error(error)
-  }
-}
-
 function deferRemove(dom, parent, children) {
   if (!lives.has(dom))
     return children.length && deferredRemove(dom, parent, children)
 
-  const life = lives.get(dom).map(callLogThrow).filter(x => x && isFunction(x.then))
+  const life = lives.get(dom).reduce((acc, x) => {
+    try {
+      x = x()
+      x && isFunction(x.then) && acc.push(x)
+    } catch (error) {
+      console.error(error)
+    }
+    return acc
+  }, [])
 
   lives.delete(dom)
 

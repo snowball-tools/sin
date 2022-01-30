@@ -33,6 +33,10 @@ export function asArray(x) {
   return Array.isArray(x) ? x : [x]
 }
 
+export function noop() {
+  // noop
+}
+
 function classes(x) {
   if (isFunction(x))
     return classes(x())

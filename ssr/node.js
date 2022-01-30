@@ -15,9 +15,9 @@ const cache = {
   br: {}
 }
 
-export default function(app, { attrs, context, body = '', compress = true } = {}) {
+export default function(app, { attrs, context, body = '', compress = false } = {}) {
   return async function(req, res, next) {
-    if ((req.method !== 'HEAD' && req.method !== 'GET') || req.headers.accept.indexOf('text/html') === -1)
+    if ((req.method !== 'HEAD' && req.method !== 'GET') || !req.headers.accept.match(/text\/html|\*\/\*/))
       return next ? next() : res.end()
 
     const x = await ssr(app, attrs, { ...context, location: new URL(req.url, 'http://localhost/') })
@@ -48,7 +48,6 @@ function compressEnd(req, res, out, next) {
   if (!encoding || encoding === 'identity')
     return res.end(out)
 
-  res.setHeader('Vary', 'Accept-Encoding')
   res.setHeader('Content-Encoding', encoding)
 
   if (out in cache[encoding])

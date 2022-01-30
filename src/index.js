@@ -13,7 +13,8 @@ import {
   isServer,
   isEvent,
   asArray,
-  snake
+  snake,
+  noop
 } from './shared.js'
 
 const document = window.document
@@ -162,17 +163,14 @@ function mount(dom, view, attrs = {}, context = {}) {
     dom = document.body
   }
 
-  context.status = s.live(200)
-  context.title = s.live(document.title)
-  context.head = s.live('')
-  context.headers = s.live({})
   'location' in context || (context.location = window.location)
   'catcher' in context || (context.catcher = catcher)
 
   if (isServer)
     return { view, attrs, context }
 
-  context.title.observe(x => document.title = x)
+  context.title = s.live(document.title, x => document.title = x)
+  context.status = context.head = context.headers = noop
 
   context.route = router(s, '', context)
   mounts.set(dom, { view, attrs, context })
@@ -181,7 +179,11 @@ function mount(dom, view, attrs = {}, context = {}) {
 
 function catcher(error) {
   console.error(error) // eslint-disable-line
-  return s`pre;m 0;c white;bc #ff0033;p 16;br 6;overflow auto`(s`code`(error && error.stack || error || new Error('Unknown Error').stack))
+  return s`pre;m 0;c white;bc #ff0033;p 16;br 6;overflow auto`(
+    s`code`(
+      error && error.stack || error || new Error('Unknown Error').stack
+    )
+  )
 }
 
 function redraw() {
@@ -682,7 +684,7 @@ function attributes(dom, view, context, init) {
     }
   }
 
-  const reapply = updateStyle(dom, view.attrs.style, prev.style)
+  const reapply = updateStyle(dom, view.attrs.style, prev && prev.style)
 
   if (view.tag) {
     setVars(dom, view.tag.vars, view.tag.args, init, reapply)

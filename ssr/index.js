@@ -33,15 +33,22 @@ export default async function({ view, attrs, context }, serverAttrs = {}, server
     'Content-Type': 'text/html; charset=UTF-8',
     ...(serverContext.headers || {})
   }
+
   let head = ''
-  Object.assign(attrs, serverAttrs)
-  Object.assign(context, serverContext)
 
-  context.head.observe(x => head += x instanceof View ? headElement(x) : x)
+  attrs = { ...attrs, ...serverAttrs }
+  context = {
+    ...context,
+    ...serverContext,
+    title: s.live(''),
+    status: s.live(200),
+    head: s.live('', x => head += x instanceof View ? headElement(x) : x),
+    headers: s.live({}),
+    route: router(s, '', context),
+    uid: 1
+  }
+
   context.headers.observe(x => Object.assign(headers, x))
-
-  context.route = router(s, '', context)
-  context.uid = 1
 
   let x
   try {

@@ -181,7 +181,9 @@ function mount(dom, view, attrs = {}, context = {}) {
 }
 
 function catcher(error) {
-  console.error(error) // eslint-disable-line
+  isServer
+    ? console.error(error) // eslint-disable-line
+    : Promise.resolve().then(() => { throw error })
   return s`pre;m 0;c white;bc #ff0033;p 16;br 6;overflow auto`(
     s`code`(
       error && error.stack || error || new Error('Unknown Error').stack
@@ -497,12 +499,13 @@ function Stack() {
         : null
     },
     add(view, context, parent, stack) {
+      const [init, options = {}] = view.component
       const instance = {
         id: window.count = (window.count || 0) + 1,
         key: null,
-        view: view.component[0],
-        catcher: view.component[1] || context.catcher,
-        loader: view.component[2] || context.loader
+        view: init,
+        catcher: options.catcher || context.catcher,
+        loader: options.loader || context.loader
       }
 
       instance.context = createContext(view, context, parent, stack, instance)

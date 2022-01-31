@@ -22,7 +22,7 @@ export function isCssVar(x) {
 
 export function ignoredAttr(x) {
   return x === 'dom' || x === 'is' || x === 'key' || x === 'handleEvent'
-      || x === 'class' || x === 'className' || x === 'style'
+      || x === 'class' || x === 'className' || x === 'style' || x === 'deferrable'
 }
 
 export function className(view) {

@@ -52,6 +52,7 @@ const components = new WeakMap()
     , attrs = new WeakMap()
     , keyCache = new WeakMap()
     , mounts = new Map()
+    , deferrableSymbol = Symbol()
 
 let idle = true
   , afterUpdate = []
@@ -67,7 +68,6 @@ s.medias = medias
 s.live = live
 s.on = on
 s.trust = trust
-s.route = router(s, '', window.location)
 
 function trust(x) {
   return s(() => {
@@ -94,7 +94,7 @@ function on(target, event, fn, options) {
 function animate(dom) {
   dom.setAttribute('animate', 'entry')
   requestAnimationFrame(() => dom.removeAttribute('animate'))
-  return () => new Promise(r => {
+  return (deferrable) => deferrable && new Promise(r => {
     let running = false
     dom.setAttribute('animate', 'exit')
     dom.addEventListener('transitionrun', () => (running = true, end(r)), { once: true, passive: true })
@@ -248,12 +248,12 @@ function nonKeyed(parent, context, next, keys, dom, after = null) {
     }
     if (dom !== null) {
       dom = dom.nextSibling
-      dom !== null && dom.nodeType === 8 && dom.nodeValue === ',' && (dom = remove(dom, parent).after)
+      dom !== null && dom.nodeType === 8 && dom.nodeValue === ',' && (dom = remove(dom, parent))
     }
   }
 
   while (dom && dom !== after)
-    dom = remove(dom, parent).after
+    dom = remove(dom, parent)
 }
 
 function keyed(parent, context, as, bs, keys, after) {
@@ -470,11 +470,6 @@ function createElement(view, context) {
       : document.createElement(view.tag.name || 'DIV')
 }
 
-function removeChildren(dom, parent) {
-  do dom = remove(dom, parent).after
-  while (dom)
-}
-
 function Stack() {
   const xs = []
   let i = 0
@@ -568,7 +563,7 @@ function updateComponent(
 
   component.key && create && (instance.key = component.key)
 
-  const hydrating = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.endsWith('async')
+  const hydrating = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 97 // a
   const next = instance.next = hydrating
     ? hydrate(dom)
     : update(
@@ -666,7 +661,9 @@ function attributes(dom, view, context, init) {
   init && observe(dom, view.attrs.className, () => setClass(dom, view))
 
   for (const attr in view.attrs) {
-    if (!ignoredAttr(attr) && (!prev || prev[attr] !== view.attrs[attr])) {
+    if (ignoredAttr(attr)) {
+      attr === 'deferrable' && (dom[deferrableSymbol] = view.attrs[attr])
+    } else if (!prev || prev[attr] !== view.attrs[attr]) {
       const value = view.attrs[attr]
       init && observe(dom, value, x => setAttribute(dom, attr, x, context))
       updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value)
@@ -679,7 +676,9 @@ function attributes(dom, view, context, init) {
       if (attr in view.attrs === false) {
         isEvent(attr)
           ? removeEvent(dom, attrs, attr)
-          : !ignoredAttr(attr) && dom.removeAttribute(attr)
+          : ignoredAttr(attr)
+            ? (attr === 'deferrable' && (dom[deferrableSymbol] = false))
+            : dom.removeAttribute(attr)
       }
     }
   }
@@ -858,37 +857,7 @@ function replace(old, dom, parent) {
   return dom
 }
 
-function deferredRemove(dom, parent, xs) {
-  removing.add(dom)
-  return Promise.allSettled(xs).then(() => {
-    removing.delete(dom)
-    remove(dom, parent)
-  })
-}
-
-function deferRemove(dom, parent, children) {
-  if (!lives.has(dom))
-    return children.length && deferredRemove(dom, parent, children)
-
-  const life = lives.get(dom).reduce((acc, x) => {
-    try {
-      x = x()
-      x && isFunction(x.then) && acc.push(x)
-    } catch (error) {
-      console.error(error)
-    }
-    return acc
-  }, [])
-
-  lives.delete(dom)
-
-  if (life.length === 0)
-    return children.length && deferredRemove(dom, parent, children)
-
-  return deferredRemove(dom, parent, life.concat(children))
-}
-
-function removeArray(dom, parent, lives, instant) {
+function removeArray(dom, parent, promises, root, deferrable) {
   const last = getArray(dom)
 
   if (!last)
@@ -901,11 +870,9 @@ function removeArray(dom, parent, lives, instant) {
   dom = dom.nextSibling
   if (!dom)
     return after
-  do {
-    const x = remove(dom, parent, instant)
-    x.life && lives.push(x.life)
-    dom = x.after
-  } while (dom && dom !== after)
+  do
+    dom = remove(dom, parent, promises, root, deferrable)
+  while (dom && dom !== after)
 
   return after
 }
@@ -916,43 +883,55 @@ function removeChild(parent, dom) {
   parent.removeChild(dom)
 }
 
-function remove(dom, parent, instant = true) {
-  if (!parent || removing.has(dom))
-    return { after: dom.nextSibling, life: null }
-
-  const lives = []
-
+function remove(dom, parent, promises = [], root = true, deferrable = false) {
   let after = dom.nextSibling
+  if (removing.has(dom))
+    return after
 
-  if (dom.nodeType === 8 && dom.nodeValue.endsWith('async')) {
-    after = dom.nextSibling
-    removeChild(parent, dom)
-    dom = after
-    after = dom.nextSibling
+  if (dom.nodeType === 8) {
+    if (dom.nodeValue.charCodeAt(0) === 97) { // a
+      after = dom.nextSibling
+      removeChild(parent, dom)
+      dom = after
+      after = dom.nextSibling
+    }
+    if (dom.nodeValue.charCodeAt(0) === 91) { // [
+      after = removeArray(dom, parent, promises, root, deferrable)
+    }
   }
-
-  if (dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91) // [
-    after = removeArray(dom, parent, lives, instant)
 
   if (dom.nodeType !== 1) {
-    instant && removeChild(parent, dom)
-    return { after, life: null }
+    root && removeChild(parent, dom)
+    return after
   }
 
+  if (lives.has(dom)) {
+    for (const life of lives.get(dom)) {
+      try {
+        const promise = life(deferrable || root)
+        deferrable || root && promise && isFunction(promise.then) && promises.push(promise)
+      } catch (error) {
+        console.error(error) // eslint-disable-line
+      }
+    }
+  }
+
+  !deferrable && (deferrable = dom[deferrableSymbol] || false)
   let child = dom.firstChild
-  while (child !== null) {
-    const life = remove(child, dom, false).life
-    life && lives.push(life)
+  while (child) {
+    remove(child, dom, promises, false, deferrable)
     child = child.nextSibling
   }
 
-  const life = deferRemove(dom, parent, lives)
-  instant && !life && removeChild(parent, dom)
+  root && (promises.length === 0
+    ? removeChild(parent, dom)
+    : (
+      removing.add(dom),
+      Promise.allSettled(promises).then(() => removeChild(parent, dom))
+    )
+  )
 
-  return {
-    after,
-    life
-  }
+  return after
 }
 
 function raf3(fn) {

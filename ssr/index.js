@@ -182,7 +182,7 @@ function updateComment(view) {
 async function updateComponent(view, context) {
   lastWasText = false
   let x = view.component[0](view.attrs, view.children, context)
-  const isAsync = x && isFunction(x.then) && ('<!--' + context.uid++ + 'async-->') || ''
+  const isAsync = x && isFunction(x.then) && ('<!--a' + context.uid++ + '-->') || ''
   isAsync && (x = await x)
   isFunction(x) && (x = x())
   return isAsync + (await update(x, context)) + isAsync

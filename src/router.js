@@ -41,8 +41,8 @@ function resolve(view, attrs, context) {
 
 export function router(s, root, rootContext) {
   const location = rootContext.location
-  const routed = s((attrs, [view], context) => { // eslint-disable-line
-    context.route = attrs.route
+  const routed = s(({ route, ...attrs }, [view], context) => { // eslint-disable-line
+    context.route = route
     return () => typeof view === 'string'
       ? import((view[0] === '/' ? '' : route) + view).then(x => resolve(x.default, attrs, context))
       : resolve(view, attrs, context)

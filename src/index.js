@@ -43,16 +43,16 @@ function S(...x) {
     : execute(x, this)
 }
 
-const components = new WeakMap()
-    , removing = new WeakSet()
-    , observables = new WeakMap()
-    , streams = new WeakMap()
-    , arrays = new WeakMap()
-    , lives = new WeakMap()
-    , attrs = new WeakMap()
-    , keyCache = new WeakMap()
+const removing = new WeakSet()
     , mounts = new Map()
-    , deferrableSymbol = Symbol()
+    , deferrableSymbol = Symbol('deferrable')
+    , observableSymbol = Symbol('observable')
+    , componentSymbol = Symbol('component')
+    , streamSymbol = Symbol('stream')
+    , arraySymbol = Symbol('array')
+    , lifeSymbol = Symbol('life')
+    , attrSymbol = Symbol('attr')
+    , keySymbol = Symbol('key')
 
 let idle = true
   , afterUpdate = []
@@ -119,7 +119,7 @@ function link(dom, route) {
       !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey
     ) {
       e.preventDefault()
-      const state = attrs.get(dom).state
+      const state = dom[attrSymbol].state
       route(dom.getAttribute('href'), { state })
     }
   })
@@ -209,18 +209,15 @@ function draw({ view, attrs, context }, dom) {
 function updates(parent, next, context, before, last = parent.lastChild) {
   const keys = next[0] && next[0].key != null && new Array(next.length)
       , ref = before ? before.nextSibling : parent.firstChild
-      , tracked = keyCache.has(ref)
+      , tracked = ref && keySymbol in ref
       , after = last ? last.nextSibling : null
 
   keys && (keys.rev = {}) && tracked
-    ? keyed(parent, context, keyCache.get(ref), next, keys, after)
+    ? keyed(parent, context, ref[keySymbol], next, keys, after)
     : nonKeyed(parent, context, next, keys, ref, after)
 
   const first = before ? before.nextSibling : parent.firstChild
-  if (keys) {
-    keyCache.set(first, keys)
-    first !== ref && keyCache.delete(ref)
-  }
+  keys && (first[keySymbol] = keys)
 
   return Ret(first, after && after.previousSibling || parent.lastChild)
 }
@@ -349,8 +346,8 @@ function updateView(dom, view, context, parent, stack, create) {
 }
 
 function updateLive(dom, view, context, parent) {
-  if (streams.has(dom))
-    return streams.get(dom)
+  if (streamSymbol in dom)
+    return dom[streamSymbol]
 
   let result
   run(view())
@@ -360,8 +357,7 @@ function updateLive(dom, view, context, parent) {
 
   function run(x) {
     result = update(dom, x, context, parent || dom && dom.parentNode)
-    streams.set(result.first, result)
-    dom && dom !== result.first && streams.delete(dom)
+    result.first[streamSymbol] = result
     dom = result.first
   }
 }
@@ -382,12 +378,12 @@ function fromComment(dom) {
 
   const last = dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91
       && nthAfter(dom.nextSibling, parseInt(dom.nodeValue.slice(1)))
-  last && arrays.set(dom, last)
+  last && (dom[arraySymbol] = last)
   return last
 }
 
 function getArray(dom) {
-  return arrays.has(dom) ? arrays.get(dom) : fromComment(dom)
+  return dom && arraySymbol in dom ? dom[arraySymbol] : fromComment(dom)
 }
 
 function updateArray(dom, view, context, parent) {
@@ -399,14 +395,14 @@ function updateArray(dom, view, context, parent) {
     updates(parent, view, context, comment.first, last)
 
     const nextLast = after ? after.previousSibling : parent.lastChild
-    last !== nextLast && arrays.set(comment.first, nextLast)
+    last !== nextLast && (comment.first[arraySymbol] = nextLast)
     return Ret(comment.dom, comment.first, nextLast)
   }
 
   parent = new DocumentFragment()
   parent.appendChild(comment.dom)
   updates(parent, view, context, comment.first, last)
-  arrays.set(comment.first, parent.lastChild)
+  comment.first[arraySymbol] = parent.lastChild
   return Ret(parent, comment.first, parent.lastChild)
 }
 
@@ -537,8 +533,7 @@ function hydrate(dom) {
 }
 
 function dehydrate(x, stack) {
-  components.delete(x.first)
-  components.set(x.first.nextSibling, stack)
+  x.first.nextSibling[componentSymbol] = stack
   x.first.remove()
   x.last.remove()
 }
@@ -548,7 +543,7 @@ function updateComponent(
   component,
   context,
   parent,
-  stack = components.has(dom) ? components.get(dom) : Stack(),
+  stack = dom && dom[componentSymbol] || Stack(),
   create = stack.exhausted || stack.key !== component.key,
   force = false
 ) {
@@ -578,7 +573,7 @@ function updateComponent(
   create && instance.promise && instance.promise
     .then(view => instance.view = view)
     .catch(error => instance.view = instance.catcher.bind(null, error))
-    .then(() => components.has(instance.next.first) && (
+    .then(() => instance.next.first[componentSymbol] && (
       hydrating && dehydrate(next, stack),
       instance.promise = false,
       redraw()
@@ -587,9 +582,8 @@ function updateComponent(
   const changed = dom !== next.first
 
   if (stack.pop() && (changed || create)) {
-    changed && components.delete(dom)
     stack.dom = instance.next = next
-    components.set(next.first, stack)
+    next.first[componentSymbol] = stack
     !instance.promise && giveLife(next.first, component.attrs, component.children, instance.context, stack.life)
   }
 
@@ -633,17 +627,11 @@ function mergeTag(a, b) {
   return a
 }
 
-function empty(o) {
-  for (const x in o)
-    return false
-  return true
-}
-
 function attributes(dom, view, context, init) {
   let tag = view.tag
     , store = false
 
-  const prev = !init && attrs.has(dom) ? attrs.get(dom) : undefined
+  const prev = !init && attrSymbol in dom ? dom[attrSymbol] : undefined
   prev && view.attrs && (view.attrs.handleEvent = prev.handleEvent)
 
   'id' in view.attrs === false
@@ -675,7 +663,7 @@ function attributes(dom, view, context, init) {
     for (const attr in prev) {
       if (attr in view.attrs === false) {
         isEvent(attr)
-          ? removeEvent(dom, attrs, attr)
+          ? removeEvent(dom, view.attrs, attr)
           : ignoredAttr(attr)
             ? (attr === 'deferrable' && (dom[deferrableSymbol] = false))
             : dom.removeAttribute(attr)
@@ -693,9 +681,7 @@ function attributes(dom, view, context, init) {
 
   init && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom)
 
-  store
-    ? attrs.set(dom, view.attrs)
-    : prev && empty(view.attrs) && attrs.delete(dom)
+  store && (dom[attrSymbol] = view.attrs)
 }
 
 function updateStyle(dom, style, old) {
@@ -743,11 +729,11 @@ function observe(dom, x, fn) {
   if (!(isObservable(x)))
     return
 
-  const has = observables.has(dom)
+  const has = observableSymbol in dom
   const xs = has
-    ? observables.get(dom)
+    ? dom[observableSymbol]
     : new Set()
-  !has && observables.set(dom, xs)
+  has || (dom[observableSymbol] = xs)
   xs.add(x.observe(fn))
 }
 
@@ -786,7 +772,7 @@ function giveLife(dom, attrs, children, context, life) {
       .map(x => isFunction(x) && x(dom, attrs, children, context))
       .filter(x => isFunction(x))
 
-    life.length && lives.set(dom, (lives.get(dom) || []).concat(life))
+    life.length && (dom[lifeSymbol] = (dom[lifeSymbol] || []).concat(life))
   })
 }
 
@@ -832,7 +818,7 @@ function addEvent(dom, attrs, name) {
 
 function handleEvent(dom) {
   return {
-    handleEvent: e => callHandler(attrs.get(dom)['on' + e.type], e)
+    handleEvent: e => callHandler(dom[attrSymbol]['on' + e.type], e)
   }
 }
 
@@ -878,8 +864,7 @@ function removeArray(dom, parent, promises, root, deferrable) {
 }
 
 function removeChild(parent, dom) {
-  observables.has(dom) && observables.get(dom).forEach(x => x())
-  components.delete(dom)
+  observableSymbol in dom && dom[observableSymbol].forEach(x => x())
   parent.removeChild(dom)
 }
 
@@ -905,8 +890,8 @@ function remove(dom, parent, promises = [], root = true, deferrable = false) {
     return after
   }
 
-  if (lives.has(dom)) {
-    for (const life of lives.get(dom)) {
+  if (lifeSymbol in dom) {
+    for (const life of dom[lifeSymbol]) {
       try {
         const promise = life(deferrable || root)
         deferrable || root && promise && isFunction(promise.then) && promises.push(promise)

@@ -627,33 +627,33 @@ function mergeTag(a, b) {
   return a
 }
 
-function attributes(dom, view, context, init) {
+function attributes(dom, view, context, create) {
   let tag = view.tag
     , store = false
 
-  const prev = !init && attrSymbol in dom ? dom[attrSymbol] : undefined
+  const prev = !create && attrSymbol in dom ? dom[attrSymbol] : undefined
   prev && view.attrs && (view.attrs.handleEvent = prev.handleEvent)
 
   'id' in view.attrs === false
     && view.tag.id
     && (view.attrs.id = view.tag.id)
 
-  if ((init && view.tag.classes) ||
+  if ((create && view.tag.classes) ||
      view.attrs.class !== (prev && prev.class) ||
      view.attrs.className !== (prev && prev.className) ||
      dom.className !== view.tag.classes
   )
     setClass(dom, view)
 
-  init && observe(dom, view.attrs.class, () => setClass(dom, view))
-  init && observe(dom, view.attrs.className, () => setClass(dom, view))
+  create && observe(dom, view.attrs.class, () => setClass(dom, view))
+  create && observe(dom, view.attrs.className, () => setClass(dom, view))
 
   for (const attr in view.attrs) {
     if (ignoredAttr(attr)) {
       attr === 'deferrable' && (dom[deferrableSymbol] = view.attrs[attr])
     } else if (!prev || prev[attr] !== view.attrs[attr]) {
       const value = view.attrs[attr]
-      init && observe(dom, value, x => setAttribute(dom, attr, x, context))
+      create && observe(dom, value, x => setAttribute(dom, attr, x, context))
       updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value)
       store = true
     }
@@ -674,12 +674,12 @@ function attributes(dom, view, context, init) {
   const reapply = updateStyle(dom, view.attrs.style, prev && prev.style)
 
   if (view.tag) {
-    setVars(dom, view.tag.vars, view.tag.args, init, reapply)
+    setVars(dom, view.tag.vars, view.tag.args, create, reapply)
     while ((tag = tag.parent))
-      setVars(dom, tag.vars, tag.args, init, reapply)
+      setVars(dom, tag.vars, tag.args, create, reapply)
   }
 
-  init && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom)
+  create && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom)
 
   store && (dom[attrSymbol] = view.attrs)
 }

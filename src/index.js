@@ -49,7 +49,9 @@ const removing = new WeakSet()
     , observableSymbol = Symbol('observable')
     , componentSymbol = Symbol('component')
     , streamSymbol = Symbol('stream')
+    , eventSymbol = Symbol('event')
     , arraySymbol = Symbol('array')
+    , sizeSymbol = Symbol('size')
     , lifeSymbol = Symbol('life')
     , attrSymbol = Symbol('attr')
     , keySymbol = Symbol('key')
@@ -68,6 +70,7 @@ s.medias = medias
 s.live = live
 s.on = on
 s.trust = trust
+s.route = router(s, '', { location: window.location })
 
 function trust(x) {
   return s(() => {
@@ -443,12 +446,24 @@ function updateElement(
     parent
   )
 
+  const size = view.children && view.children.length
   attributes(dom, view, context, create)
-  updates(dom, view.children, context)
+
+  size
+    ? updates(dom, view.children, context)
+    : dom[sizeSymbol] && removeChildren(dom.firstChild, dom)
+
+  dom[sizeSymbol] = size
 
   context.NS = previousNS
 
   return Ret(dom)
+}
+
+function removeChildren(dom, parent) {
+  while (dom)
+    dom = remove(dom, parent, false)
+  parent.innerHTML = ''
 }
 
 function tagChanged(dom, view) {
@@ -629,10 +644,8 @@ function mergeTag(a, b) {
 
 function attributes(dom, view, context, create) {
   let tag = view.tag
-    , store = false
 
-  const prev = !create && attrSymbol in dom ? dom[attrSymbol] : undefined
-  prev && view.attrs && (view.attrs.handleEvent = prev.handleEvent)
+  const prev = dom[attrSymbol]
 
   'id' in view.attrs === false
     && view.tag.id
@@ -655,7 +668,6 @@ function attributes(dom, view, context, create) {
       const value = view.attrs[attr]
       create && observe(dom, value, x => setAttribute(dom, attr, x, context))
       updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value)
-      store = true
     }
   }
 
@@ -681,7 +693,7 @@ function attributes(dom, view, context, create) {
 
   create && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom)
 
-  store && (dom[attrSymbol] = view.attrs)
+  dom[attrSymbol] = view.attrs
 }
 
 function updateStyle(dom, style, old) {
@@ -792,7 +804,7 @@ function updateAttribute(dom, context, attrs, attr, old, value) { // eslint-disa
   on
     ? value
       ? addEvent(dom, attrs, attr)
-      : removeEvent(dom, attrs, attr)
+      : removeEvent(dom, attr)
     : setAttribute(dom, attr, value, context)
 }
 
@@ -807,13 +819,15 @@ function setAttribute(dom, attr, value, context) {
       : dom.setAttribute(attr, value === true ? '' : value)
 }
 
-function removeEvent(dom, attrs, name) {
-  dom.removeEventListener(name.slice(2), attrs.handleEvent)
+function removeEvent(dom, name) {
+  dom.removeEventListener(name.slice(2), dom[eventSymbol])
 }
 
 function addEvent(dom, attrs, name) {
-  !attrs.handleEvent && (attrs.handleEvent = handleEvent(dom))
-  dom.addEventListener(name.slice(2), attrs.handleEvent)
+  dom.addEventListener(
+    name.slice(2),
+    dom[eventSymbol] || (dom[eventSymbol] = handleEvent(dom))
+  )
 }
 
 function handleEvent(dom) {
@@ -843,7 +857,7 @@ function replace(old, dom, parent) {
   return dom
 }
 
-function removeArray(dom, parent, promises, root, deferrable) {
+function removeArray(dom, parent, root, promises, deferrable) {
   const last = getArray(dom)
 
   if (!last)
@@ -857,7 +871,7 @@ function removeArray(dom, parent, promises, root, deferrable) {
   if (!dom)
     return after
   do
-    dom = remove(dom, parent, promises, root, deferrable)
+    dom = remove(dom, parent, root, promises, deferrable)
   while (dom && dom !== after)
 
   return after
@@ -868,7 +882,7 @@ function removeChild(parent, dom) {
   parent.removeChild(dom)
 }
 
-function remove(dom, parent, promises = [], root = true, deferrable = false) {
+function remove(dom, parent, root = true, promises = [], deferrable = false) {
   let after = dom.nextSibling
   if (removing.has(dom))
     return after
@@ -881,7 +895,7 @@ function remove(dom, parent, promises = [], root = true, deferrable = false) {
       after = dom.nextSibling
     }
     if (dom.nodeValue.charCodeAt(0) === 91) { // [
-      after = removeArray(dom, parent, promises, root, deferrable)
+      after = removeArray(dom, parent, root, promises, deferrable)
     }
   }
 
@@ -904,7 +918,7 @@ function remove(dom, parent, promises = [], root = true, deferrable = false) {
   !deferrable && (deferrable = dom[deferrableSymbol] || false)
   let child = dom.firstChild
   while (child) {
-    remove(child, dom, promises, false, deferrable)
+    remove(child, dom, false, promises, deferrable)
     child = child.nextSibling
   }
 

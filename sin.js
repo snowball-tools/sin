@@ -1,11 +1,11 @@
 // src/view.js
 var View = class {
-  constructor(component, tag = null, level = 0, attrs2 = {}, children = null) {
+  constructor(component, tag = null, level = 0, attrs = null, children = null) {
     this.level = level;
     this.component = component;
     this.tag = tag;
-    this.attrs = attrs2;
-    this.key = "key" in attrs2 ? attrs2.key : null;
+    this.attrs = attrs;
+    this.key = attrs && "key" in attrs ? attrs.key : null;
     this.dom = null;
     this.children = children;
   }
@@ -29,13 +29,15 @@ function isCssVar(x2) {
   return x2[0] === "-" && x2[1] === "-";
 }
 function ignoredAttr(x2) {
-  return x2 === "dom" || x2 === "is" || x2 === "key" || x2 === "handleEvent" || x2 === "class" || x2 === "className" || x2 === "style";
+  return x2 === "dom" || x2 === "is" || x2 === "key" || x2 === "handleEvent" || x2 === "class" || x2 === "className" || x2 === "style" || x2 === "deferrable";
 }
 function className(view) {
   return (classes(view.attrs.class) + classes(view.attrs.className) + view.tag.classes).trim();
 }
 function asArray(x2) {
   return Array.isArray(x2) ? x2 : [x2];
+}
+function noop() {
 }
 function classes(x2) {
   if (isFunction(x2))
@@ -552,14 +554,14 @@ function params(path2, xs) {
     return acc;
   }, {});
 }
-function resolve(view, attrs2, context) {
-  return isFunction(view) ? view(attrs2, [], context) : view;
+function resolve(view, attrs, context) {
+  return isFunction(view) ? view(attrs, [], context) : view;
 }
 function router(s2, root, rootContext) {
   const location = rootContext.location;
-  const routed = s2((attrs2, [view], context) => {
-    context.route = attrs2.route;
-    return () => typeof view === "string" ? import((view[0] === "/" ? "" : route) + view).then((x2) => resolve(x2.default, attrs2, context)) : resolve(view, attrs2, context);
+  const routed = s2((attrs, [view], context) => {
+    context.route = attrs.route;
+    return () => typeof view === "string" ? import((view[0] === "/" ? "" : route) + view).then((x2) => resolve(x2.default, attrs, context)) : resolve(view, attrs, context);
   });
   route.query = Query(s2, rootContext.location);
   route.toString = route;
@@ -631,15 +633,18 @@ function s(...x2) {
 function S(...x2) {
   return x2[0] && Array.isArray(x2[0].raw) ? S.bind(tagged(x2, this)) : execute(x2, this);
 }
-var components = /* @__PURE__ */ new WeakMap();
 var removing = /* @__PURE__ */ new WeakSet();
-var observables = /* @__PURE__ */ new WeakMap();
-var streams = /* @__PURE__ */ new WeakMap();
-var arrays = /* @__PURE__ */ new WeakMap();
-var lives = /* @__PURE__ */ new WeakMap();
-var attrs = /* @__PURE__ */ new WeakMap();
-var keyCache = /* @__PURE__ */ new WeakMap();
 var mounts = /* @__PURE__ */ new Map();
+var deferrableSymbol = Symbol("deferrable");
+var observableSymbol = Symbol("observable");
+var componentSymbol = Symbol("component");
+var streamSymbol = Symbol("stream");
+var eventSymbol = Symbol("event");
+var arraySymbol = Symbol("array");
+var sizeSymbol = Symbol("size");
+var lifeSymbol = Symbol("life");
+var attrSymbol = Symbol("attr");
+var keySymbol = Symbol("key");
 var idle = true;
 var afterUpdate = [];
 s.pathmode = "";
@@ -653,6 +658,7 @@ s.medias = medias;
 s.live = Live;
 s.on = on;
 s.trust = trust;
+s.route = router(s, "", { location: window_default.location });
 function trust(x2) {
   return s(() => {
     const div2 = document.createElement("div"), frag = new DocumentFragment();
@@ -672,7 +678,7 @@ function on(target, event, fn2, options) {
 function animate(dom) {
   dom.setAttribute("animate", "entry");
   requestAnimationFrame(() => dom.removeAttribute("animate"));
-  return () => new Promise((r) => {
+  return (deferrable) => deferrable && new Promise((r) => {
     let running = false;
     dom.setAttribute("animate", "exit");
     dom.addEventListener("transitionrun", () => (running = true, end(r)), { once: true, passive: true });
@@ -687,7 +693,7 @@ function link(dom, route) {
   dom.addEventListener("click", (e) => {
     if (!e.defaultPrevented && (e.button === 0 || e.which === 0 || e.which === 1) && (!e.currentTarget.target || e.currentTarget.target === "_self") && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
       e.preventDefault();
-      const state = attrs.get(dom).state;
+      const state = dom[attrSymbol].state;
       route(dom.getAttribute("href"), { state });
     }
   });
@@ -703,25 +709,22 @@ function execute(x2, parent) {
 function isAttrs(x2) {
   return x2 && typeof x2 === "object" && !(x2 instanceof Date) && !Array.isArray(x2) && !(x2 instanceof View);
 }
-function mount(dom, view, attrs2 = {}, context = {}) {
+function mount(dom, view, attrs = {}, context = {}) {
   if (!isFunction(view)) {
-    context = attrs2 || {};
-    attrs2 = view || {};
+    context = attrs || {};
+    attrs = view || {};
     view = dom;
     dom = document.body;
   }
-  context.status = s.live(200);
-  context.title = s.live(document.title);
-  context.head = s.live("");
-  context.headers = s.live({});
   "location" in context || (context.location = window_default.location);
   "catcher" in context || (context.catcher = catcher);
   if (isServer)
-    return { view, attrs: attrs2, context };
-  context.title.observe((x2) => document.title = x2);
+    return { view, attrs, context };
+  context.title = s.live(document.title, (x2) => document.title = x2);
+  context.status = context.head = context.headers = noop;
   context.route = router(s, "", context);
-  mounts.set(dom, { view, attrs: attrs2, context });
-  draw({ view, attrs: attrs2, context }, dom);
+  mounts.set(dom, { view, attrs, context });
+  draw({ view, attrs, context }, dom);
 }
 function catcher(error) {
   console.error(error);
@@ -734,24 +737,21 @@ function globalRedraw() {
   mounts.forEach(draw);
   idle = true;
 }
-function draw({ view, attrs: attrs2, context }, dom) {
+function draw({ view, attrs, context }, dom) {
   try {
-    const x2 = view(attrs2, [], context);
+    const x2 = view(attrs, [], context);
     updates(dom, asArray(x2), context);
   } catch (error) {
-    updates(dom, asArray(context.catcher(error, attrs2, [], context)), context);
+    updates(dom, asArray(context.catcher(error, attrs, [], context)), context);
   }
   afterUpdate.forEach((fn2) => fn2());
   afterUpdate = [];
 }
 function updates(parent, next, context, before, last2 = parent.lastChild) {
-  const keys = next[0] && next[0].key != null && new Array(next.length), ref = before ? before.nextSibling : parent.firstChild, tracked = keyCache.has(ref), after = last2 ? last2.nextSibling : null;
-  keys && (keys.rev = {}) && tracked ? keyed(parent, context, keyCache.get(ref), next, keys, after) : nonKeyed(parent, context, next, keys, ref, after);
+  const keys = next[0] && next[0].key != null && new Array(next.length), ref = before ? before.nextSibling : parent.firstChild, tracked = ref && keySymbol in ref, after = last2 ? last2.nextSibling : null;
+  keys && (keys.rev = {}) && tracked ? keyed(parent, context, ref[keySymbol], next, keys, after) : nonKeyed(parent, context, next, keys, ref, after);
   const first = before ? before.nextSibling : parent.firstChild;
-  if (keys) {
-    keyCache.set(first, keys);
-    first !== ref && keyCache.delete(ref);
-  }
+  keys && (first[keySymbol] = keys);
   return Ret(first, after && after.previousSibling || parent.lastChild);
 }
 function Ref(keys, dom, key, i) {
@@ -771,11 +771,11 @@ function nonKeyed(parent, context, next, keys, dom, after = null) {
     }
     if (dom !== null) {
       dom = dom.nextSibling;
-      dom !== null && dom.nodeType === 8 && dom.nodeValue === "," && (dom = remove(dom, parent).after);
+      dom !== null && dom.nodeType === 8 && dom.nodeValue === "," && (dom = remove(dom, parent));
     }
   }
   while (dom && dom !== after)
-    dom = remove(dom, parent).after;
+    dom = remove(dom, parent);
 }
 function keyed(parent, context, as, bs, keys, after) {
   const map = as.rev;
@@ -842,16 +842,15 @@ function updateView(dom, view, context, parent, stack, create) {
   return view.component ? updateComponent(dom, view, context, parent, stack, create) : updateElement(dom, view, context, parent, create);
 }
 function updateLive(dom, view, context, parent) {
-  if (streams.has(dom))
-    return streams.get(dom);
+  if (streamSymbol in dom)
+    return dom[streamSymbol];
   let result;
   run(view());
   view.observe(run);
   return result;
   function run(x2) {
     result = update(dom, x2, context, parent || dom && dom.parentNode);
-    streams.set(result.first, result);
-    dom && dom !== result.first && streams.delete(dom);
+    result.first[streamSymbol] = result;
     dom = result.first;
   }
 }
@@ -867,11 +866,11 @@ function fromComment(dom) {
   if (!dom)
     return;
   const last2 = dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91 && nthAfter(dom.nextSibling, parseInt(dom.nodeValue.slice(1)));
-  last2 && arrays.set(dom, last2);
+  last2 && (dom[arraySymbol] = last2);
   return last2;
 }
 function getArray(dom) {
-  return arrays.has(dom) ? arrays.get(dom) : fromComment(dom);
+  return dom && arraySymbol in dom ? dom[arraySymbol] : fromComment(dom);
 }
 function updateArray(dom, view, context, parent) {
   const last2 = getArray(dom) || dom;
@@ -880,13 +879,13 @@ function updateArray(dom, view, context, parent) {
     const after = last2 ? last2.nextSibling : null;
     updates(parent, view, context, comment.first, last2);
     const nextLast = after ? after.previousSibling : parent.lastChild;
-    last2 !== nextLast && arrays.set(comment.first, nextLast);
+    last2 !== nextLast && (comment.first[arraySymbol] = nextLast);
     return Ret(comment.dom, comment.first, nextLast);
   }
   parent = new DocumentFragment();
   parent.appendChild(comment.dom);
   updates(parent, view, context, comment.first, last2);
-  arrays.set(comment.first, parent.lastChild);
+  comment.first[arraySymbol] = parent.lastChild;
   return Ret(parent, comment.first, parent.lastChild);
 }
 function updateValue(dom, view, parent, create, nodeType = typeof view === "boolean" || view == null ? 8 : 3) {
@@ -899,10 +898,17 @@ function updateValue(dom, view, parent, create, nodeType = typeof view === "bool
 function updateElement(dom, view, context, parent, create = dom === null || tagChanged(dom, view)) {
   const previousNS = context.NS;
   create && replace(dom, dom = createElement(view, context), parent);
+  const size = view.children && view.children.length;
   attributes(dom, view, context, create);
-  updates(dom, view.children, context);
+  size ? updates(dom, view.children, context) : dom[sizeSymbol] && removeChildren(dom.firstChild, dom);
+  dom[sizeSymbol] = size;
   context.NS = previousNS;
   return Ret(dom);
+}
+function removeChildren(dom, parent) {
+  while (dom)
+    dom = remove(dom, parent, false);
+  parent.innerHTML = "";
 }
 function tagChanged(dom, view) {
   return dom.tagName !== (view.tag.name || "DIV").toUpperCase();
@@ -968,26 +974,24 @@ function hydrate(dom) {
   return Ret(dom, dom, last2);
 }
 function dehydrate(x2, stack) {
-  components.delete(x2.first);
-  components.set(x2.first.nextSibling, stack);
+  x2.first.nextSibling[componentSymbol] = stack;
   x2.first.remove();
   x2.last.remove();
 }
-function updateComponent(dom, component, context, parent, stack = components.has(dom) ? components.get(dom) : Stack(), create = stack.exhausted || stack.key !== component.key, force = false) {
+function updateComponent(dom, component, context, parent, stack = dom && dom[componentSymbol] || Stack(), create = stack.exhausted || stack.key !== component.key, force = false) {
   const instance = create ? stack.add(component, context, parent, stack) : stack.next(component, context, parent, stack);
   if (!create && !force && instance.ignore) {
     stack.pop();
     return stack.dom;
   }
   component.key && create && (instance.key = component.key);
-  const hydrating = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.endsWith("async");
+  const hydrating = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 97;
   const next = instance.next = hydrating ? hydrate(dom) : update(dom, mergeTag(catchInstance(create, instance, component, instance.context, stack), component), instance.context, parent, stack, create || void 0);
-  create && instance.promise && instance.promise.then((view) => instance.view = view).catch((error) => instance.view = instance.catcher.bind(null, error)).then(() => components.has(instance.next.first) && (hydrating && dehydrate(next, stack), instance.promise = false, redraw()));
+  create && instance.promise && instance.promise.then((view) => instance.view = view).catch((error) => instance.view = instance.catcher.bind(null, error)).then(() => instance.next.first[componentSymbol] && (hydrating && dehydrate(next, stack), instance.promise = false, redraw()));
   const changed = dom !== next.first;
   if (stack.pop() && (changed || create)) {
-    changed && components.delete(dom);
     stack.dom = instance.next = next;
-    components.set(next.first, stack);
+    next.first[componentSymbol] = stack;
     !instance.promise && giveLife(next.first, component.attrs, component.children, instance.context, stack.life);
   }
   return next;
@@ -1019,43 +1023,38 @@ function mergeTag(a, b) {
   };
   return a;
 }
-function empty(o) {
-  for (const x2 in o)
-    return false;
-  return true;
-}
-function attributes(dom, view, context, init) {
-  let tag = view.tag, store = false;
-  const prev = !init && attrs.has(dom) ? attrs.get(dom) : void 0;
-  prev && view.attrs && (view.attrs.handleEvent = prev.handleEvent);
+function attributes(dom, view, context, create) {
+  let tag = view.tag;
+  const prev = dom[attrSymbol];
   "id" in view.attrs === false && view.tag.id && (view.attrs.id = view.tag.id);
-  if (init && view.tag.classes || view.attrs.class !== (prev && prev.class) || view.attrs.className !== (prev && prev.className) || dom.className !== view.tag.classes)
+  if (create && view.tag.classes || view.attrs.class !== (prev && prev.class) || view.attrs.className !== (prev && prev.className) || dom.className !== view.tag.classes)
     setClass(dom, view);
-  init && observe(dom, view.attrs.class, () => setClass(dom, view));
-  init && observe(dom, view.attrs.className, () => setClass(dom, view));
+  create && observe(dom, view.attrs.class, () => setClass(dom, view));
+  create && observe(dom, view.attrs.className, () => setClass(dom, view));
   for (const attr in view.attrs) {
-    if (!ignoredAttr(attr) && (!prev || prev[attr] !== view.attrs[attr])) {
+    if (ignoredAttr(attr)) {
+      attr === "deferrable" && (dom[deferrableSymbol] = view.attrs[attr]);
+    } else if (!prev || prev[attr] !== view.attrs[attr]) {
       const value2 = view.attrs[attr];
-      init && observe(dom, value2, (x2) => setAttribute(dom, attr, x2, context));
+      create && observe(dom, value2, (x2) => setAttribute(dom, attr, x2, context));
       updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value2);
-      store = true;
     }
   }
   if (prev) {
     for (const attr in prev) {
       if (attr in view.attrs === false) {
-        isEvent(attr) ? removeEvent(dom, attrs, attr) : !ignoredAttr(attr) && dom.removeAttribute(attr);
+        isEvent(attr) ? removeEvent(dom, view.attrs, attr) : ignoredAttr(attr) ? attr === "deferrable" && (dom[deferrableSymbol] = false) : dom.removeAttribute(attr);
       }
     }
   }
-  const reapply = updateStyle(dom, view.attrs.style, prev.style);
+  const reapply = updateStyle(dom, view.attrs.style, prev && prev.style);
   if (view.tag) {
-    setVars(dom, view.tag.vars, view.tag.args, init, reapply);
+    setVars(dom, view.tag.vars, view.tag.args, create, reapply);
     while (tag = tag.parent)
-      setVars(dom, tag.vars, tag.args, init, reapply);
+      setVars(dom, tag.vars, tag.args, create, reapply);
   }
-  init && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom);
-  store ? attrs.set(dom, view.attrs) : prev && empty(view.attrs) && attrs.delete(dom);
+  create && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom);
+  dom[attrSymbol] = view.attrs;
 }
 function updateStyle(dom, style2, old) {
   if (old === style2)
@@ -1089,9 +1088,9 @@ function normalizeProp(prop2) {
 function observe(dom, x2, fn2) {
   if (!isObservable(x2))
     return;
-  const has = observables.has(dom);
-  const xs = has ? observables.get(dom) : /* @__PURE__ */ new Set();
-  !has && observables.set(dom, xs);
+  const has = observableSymbol in dom;
+  const xs = has ? dom[observableSymbol] : /* @__PURE__ */ new Set();
+  has || (dom[observableSymbol] = xs);
   xs.add(x2.observe(fn2));
 }
 function setClass(dom, view) {
@@ -1116,13 +1115,13 @@ function setVar(dom, id2, value2, unit, init, reapply, after) {
   dom.style.setProperty(id2, formatValue(value2, unit));
   after && afterUpdate.push(() => dom.style.setProperty(id2, formatValue(value2, unit)));
 }
-function giveLife(dom, attrs2, children, context, life) {
+function giveLife(dom, attrs, children, context, life) {
   afterUpdate.push(() => {
-    life = [].concat(life).map((x2) => isFunction(x2) && x2(dom, attrs2, children, context)).filter((x2) => isFunction(x2));
-    life.length && lives.set(dom, (lives.get(dom) || []).concat(life));
+    life = [].concat(life).map((x2) => isFunction(x2) && x2(dom, attrs, children, context)).filter((x2) => isFunction(x2));
+    life.length && (dom[lifeSymbol] = (dom[lifeSymbol] || []).concat(life));
   });
 }
-function updateAttribute(dom, context, attrs2, attr, old, value2) {
+function updateAttribute(dom, context, attrs, attr, old, value2) {
   if (old === value2)
     return;
   if (attr === "href" && value2 && !value2.match(/^([a-z]+:)?\/\//)) {
@@ -1132,23 +1131,22 @@ function updateAttribute(dom, context, attrs2, attr, old, value2) {
   const on2 = isEvent(attr);
   if (on2 && typeof old === typeof value2)
     return;
-  on2 ? value2 ? addEvent(dom, attrs2, attr) : removeEvent(dom, attrs2, attr) : setAttribute(dom, attr, value2, context);
+  on2 ? value2 ? addEvent(dom, attrs, attr) : removeEvent(dom, attr) : setAttribute(dom, attr, value2, context);
 }
 function setAttribute(dom, attr, value2, context) {
   if (isFunction(value2))
     return setAttribute(dom, attr, value2(), context);
   !value2 && value2 !== 0 ? dom.removeAttribute(attr) : !context.NS && attr in dom && typeof value2 !== "boolean" ? dom[attr] = value2 : dom.setAttribute(attr, value2 === true ? "" : value2);
 }
-function removeEvent(dom, attrs2, name2) {
-  dom.removeEventListener(name2.slice(2), attrs2.handleEvent);
+function removeEvent(dom, name2) {
+  dom.removeEventListener(name2.slice(2), dom[eventSymbol]);
 }
-function addEvent(dom, attrs2, name2) {
-  !attrs2.handleEvent && (attrs2.handleEvent = handleEvent(dom));
-  dom.addEventListener(name2.slice(2), attrs2.handleEvent);
+function addEvent(dom, attrs, name2) {
+  dom.addEventListener(name2.slice(2), dom[eventSymbol] || (dom[eventSymbol] = handleEvent(dom)));
 }
 function handleEvent(dom) {
   return {
-    handleEvent: (e) => callHandler(attrs.get(dom)["on" + e.type], e)
+    handleEvent: (e) => callHandler(dom[attrSymbol]["on" + e.type], e)
   };
 }
 function callHandler(handler, e) {
@@ -1165,30 +1163,7 @@ function replace(old, dom, parent) {
   }
   return dom;
 }
-function deferredRemove(dom, parent, xs) {
-  removing.add(dom);
-  return Promise.allSettled(xs).then(() => {
-    removing.delete(dom);
-    remove(dom, parent);
-  });
-}
-function callLogThrow(x2) {
-  try {
-    return x2();
-  } catch (error) {
-    console.error(error);
-  }
-}
-function deferRemove(dom, parent, children) {
-  if (!lives.has(dom))
-    return children.length && deferredRemove(dom, parent, children);
-  const life = lives.get(dom).map(callLogThrow).filter((x2) => x2 && isFunction(x2.then));
-  lives.delete(dom);
-  if (life.length === 0)
-    return children.length && deferredRemove(dom, parent, children);
-  return deferredRemove(dom, parent, life.concat(children));
-}
-function removeArray(dom, parent, lives2, instant) {
+function removeArray(dom, parent, root, promises, deferrable) {
   const last2 = getArray(dom);
   if (!last2)
     return dom.nextSibling;
@@ -1198,47 +1173,52 @@ function removeArray(dom, parent, lives2, instant) {
   dom = dom.nextSibling;
   if (!dom)
     return after;
-  do {
-    const x2 = remove(dom, parent, instant);
-    x2.life && lives2.push(x2.life);
-    dom = x2.after;
-  } while (dom && dom !== after);
+  do
+    dom = remove(dom, parent, root, promises, deferrable);
+  while (dom && dom !== after);
   return after;
 }
 function removeChild(parent, dom) {
-  observables.has(dom) && observables.get(dom).forEach((x2) => x2());
-  components.delete(dom);
+  observableSymbol in dom && dom[observableSymbol].forEach((x2) => x2());
   parent.removeChild(dom);
 }
-function remove(dom, parent, instant = true) {
-  if (!parent || removing.has(dom))
-    return { after: dom.nextSibling, life: null };
-  const lives2 = [];
+function remove(dom, parent, root = true, promises = [], deferrable = false) {
   let after = dom.nextSibling;
-  if (dom.nodeType === 8 && dom.nodeValue.endsWith("async")) {
-    after = dom.nextSibling;
-    removeChild(parent, dom);
-    dom = after;
-    after = dom.nextSibling;
+  if (removing.has(dom))
+    return after;
+  if (dom.nodeType === 8) {
+    if (dom.nodeValue.charCodeAt(0) === 97) {
+      after = dom.nextSibling;
+      removeChild(parent, dom);
+      dom = after;
+      after = dom.nextSibling;
+    }
+    if (dom.nodeValue.charCodeAt(0) === 91) {
+      after = removeArray(dom, parent, root, promises, deferrable);
+    }
   }
-  if (dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91)
-    after = removeArray(dom, parent, lives2, instant);
   if (dom.nodeType !== 1) {
-    instant && removeChild(parent, dom);
-    return { after, life: null };
+    root && removeChild(parent, dom);
+    return after;
   }
+  if (lifeSymbol in dom) {
+    for (const life of dom[lifeSymbol]) {
+      try {
+        const promise = life(deferrable || root);
+        deferrable || root && promise && isFunction(promise.then) && promises.push(promise);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  }
+  !deferrable && (deferrable = dom[deferrableSymbol] || false);
   let child = dom.firstChild;
-  while (child !== null) {
-    const life2 = remove(child, dom, false).life;
-    life2 && lives2.push(life2);
+  while (child) {
+    remove(child, dom, false, promises, deferrable);
     child = child.nextSibling;
   }
-  const life = deferRemove(dom, parent, lives2);
-  instant && !life && removeChild(parent, dom);
-  return {
-    after,
-    life
-  };
+  root && (promises.length === 0 ? removeChild(parent, dom) : (removing.add(dom), Promise.allSettled(promises).then(() => removeChild(parent, dom))));
+  return after;
 }
 function raf3(fn2) {
   requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(fn2)));

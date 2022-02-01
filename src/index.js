@@ -499,13 +499,13 @@ function Stack() {
         : null
     },
     add(view, context, parent, stack) {
-      const [init, options = {}] = view.component
+      const [init, options] = view.component
       const instance = {
         id: window.count = (window.count || 0) + 1,
         key: null,
         view: init,
-        catcher: options.catcher || context.catcher,
-        loader: options.loader || context.loader
+        catcher: options && options.catcher || context.catcher,
+        loader: options && options.loader || context.loader
       }
 
       instance.context = createContext(view, context, parent, stack, instance)

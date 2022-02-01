@@ -1,16 +1,3 @@
-// src/view.js
-var View = class {
-  constructor(component, tag = null, level = 0, attrs = null, children = null) {
-    this.level = level;
-    this.component = component;
-    this.tag = tag;
-    this.attrs = attrs;
-    this.key = attrs && "key" in attrs ? attrs.key : null;
-    this.dom = null;
-    this.children = children;
-  }
-};
-
 // src/shared.js
 var isServer = typeof window === "undefined" || typeof window.document === "undefined";
 function snake(x2) {
@@ -44,6 +31,19 @@ function classes(x2) {
     return classes(x2());
   return x2 ? typeof x2 === "object" && !isObservable(x2) ? Object.keys(x2).reduce((acc, c) => acc + x2[c] ? c + " " : "", "") : x2 + " " : "";
 }
+
+// src/view.js
+var View = class {
+  constructor(component, tag = null, level = 0, attrs = null, children = null) {
+    this.level = level;
+    this.component = component && (isFunction(component[0]) ? component : component.reverse());
+    this.tag = tag;
+    this.attrs = attrs;
+    this.key = attrs && "key" in attrs ? attrs.key : null;
+    this.dom = null;
+    this.children = children;
+  }
+};
 
 // src/window.js
 var window_default = isServer ? {} : window;
@@ -513,7 +513,7 @@ function vendor(x2) {
       console.log(x2, "prefixed to", vendorMap[x2]);
       return vendorMap[x2];
     }
-    x2.indexOf("--") !== 0 && console.log(x2, "not found");
+    x2.indexOf("--") !== 0 && console.error(x2, "css property not found");
   }
   return x2;
 }
@@ -559,9 +559,9 @@ function resolve(view, attrs, context) {
 }
 function router(s2, root, rootContext) {
   const location = rootContext.location;
-  const routed = s2((attrs, [view], context) => {
-    context.route = attrs.route;
-    return () => typeof view === "string" ? import((view[0] === "/" ? "" : route) + view).then((x2) => resolve(x2.default, attrs, context)) : resolve(view, attrs, context);
+  const routed = s2(({ route: route2, ...attrs }, [view], context) => {
+    context.route = route2;
+    return () => typeof view === "string" ? import((view[0] === "/" ? "" : route2) + view).then((x2) => resolve(x2.default, attrs, context)) : resolve(view, attrs, context);
   });
   route.query = Query(s2, rootContext.location);
   route.toString = route;
@@ -727,7 +727,9 @@ function mount(dom, view, attrs = {}, context = {}) {
   draw({ view, attrs, context }, dom);
 }
 function catcher(error) {
-  console.error(error);
+  isServer ? console.error(error) : Promise.resolve().then(() => {
+    throw error;
+  });
   return s`pre;m 0;c white;bc #ff0033;p 16;br 6;overflow auto`(s`code`(error && error.stack || error || new Error("Unknown Error").stack));
 }
 function redraw() {
@@ -929,12 +931,13 @@ function Stack() {
       return i < xs.length ? xs[i].key : null;
     },
     add(view, context, parent, stack2) {
+      const [init, options] = view.component;
       const instance = {
         id: window_default.count = (window_default.count || 0) + 1,
         key: null,
-        view: view.component[0],
-        catcher: view.component[1] || context.catcher,
-        loader: view.component[2] || context.loader
+        view: init,
+        catcher: options && options.catcher || context.catcher,
+        loader: options && options.loader || context.loader
       };
       instance.context = createContext(view, context, parent, stack2, instance);
       const next = catchInstance(true, instance, view, instance.context, stack2);

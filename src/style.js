@@ -397,7 +397,7 @@ function vendor(x) {
       console.log(x, 'prefixed to', vendorMap[x]) // eslint-disable-line
       return vendorMap[x]
     }
-    x.indexOf('--') !== 0 && console.log(x, 'not found') // eslint-disable-line
+    x.indexOf('--') !== 0 && console.error(x, 'css property not found') // eslint-disable-line
   }
   return x
 }

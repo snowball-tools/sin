@@ -1,13 +1,4 @@
-# considerations
-- Support `s(view, { catcher, loader })` and `s({ catcher, loader, }, view)`
-- Support route({ ... }, { catcher, loader }
-- Support s.mount({ ...routes })
-- waitForChildren: false ? how?
-- Should the default catcher call window.onerror
-
 ## Todo
-- SSR
-- Hydration
 - scroll restoration for async loaded content?
 - Check anchor handling (#wee scroll etc)
 - shorthand `d` in svg should be d instead of display
@@ -15,10 +6,8 @@
 
 ## Ideas
 - streaming ssr by waiting for first context.head() call
-- add catcher and loader to route???
 - document.querySelector(location.hash).scrollIntoView() on load ?
-- shallow delayed remove option on redraw? (eg on route change we don't want to wait for delayed removal of all items in a sublist)
-- support multilines without colon and semicolon (end would be next valid selector line, prop / eol)
+- support css multilines without colon and semicolon (end would be next valid selector line, prop / eol)
 - traverse nonKeyed in reverse too
 - signals as local redraws can include / exclude global redraw
 - error | loading | result component | fetch | signal | rerender

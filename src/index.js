@@ -595,6 +595,7 @@ function updateComponent(
     .catch(error => instance.view = instance.catcher.bind(null, error))
     .then(() => instance.next.first[componentSymbol] && (
       hydrating && dehydrate(next, stack),
+      delete stack.dom.first[lifeSymbol],
       instance.promise = false,
       redraw()
     ))

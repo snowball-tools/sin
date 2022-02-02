@@ -75,7 +75,7 @@ export function router(s, root, rootContext) {
   }
 
   function reroute(path, { state, replace = false, scroll = rootChange(path) } = {}) {
-    if (path === route.path)
+    if (path === getPath(location))
       return
 
     s.pathmode[0] === '#'

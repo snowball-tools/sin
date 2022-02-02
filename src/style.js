@@ -139,7 +139,7 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
   const vars = {}
   name = id = classes = rule = value = ''
   selectors.length = hash = 0
-  valueStart = fontFaces = -1
+  lastSpace = valueStart = fontFaces = -1
   rules = root ? {} : null
   hasRules = false
   styles = false

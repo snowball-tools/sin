@@ -33,7 +33,9 @@ export default function s(...x) {
     : S.bind(
       type === 'function'
         ? new View(x)
-        : tagged(x)
+        : isFunction(x[1])
+          ? new View(x.reverse())
+          : tagged(x)
     )
 }
 

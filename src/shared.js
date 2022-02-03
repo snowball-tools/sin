@@ -21,7 +21,7 @@ export function isCssVar(x) {
 }
 
 export function ignoredAttr(x) {
-  return x === 'dom' || x === 'is' || x === 'key' || x === 'handleEvent'
+  return x === 'dom' || x === 'is' || x === 'key' || x === 'handleEvent' || x === 'type'
       || x === 'class' || x === 'className' || x === 'style' || x === 'deferrable'
 }
 

@@ -667,6 +667,8 @@ function attributes(dom, view, context, create) {
   create && observe(dom, view.attrs.class, () => setClass(dom, view))
   create && observe(dom, view.attrs.className, () => setClass(dom, view))
 
+  view.attrs.type != null && setAttribute(dom, 'type', view.attrs.type, context)
+
   for (const attr in view.attrs) {
     if (ignoredAttr(attr)) {
       attr === 'deferrable' && (dom[deferrableSymbol] = view.attrs[attr])

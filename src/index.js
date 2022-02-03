@@ -818,10 +818,10 @@ function setAttribute(dom, attr, value, context) {
   if (isFunction(value))
     return setAttribute(dom, attr, value(), context)
 
-  !value && value !== 0
-    ? dom.removeAttribute(attr)
-    : !context.NS && attr in dom && typeof value !== 'boolean'
-      ? dom[attr] = value
+  !context.NS && attr in dom
+    ? dom[attr] = value
+    : value === false
+      ? dom.removeAttribute(attr)
       : dom.setAttribute(attr, value === true ? '' : value)
 }
 

@@ -48,6 +48,9 @@ const vendorMap = properties.reduce((acc, x) => {
 
 const cache = new Map()
     , cssVars = typeof window !== 'undefined' && window.CSS && CSS.supports('color', 'var(--support-test)')
+    , pxFunctions = ['perspective', 'blur', 'drop-shadow', 'inset', 'polygon']
+    , isPxFunction = x => (x.indexOf('translate') === 0 || pxFunctions.indexOf(x) > -1)
+    , isDegFunction = x => x.indexOf('rotate') === 0 || x.indexOf('skew') === 0
     , isStartChar = x => x !== 32 && x !== 9 && x !== 10 && x !== 13 && x !== 59 // ws \t \n \r ;
     , isNumber = x => (x >= 48 && x <= 57) || x === 46 // 0-9-.
     , isUnit = x => x === 37 || (x >= 65 && x <= 90) || (x >= 97 && x <= 122) // % a-z A-Z
@@ -356,9 +359,9 @@ function getUnit(prop, fn = '') {
     return unitCache[id]
 
   return unitCache[id] = (
-    fn && (fn.indexOf('translate') === 0 || 'perspective blur drop-shadow inset polygon'.indexOf(fn) > -1)
+    fn && isPxFunction(fn)
       ? 'px'
-      : fn.indexOf('rotate') === 0 || fn.indexOf('skew') === 0
+      : isDegFunction(fn)
         ? 'deg'
         : fn
           ? ''

@@ -1,5 +1,9 @@
 export const isServer = typeof window === 'undefined' || typeof window.document === 'undefined'
 
+export function notValue(x) {
+  return !x && x !== 0 && x !== ''
+}
+
 export function snake(x) {
   return x.replace(/(\B[A-Z])/g, '-$1').toLowerCase()
 }

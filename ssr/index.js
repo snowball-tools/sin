@@ -1,6 +1,6 @@
 import './window.js'
 import View from '../src/view.js'
-import { className, ignoredAttr, isEvent, isFunction, asArray } from '../src/shared.js'
+import { className, ignoredAttr, isEvent, isFunction, asArray, notValue } from '../src/shared.js'
 import { formatValue, cssRules } from '../src/style.js'
 import { router } from '../src/router.js'
 import s from '../src/index.js'
@@ -142,7 +142,7 @@ function getCssVars(view) {
 }
 
 function renderAttr(k, v) {
-  return ignoredAttr(k) || isEvent(k) || v === false
+  return ignoredAttr(k) || isEvent(k) || notValue(v)
     ? ''
     : (' ' + escapeAttr(k) + (
       v === true

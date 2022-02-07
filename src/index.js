@@ -9,6 +9,7 @@ import {
   ignoredAttr,
   isObservable,
   isFunction,
+  notValue,
   isCssVar,
   isServer,
   isEvent,
@@ -822,7 +823,7 @@ function setAttribute(dom, attr, value, context) {
 
   !context.NS && attr in dom
     ? dom[attr] = value
-    : value === false
+    : notValue(value)
       ? dom.removeAttribute(attr)
       : dom.setAttribute(attr, value === true ? '' : value)
 }

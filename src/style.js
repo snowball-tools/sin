@@ -72,7 +72,7 @@ let start = -1
   , char = -1
   , lastSpace = -1
   , numberStart = -1
-  , ts = ''
+  , temp = ''
   , specificity = ''
   , prop = ''
   , path = '&'
@@ -158,8 +158,8 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
     if (j < args.length) {
       if (cssVars && valueStart >= 0) {
         const before = xs[j].slice(valueStart)
-        ts = prefix + Math.abs(hash).toString(31)
-        vars[varName = '--' + ts + j] = { unit: getUnit(prop, last(fn)), index: j }
+        temp = prefix + Math.abs(hash).toString(31)
+        vars[varName = '--' + temp + j] = { unit: getUnit(prop, last(fn)), index: j }
         value += before + 'var(' + varName + ')'
         valueStart = 0
       } else {
@@ -175,14 +175,14 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
         insert(k.replace(/&\s+/g, '') + '{' + v + '}')
       )
     } else {
-      ts = prefix + Math.abs(hash).toString(31)
-      classes += (classes ? ' ' : '') + ts
+      temp = prefix + Math.abs(hash).toString(31)
+      classes += (classes ? ' ' : '') + temp
       specificity = ''
       for (let i = 0; i < nesting; i++)
-        specificity += '.' + ts
+        specificity += '.' + temp
 
       Object.entries(rules).forEach(([k, v]) => {
-        insert(k.replace(/&/g, '.' + ts + specificity) + '{' + v + '}')
+        insert(k.replace(/&/g, '.' + temp + specificity) + '{' + v + '}')
       })
     }
   }
@@ -319,9 +319,9 @@ function endBlock() {
     keyframes += keyframe + '{' + rule + '}'
     keyframe = rule = ''
   } else if (animation) {
-    ts = prefix + Math.abs(hash).toString(31)
-    insert('@keyframes ' + ts + '{' + keyframes + '}')
-    rule = (rules[path || '&'] || '') + propValue('animation', animation + ' ' + ts)
+    temp = prefix + Math.abs(hash).toString(31)
+    insert('@keyframes ' + temp + '{' + keyframes + '}')
+    rule = (rules[path || '&'] || '') + propValue('animation', animation + ' ' + temp)
     animation = ''
   } else {
     rule && (rules[path || '&'] = rule)

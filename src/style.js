@@ -141,7 +141,7 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
 
   const vars = {}
   name = id = classes = rule = value = ''
-  selectors.length= fn.length = hash = 0
+  selectors.length = fn.length = hash = 0
   lastSpace = valueStart = fontFaces = startChar = -1
   rules = root ? {} : null
   hasRules = false
@@ -246,16 +246,8 @@ function parseStyles(idx, end) {
     char = x.charCodeAt(i)
     i < x.length && (hash = Math.imul(31, hash) + char | 0)
 
-    if (quote === -1 && valueStart >= 0 && ((colon ? strict(char) : valueEndChar(char) || (end && i === x.length)))) {
-      numberStart > -1 && !isUnit(char) && addUnit(i)
-      prop === '@import'
-        ? insert(prop + ' ' + x.slice(valueStart, i), 0)
-        : rule += propValue(prop, value + x.slice(valueStart, i))
-      hasRules = true
-      start = valueStart = -1
-      colon = false
-      prop = value = ''
-    }
+    if (quote === -1 && valueStart >= 0 && ((colon ? strict(char) : valueEndChar(char) || (end && i === x.length))))
+      addRule(i)
 
     if (quote !== -1) {
       if (quote === char && x.charCodeAt(i - 1) !== 92) // \
@@ -265,48 +257,9 @@ function parseStyles(idx, end) {
       if (valueStart === -1)
         valueStart = i
     } else if (char === 123) { // {
-      if (prop === 'animation') {
-        rule && (rules[path || '&'] = rule)
-        animation = value + x.slice(valueStart, i).trim()
-        keyframes = value = ''
-        rule = ''
-      } else if (animation) {
-        keyframe = x.slice(start, i).trim()
-        rule = ''
-      } else {
-        rule && (rules[path || '&'] = rule)
-        selector = startChar === 64 // @
-          ? atHelper(prop + value + x.slice(valueStart, i).trim())
-          : x.slice(start, i).trim()
-        selector.indexOf(',') !== -1 && (selector = splitSelector(selector))
-        value = prop = ''
-        selectors.push(
-          (noSpace(startChar) ? '' : ' ')
-          + (selector === '@font-face' ? Array(++fontFaces + 1).join(' ') : '')
-          + selector
-        )
-        path = selectors.toString()
-        rule = rules[path || '&'] || ''
-      }
-      start = valueStart = -1
-      prop = ''
+      startBlock(i)
     } else if (char === 125 || (end && i === x.length)) { // }
-      if (keyframe) {
-        keyframes += keyframe + '{' + rule + '}'
-        keyframe = rule = ''
-      } else if (animation) {
-        ts = prefix + Math.abs(hash).toString(31)
-        insert('@keyframes ' + ts + '{' + keyframes + '}')
-        rule = (rules[path || '&'] || '') + propValue('animation', animation + ' ' + ts)
-        animation = ''
-      } else {
-        rule && (rules[path || '&'] = rule)
-        selectors.pop()
-        path = selectors.toString()
-        rule = rules[path || '&'] || ''
-      }
-      start = valueStart = -1
-      prop = ''
+      endBlock()
     } else if (i !== x.length && start === -1 && isStartChar(char)) {
       start = i
       startChar = char
@@ -317,19 +270,81 @@ function parseStyles(idx, end) {
       valueStart = i
       isNumber(char) && (numberStart = i)
     } else if (valueStart !== -1) {
-      if (isNumber(char))
-        numberStart === -1 && (numberStart = i)
-      else if (numberStart > -1)
-        addUnit(i)
-
-      if (char === 40) // (
-        fn.push(x.slice(Math.max(lastSpace, valueStart), i))
-      else if (char === 41) // )
-        fn.pop()
-      else if (char === 9 || char === 32)
-        lastSpace = i + 1
+      handleValue(i)
     }
   }
+}
+
+function addRule(i) {
+  numberStart > -1 && !isUnit(char) && addUnit(i)
+  prop === '@import'
+    ? insert(prop + ' ' + x.slice(valueStart, i), 0)
+    : rule += propValue(prop, value + x.slice(valueStart, i))
+  hasRules = true
+  start = valueStart = -1
+  colon = false
+  prop = value = ''
+}
+
+function startBlock(i) {
+  if (prop === 'animation') {
+    rule && (rules[path || '&'] = rule)
+    animation = value + x.slice(valueStart, i).trim()
+    keyframes = value = ''
+    rule = ''
+  } else if (animation) {
+    keyframe = x.slice(start, i).trim()
+    rule = ''
+  } else {
+    rule && (rules[path || '&'] = rule)
+    selector = startChar === 64 // @
+      ? atHelper(prop + value + x.slice(valueStart, i).trim())
+      : x.slice(start, i).trim()
+    selector.indexOf(',') !== -1 && (selector = splitSelector(selector))
+    value = prop = ''
+    selectors.push(
+      (noSpace(startChar) ? '' : ' ')
+      + (selector === '@font-face' ? Array(++fontFaces + 1).join(' ') : '')
+      + selector
+    )
+    path = selectors.toString()
+    rule = rules[path || '&'] || ''
+  }
+  start = valueStart = -1
+  prop = ''
+}
+
+function endBlock() {
+  if (keyframe) {
+    keyframes += keyframe + '{' + rule + '}'
+    keyframe = rule = ''
+  } else if (animation) {
+    ts = prefix + Math.abs(hash).toString(31)
+    insert('@keyframes ' + ts + '{' + keyframes + '}')
+    rule = (rules[path || '&'] || '') + propValue('animation', animation + ' ' + ts)
+    animation = ''
+  } else {
+    rule && (rules[path || '&'] = rule)
+    selectors.pop()
+    path = selectors.toString()
+    rule = rules[path || '&'] || ''
+  }
+  start = valueStart = -1
+  prop = ''
+}
+
+function handleValue(i) {
+  if (isNumber(char))
+    numberStart === -1 && (numberStart = i)
+  else if (numberStart > -1)
+    addUnit(i)
+
+  if (char === 40) // (
+    fn.push(x.slice(Math.max(lastSpace, valueStart), i))
+  else if (char === 41) // )
+    fn.pop()
+  else if (char === 9 || char === 32)
+    lastSpace = i + 1
 }
 
 function addUnit(i) {

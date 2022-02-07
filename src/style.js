@@ -355,16 +355,28 @@ function addUnit(i) {
   numberStart = -1
 }
 
-export function formatValue(x, unit) {
-  if (!x && x !== 0)
+export function formatValue(v, unit) {
+  if (!v && v !== 0)
     return ''
 
-  isFunction(x) && (x = value())
-  return typeof x !== 'string' || !isUnit(x.charCodeAt(x.length - 1))
-    ? x + unit
-    : x.charCodeAt(0) === 36
-      ? 'var(--' + x.slice(1) + ')'
-      : x
+  isFunction(v) && (v = value())
+  if (typeof v === 'number')
+    return v + unit
+
+  typeof v !== 'string' && (v = '' + v)
+  if (v.charCodeAt(0) === 36)
+    return 'var(--' + v.slice(1) + ')'
+
+  x = v
+  value = ''
+  valueStart = 0
+  numberStart = lastSpace = -1
+  fn.length = 0
+  for (let i = 0; i <= v.length; i++) {
+    char = v.charCodeAt(i)
+    handleValue(i)
+  }
+  return value + v.slice(valueStart)
 }
 
 function getUnit(prop, fn = '') {

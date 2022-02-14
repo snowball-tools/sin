@@ -9,6 +9,9 @@ import window from './window.js'
 
 http.redraw = () => { /* noop */ }
 
+const serializeJSON = x => JSON.stringify(x)
+    , parseJSON = x => JSON.parse(x.responseText)
+
 export default function http(url, {
   method = 'GET',
   redraw = true,
@@ -17,11 +20,12 @@ export default function http(url, {
   pass = undefined,
   headers = {},
   config,
-  parse = x => JSON.parse(x.responseText),
-  serialize = x => JSON.stringify(x)
+  parse = parseJSON,
+  serialize = serializeJSON
 } = {}) {
   return new Promise((resolve, reject) => {
     const xhr = new window.XMLHttpRequest()
+    method = method.toUpperCase()
 
     xhr.onreadystatechange = function() {
       if (xhr.readyState === xhr.DONE) {
@@ -41,12 +45,23 @@ export default function http(url, {
         redraw && http.redraw && http.redraw()
       }
     }
+
+    let accept = 'application/json, text/*'
+      , contentType = 'application/json; charset=utf-8'
+
     xhr.onerror = xhr.onabort = error => reject(error || xhr.statusText)
-    xhr.open(method.toUpperCase(), url, true, user, pass)
-    Object.keys(headers).forEach(xhr => headers[xhr] && xhr.setRequestHeader(xhr, headers[xhr]))
-    'Content-Type' in headers === false && xhr.setRequestHeader('Content-Type', 'application/json; charset=utf-8')
-    'Accept' in headers === false && xhr.setRequestHeader('Accept', 'application/json, text/*')
+    xhr.open(method, url, true, user, pass)
+
+    Object.entries(headers).forEach(([header, value]) => {
+      xhr.setRequestHeader(header, value)
+      header.toLowerCase() === 'accept' ? (accept = false) :
+      header.toLowerCase() === 'content-type' && (contentType = false)
+    })
+
+    accept && parse === parseJSON && xhr.setRequestHeader('Accept', accept)
+    contentType && serialize === serializeJSON && xhr.setRequestHeader('Content-Type', contentType)
     config && config(xhr)
+
     body === null
       ? xhr.send()
       : xhr.send(serialize(body))

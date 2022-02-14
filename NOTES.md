@@ -1,3 +1,6 @@
+## Concerns
+Cleanup of life if component changes but dom node stays the same (only issue w non keyed)
+
 ## Todo
 - scroll restoration for async loaded content?
 - Check anchor handling (#wee scroll etc)

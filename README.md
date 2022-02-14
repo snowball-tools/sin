@@ -5,17 +5,68 @@
 
 # Sin
 
+Sin merges HTML, CSS & Javascript to form a highly composable framework that'll cheer you up and never get in your way.
+
 ## The "Sintax"
 
-Sin relies heavily on tagged templates to strip aways as much visual clutter as possible while still being basic Javascript needing no compilation to run.
+```js
+s`[tagName][#id][...classNames]
+  [...styles]
+`(
+  [attributes],
+  [...children]
+)
+```
+
+Sin relies heavily on tagged templates to strip aways as much visual clutter as possible while still being basic Javascript needing no compilation to run. HTML is stripped of `> / <` and css is relieved from its colons and semicolons (if you want to). The most used css properties are even available by their initials as shorthands. If you feel like skipping units, like px, Sin will also happily add these for you.
 
 ## The Components
 
-All components in Sin are made to allow overriding styles of the first returned element. The beauty of the Sin component model is that you will never have to change your callsite usage if you need to advance your component complexity.
+All components in Sin are made to allow overriding styles anywhere they're used. The beauty of the Sin component model is that you will never have to change your callsite usage if you need to advance your component complexity.
 
 ## The Styled Component ```s`` ```
 
+The styled component is the most basic form of component in Sin. It has no logic, but only defines a tagName and styles for an element.
+```js
+// Definition
+const wonderButton = s`button
+  background hotpink
+`
+
+// Usage
+wonderButton({
+  onclick: () => alert('Are you really using alert? Hell yeah!')
+},
+  'My wonderful button!'
+)
+
+```
+
+
 ## The Stateless Component `s(fn)`
+```js
+// Definition
+const wonderButton = s(({ onclick, ...attrs }, children) => 
+  s`button
+    background hotpink
+  `({
+    ...attrs,
+    onclick: e => {
+      alert('I was clicked')
+      onclick(e)
+    }
+  }
+    children
+  )
+)
+
+// Usage
+wonderButton({
+  onclick: () => alert('Are you really using alert? Yuck!')
+},
+  'My wonderful button!'
+)
+```
 
 ## The Stateful Component `s(fn => fn)`
 

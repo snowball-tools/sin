@@ -9,12 +9,11 @@ import {
   ignoredAttr,
   isObservable,
   isFunction,
+  styleProp,
   notValue,
-  isCssVar,
   isServer,
   isEvent,
   asArray,
-  snake,
   noop
 } from './shared.js'
 
@@ -717,33 +716,25 @@ function updateStyle(dom, style, old) {
 
   if (old == null || typeof old !== 'object') {
     dom.style.cssText = ''
-    for (const prop in style) {
-      const value = style[prop]
-      value != null && dom.style.setProperty(normalizeProp(prop), value + '')
+    for (const x in style) {
+      const value = style[x]
+      value != null && dom.style.setProperty(styleProp(x), value + '')
     }
     return true
   }
 
-  for (const prop in style) {
-    let value = style[prop]
-    if (value != null && (value = (value + '')) !== (old[prop] + ''))
-      dom.style.setProperty(normalizeProp(prop), value)
+  for (const x in style) {
+    let value = style[x]
+    if (value != null && (value = (value + '')) !== (old[x] + ''))
+      dom.style.setProperty(styleProp(x), value)
   }
 
-  for (const prop in old) {
-    if (old[prop] != null && style[prop] == null)
-      dom.style.removeProperty(normalizeProp(prop))
+  for (const x in old) {
+    if (old[x] != null && style[x] == null)
+      dom.style.removeProperty(styleProp(x))
   }
 
   return true
-}
-
-function normalizeProp(prop) {
-  return isCssVar(prop)
-    ? prop
-    : prop === 'cssFloat'
-      ? 'float'
-      : snake(prop)
 }
 
 function observe(dom, x, fn) {

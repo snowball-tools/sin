@@ -41,13 +41,29 @@ export function noop() {
   // noop
 }
 
-function classes(x) {
-  if (isFunction(x))
-    return classes(x())
+export function styleProp(x) {
+  return isCssVar(x)
+    ? x
+    : x === 'cssFloat'
+    ? 'float'
+    : snake(x)
+}
 
-  return x
-    ? typeof x === 'object' && !(isObservable(x))
-      ? Object.keys(x).reduce((acc, c) => acc + x[c] ? c + ' ' : '', '')
-      : x + ' '
-    : ''
+function classes(x) {
+  return isObservable(x)
+    ? classes(x.value)
+    : isFunction(x)
+    ? classes(x())
+    : !x
+    ? ''
+    : typeof x === 'object'
+    ? classObject(x)
+    : x + ' '
+}
+
+function classObject(x) {
+  let c = ''
+  for (const k in x)
+    c += (c ? ' ' : '') + (x[k] || '')
+  return c
 }

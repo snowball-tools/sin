@@ -20,8 +20,12 @@ export function isEvent(x) {
   return x.charCodeAt(0) === 111 && x.charCodeAt(1) === 110 // on
 }
 
-export function isCssVar(x) {
-  return x[0] === '-' && x[1] === '-'
+export function asCssVar(x) {
+  return x.charCodeAt(0) === 36 // 36
+    ? '--' + x.slice(1)
+    : x.charCodeAt(0) === 45 && x.charCodeAt(1) === 45 // -
+    ? x
+    : null
 }
 
 export function ignoredAttr(x) {
@@ -42,11 +46,11 @@ export function noop() {
 }
 
 export function styleProp(x) {
-  return isCssVar(x)
-    ? x
-    : x === 'cssFloat'
-    ? 'float'
-    : snake(x)
+  return asCssVar(x) || (
+    x === 'cssFloat'
+      ? 'float'
+      : snake(x)
+  )
 }
 
 function classes(x) {

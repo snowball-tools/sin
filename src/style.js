@@ -1,5 +1,5 @@
 import window from './window.js'
-import { isFunction, snake, isCssVar } from './shared.js'
+import { isFunction, snake, asCssVar } from './shared.js'
 import { popular, initials } from './shorthands.js'
 
 const doc = window.document
@@ -53,6 +53,7 @@ const cache = new Map()
     , isDegFunction = x => x.indexOf('rotate') === 0 || x.indexOf('skew') === 0
     , isStartChar = x => x !== 32 && x !== 9 && x !== 10 && x !== 13 && x !== 59 // ws \t \n \r ;
     , isNumber = x => (x >= 48 && x <= 57) || x === 46 // 0-9-.
+    , isLetter = x => (x >= 65 && x <= 90) || (x >= 97 && x <= 122) // a-z A-Z
     , isUnit = x => x === 37 || (x >= 65 && x <= 90) || (x >= 97 && x <= 122) // % a-z A-Z
     , quoteChar = x => x === 34 || x === 39 // '"
     , propEndChar = x => x === 32 || x === 58 || x === 9 // ws : \t
@@ -72,6 +73,8 @@ let start = -1
   , char = -1
   , lastSpace = -1
   , numberStart = -1
+  , fontFaces = -1
+  , cssVar = -1
   , temp = ''
   , specificity = ''
   , prop = ''
@@ -93,7 +96,6 @@ let start = -1
   , styles = false
   , cacheable = true
   , hasRules = false
-  , fontFaces = -1
   , hash = 0
 
 function shorthand(x) {
@@ -142,7 +144,7 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
   const vars = {}
   name = id = classes = rule = value = prop = ''
   selectors.length = fn.length = hash = 0
-  lastSpace = valueStart = fontFaces = startChar = -1
+  lastSpace = valueStart = fontFaces = startChar = cssVar = -1
   rules = root ? {} : null
   hasRules = false
   styles = false
@@ -268,7 +270,9 @@ function parseStyles(idx, end) {
       colon = char === 58 // :
     } else if (valueStart === -1 && prop && !propEndChar(char)) {
       valueStart = i
-      isNumber(char) && (numberStart = i)
+      isNumber(char)
+        ? (numberStart = i)
+        : char === 36 && (cssVar = i)
     } else if (valueStart !== -1) {
       handleValue(i)
     }
@@ -276,7 +280,10 @@ function parseStyles(idx, end) {
 }
 
 function addRule(i) {
-  numberStart > -1 && !isUnit(char) && addUnit(i)
+  numberStart > -1 && !isUnit(char)
+    ? addUnit(i)
+    : cssVar > -1 && addCssVar(i)
+
   prop === '@import'
     ? insert(prop + ' ' + x.slice(valueStart, i), 0)
     : rule += propValue(prop, value + x.slice(valueStart, i))
@@ -338,13 +345,25 @@ function handleValue(i) {
     numberStart === -1 && (numberStart = i)
   else if (numberStart > -1)
     addUnit(i)
+  else if (cssVar > -1)
+    addCssVar(i)
 
   if (char === 40) // (
     fn.push(x.slice(Math.max(lastSpace, valueStart), i))
   else if (char === 41) // )
     fn.pop()
-  else if (char === 9 || char === 32)
+  else if (char === 9 || char === 32) // ws \n
     lastSpace = i + 1
+  else if (char === 36) // $
+    cssVar = i
+}
+
+function addCssVar(i) {
+  if (!isLetter(char)) {
+    value = value + x.slice(valueStart, cssVar) + 'var(--' + x.slice(cssVar + 1, i) + ')'
+    valueStart = i
+    cssVar = -1
+  }
 }
 
 function addUnit(i) {
@@ -400,6 +419,7 @@ export function formatValue(v, { property, unit }) {
 selectors.toString = function() {
   let a = ''
     , b = ''
+
   selectors.forEach(x =>
     x.charCodeAt(0) === 64 && x !== '@font-face'
       ? (a += x)
@@ -410,7 +430,7 @@ selectors.toString = function() {
 
 function px(x) {
   x = shorthand(x)
-  if (isCssVar(x) || x in pxCache)
+  if (asCssVar(x) || x in pxCache)
     return pxCache[x]
 
   try {

@@ -758,24 +758,24 @@ function setClass(dom, view) {
 
 function setVars(dom, vars, args, init, reapply) {
   for (const id in vars) {
-    const { unit, index } = vars[id]
-    const value = args[index]
-    setVar(dom, id, value, unit, init, reapply)
+    const cssVar = vars[id]
+    const value = args[cssVar.index]
+    setVar(dom, id, value, cssVar, init, reapply)
   }
 }
 
-function setVar(dom, id, value, unit, init, reapply, after) {
+function setVar(dom, id, value, cssVar, init, reapply, after) {
   if (isObservable(value)) {
-    init && value.observe(x => dom.style.setProperty(id, formatValue(x, unit)))
-    init || reapply && setVar(dom, id, value.value, unit, init, init)
+    init && value.observe(x => dom.style.setProperty(id, formatValue(x, cssVar)))
+    init || reapply && setVar(dom, id, value.value, cssVar, init, init)
     return
   }
 
   if (isFunction(value))
-    return setVar(dom, id, value(dom), unit, init, reapply, after)
+    return setVar(dom, id, value(dom), cssVar, init, reapply, after)
 
-  dom.style.setProperty(id, formatValue(value, unit))
-  after && afterUpdate.push(() => dom.style.setProperty(id, formatValue(value, unit)))
+  dom.style.setProperty(id, formatValue(value, cssVar))
+  after && afterUpdate.push(() => dom.style.setProperty(id, formatValue(value, cssVar)))
 }
 
 function giveLife(dom, attrs, children, context, life) {

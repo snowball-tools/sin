@@ -140,7 +140,7 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
   }
 
   const vars = {}
-  name = id = classes = rule = value = ''
+  name = id = classes = rule = value = prop = ''
   selectors.length = fn.length = hash = 0
   lastSpace = valueStart = fontFaces = startChar = -1
   rules = root ? {} : null
@@ -159,7 +159,7 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
       if (cssVars && valueStart >= 0) {
         const before = xs[j].slice(valueStart)
         temp = prefix + Math.abs(hash).toString(31)
-        vars[varName = '--' + temp + j] = { unit: getUnit(prop, last(fn)), index: j }
+        vars[varName = '--' + temp + j] = { property: prop, unit: getUnit(prop, last(fn)), index: j }
         value += before + 'var(' + varName + ')'
         valueStart = 0
       } else {
@@ -355,7 +355,24 @@ function addUnit(i) {
   numberStart = -1
 }
 
-export function formatValue(v, unit) {
+function getUnit(prop, fn = '') {
+  prop = shorthand(prop)
+  const id = prop + ',' + fn
+  if (id in unitCache)
+    return unitCache[id]
+
+  return unitCache[id] = (
+    fn && isPxFunction(fn)
+      ? 'px'
+      : isDegFunction(fn)
+        ? 'deg'
+        : fn
+          ? ''
+          : px(prop)
+  )
+}
+
+export function formatValue(v, { property, unit }) {
   if (!v && v !== 0)
     return ''
 
@@ -372,28 +389,12 @@ export function formatValue(v, unit) {
   valueStart = 0
   numberStart = lastSpace = -1
   fn.length = 0
+  prop = property
   for (let i = 0; i <= v.length; i++) {
     char = v.charCodeAt(i)
     handleValue(i)
   }
   return value + v.slice(valueStart)
-}
-
-function getUnit(prop, fn = '') {
-  prop = shorthand(prop)
-  const id = prop + ',' + fn
-  if (id in unitCache)
-    return unitCache[id]
-
-  return unitCache[id] = (
-    fn && isPxFunction(fn)
-      ? 'px'
-      : isDegFunction(fn)
-        ? 'deg'
-        : fn
-          ? ''
-          : px(prop)
-  )
 }
 
 selectors.toString = function() {

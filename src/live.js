@@ -23,7 +23,7 @@ export default function Live(value, fn) {
   live.valueOf = live.toString = live.toJSON = () => value || ''
   live.detach = () => { /* */ }
   live.reduce = reduce
-  live.set = x => e => (e && (e.redraw = false), live(isFunction(x) ? x(value) : (x || e)))
+  live.set = x => (...args) => (live(isFunction(x) ? x(...args) : x), live)
   live.get = prop => new Observable(live, x => isFunction(prop) ? prop(x) : x[prop])
   live.if = (equals, a = true, b = false) => new Observable(live, x => x === equals ? a : b)
 

@@ -341,17 +341,17 @@ function insertBefore(parent, { first, last }, before) {
 }
 
 function update(dom, view, context, parent, stack, create) {
-  return isFunction(view)
-    ? isObservable(view)
-      ? updateLive(dom, view, context, parent, stack, create)
-      : update(dom, view(), context, parent, stack, create)
-    : view instanceof View
-      ? updateView(dom, view, context, parent, stack, create)
-      : Array.isArray(view)
-        ? updateArray(dom, view, context, parent)
-        : view instanceof Node
-          ? Ret(view)
-          : updateValue(dom, view, parent, create)
+  return isObservable(view)
+    ? updateLive(dom, view, context, parent, stack, create)
+    : isFunction(view)
+      ? update(dom, view(), context, parent, stack, create)
+      : view instanceof View
+        ? updateView(dom, view, context, parent, stack, create)
+        : Array.isArray(view)
+          ? updateArray(dom, view, context, parent)
+          : view instanceof Node
+            ? Ret(view)
+            : updateValue(dom, view, parent, create)
 }
 
 function updateView(dom, view, context, parent, stack, create) {
@@ -361,11 +361,11 @@ function updateView(dom, view, context, parent, stack, create) {
 }
 
 function updateLive(dom, view, context, parent) {
-  if (dom && liveSymbol in dom)
+  if (dom && liveSymbol in dom && dom[liveSymbol] === view)
     return dom[liveSymbol]
 
   let result
-  run(view())
+  run(view.value)
   view.observe(run)
 
   return result
@@ -849,7 +849,7 @@ function callHandler(handler, e) {
     ? handler.call(e.currentTarget, e)
     : isFunction(handler.handleEvent) && handler.handleEvent(e)
 
-  e.redraw !== false && !(isObservable(handler)) && redraw()
+  e.redraw !== false && !isObservable(result) && !isObservable(handler) && redraw()
   result && isFunction(result.then) && result.then(redraw)
 }
 

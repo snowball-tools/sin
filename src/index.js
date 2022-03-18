@@ -50,9 +50,9 @@ const removing = new WeakSet()
     , deferrableSymbol = Symbol('deferrable')
     , observableSymbol = Symbol('observable')
     , componentSymbol = Symbol('component')
-    , streamSymbol = Symbol('stream')
     , eventSymbol = Symbol('event')
     , arraySymbol = Symbol('array')
+    , liveSymbol = Symbol('stream')
     , sizeSymbol = Symbol('size')
     , lifeSymbol = Symbol('life')
     , attrSymbol = Symbol('attr')
@@ -353,8 +353,8 @@ function updateView(dom, view, context, parent, stack, create) {
 }
 
 function updateLive(dom, view, context, parent) {
-  if (streamSymbol in dom)
-    return dom[streamSymbol]
+  if (dom && liveSymbol in dom)
+    return dom[liveSymbol]
 
   let result
   run(view())
@@ -364,7 +364,7 @@ function updateLive(dom, view, context, parent) {
 
   function run(x) {
     result = update(dom, x, context, parent || dom && dom.parentNode)
-    result.first[streamSymbol] = result
+    result.first[liveSymbol] = result
     dom = result.first
   }
 }

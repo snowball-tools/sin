@@ -42,6 +42,7 @@ export const popular = [
   'text-align',
   'text-decoration',
   'text-transform',
+  'white-space',
   'width',
   'z-index'
 ]

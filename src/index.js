@@ -215,7 +215,7 @@ function draw({ view, attrs, context }, dom) {
 
 function updates(parent, next, context, before, last = parent.lastChild) {
   const keys = next[0] && next[0].key != null && new Array(next.length)
-      , ref = before ? before.nextSibling : parent.firstChild
+      , ref = getNext(before, parent)
       , tracked = ref && keySymbol in ref
       , after = last ? last.nextSibling : null
 
@@ -223,10 +223,18 @@ function updates(parent, next, context, before, last = parent.lastChild) {
     ? keyed(parent, context, ref[keySymbol], next, keys, after)
     : nonKeyed(parent, context, next, keys, ref, after)
 
-  const first = before ? before.nextSibling : parent.firstChild
+  const first = getNext(before, parent)
   keys && (first[keySymbol] = keys)
 
   return Ret(first, after && after.previousSibling || parent.lastChild)
+}
+
+function getNext(before, parent) {
+  let dom = before ? before.nextSibling : parent.firstChild
+  while (removing.has(dom))
+    dom = dom.nextSibling
+
+  return dom
 }
 
 function Ref(keys, dom, key, i) {

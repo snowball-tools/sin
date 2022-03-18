@@ -186,7 +186,7 @@ function catcher(error) {
   isServer
     ? console.error(error) // eslint-disable-line
     : Promise.resolve().then(() => { throw error })
-  return s`pre;m 0;c white;bc #ff0033;p 16;br 6;overflow auto`(
+  return s`pre;all initial;d block;ws pre-wrap;m 0;c white;bc #ff0033;p 8 12;br 6;overflow auto`(
     s`code`(
       error && error.stack || error || new Error('Unknown Error').stack
     )

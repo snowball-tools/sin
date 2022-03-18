@@ -32,10 +32,10 @@ export default function s(...x) {
     ? S(Object.assign([x[0]], { raw: [] }))(...x.slice(1))
     : S.bind(
       type === 'function'
-        ? new View(x)
-        : isFunction(x[1])
+        ? isFunction(x[1])
           ? new View(x.reverse())
-          : tagged(x)
+          : new View(x)
+        : tagged(x)
     )
 }
 

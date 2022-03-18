@@ -691,7 +691,7 @@ function attributes(dom, view, context, create) {
     for (const attr in prev) {
       if (attr in view.attrs === false) {
         isEvent(attr)
-          ? removeEvent(dom, view.attrs, attr)
+          ? removeEvent(dom, attr)
           : ignoredAttr(attr)
             ? (attr === 'deferrable' && (dom[deferrableSymbol] = false))
             : dom.removeAttribute(attr)

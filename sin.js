@@ -28,8 +28,8 @@ function isFunction(x2) {
 function isEvent(x2) {
   return x2.charCodeAt(0) === 111 && x2.charCodeAt(1) === 110;
 }
-function isCssVar(x2) {
-  return x2[0] === "-" && x2[1] === "-";
+function asCssVar(x2) {
+  return x2.charCodeAt(0) === 36 ? "--" + x2.slice(1) : x2.charCodeAt(0) === 45 && x2.charCodeAt(1) === 45 ? x2 : null;
 }
 function ignoredAttr(x2) {
   return x2 === "dom" || x2 === "is" || x2 === "key" || x2 === "handleEvent" || x2 === "type" || x2 === "class" || x2 === "className" || x2 === "style" || x2 === "deferrable";
@@ -43,7 +43,7 @@ function asArray(x2) {
 function noop() {
 }
 function styleProp(x2) {
-  return isCssVar(x2) ? x2 : x2 === "cssFloat" ? "float" : snake(x2);
+  return asCssVar(x2) || (x2 === "cssFloat" ? "float" : snake(x2));
 }
 function classes(x2) {
   return isObservable(x2) ? classes(x2.value) : isFunction(x2) ? classes(x2()) : !x2 ? "" : typeof x2 === "object" ? classObject(x2) : x2 + " ";
@@ -137,7 +137,7 @@ function Live(value2, fn2) {
   live.detach = () => {
   };
   live.reduce = reduce;
-  live.set = (x2) => (e) => (e && (e.redraw = false), live(isFunction(x2) ? x2(value2) : x2 || e));
+  live.set = (x2) => (...args) => (live(isFunction(x2) ? x2(...args) : x2), live);
   live.get = (prop2) => new Observable(live, (x2) => isFunction(prop2) ? prop2(x2) : x2[prop2]);
   live.if = (equals, a = true, b = false) => new Observable(live, (x2) => x2 === equals ? a : b);
   return Object.defineProperty(live, "value", {
@@ -215,6 +215,7 @@ var popular = [
   "text-align",
   "text-decoration",
   "text-transform",
+  "white-space",
   "width",
   "z-index"
 ];
@@ -261,6 +262,7 @@ var isPxFunction = (x2) => x2.indexOf("translate") === 0 || pxFunctions.indexOf(
 var isDegFunction = (x2) => x2.indexOf("rotate") === 0 || x2.indexOf("skew") === 0;
 var isStartChar = (x2) => x2 !== 32 && x2 !== 9 && x2 !== 10 && x2 !== 13 && x2 !== 59;
 var isNumber = (x2) => x2 >= 48 && x2 <= 57 || x2 === 46;
+var isLetter = (x2) => x2 >= 65 && x2 <= 90 || x2 >= 97 && x2 <= 122;
 var isUnit = (x2) => x2 === 37 || x2 >= 65 && x2 <= 90 || x2 >= 97 && x2 <= 122;
 var quoteChar = (x2) => x2 === 34 || x2 === 39;
 var propEndChar = (x2) => x2 === 32 || x2 === 58 || x2 === 9;
@@ -279,6 +281,8 @@ var quote = -1;
 var char = -1;
 var lastSpace = -1;
 var numberStart = -1;
+var fontFaces = -1;
+var cssVar = -1;
 var temp = "";
 var specificity = "";
 var prop = "";
@@ -300,7 +304,6 @@ var colon = false;
 var styles = false;
 var cacheable = true;
 var hasRules = false;
-var fontFaces = -1;
 var hash = 0;
 function shorthand(x2) {
   return shorthands[x2] || x2;
@@ -338,7 +341,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
   const vars = {};
   name = id = classes2 = rule = value = prop = "";
   selectors.length = fn.length = hash = 0;
-  lastSpace = valueStart = fontFaces = startChar = -1;
+  lastSpace = valueStart = fontFaces = startChar = cssVar = -1;
   rules = root ? {} : null;
   hasRules = false;
   styles = false;
@@ -436,14 +439,14 @@ function parseStyles(idx, end) {
       colon = char === 58;
     } else if (valueStart === -1 && prop && !propEndChar(char)) {
       valueStart = i;
-      isNumber(char) && (numberStart = i);
+      isNumber(char) ? numberStart = i : char === 36 && (cssVar = i);
     } else if (valueStart !== -1) {
       handleValue(i);
     }
   }
 }
 function addRule(i) {
-  numberStart > -1 && !isUnit(char) && addUnit(i);
+  numberStart > -1 && !isUnit(char) ? addUnit(i) : cssVar > -1 && addCssVar(i);
   prop === "@import" ? insert(prop + " " + x.slice(valueStart, i), 0) : rule += propValue(prop, value + x.slice(valueStart, i));
   hasRules = true;
   start = valueStart = -1;
@@ -494,12 +497,23 @@ function handleValue(i) {
     numberStart === -1 && (numberStart = i);
   else if (numberStart > -1)
     addUnit(i);
+  else if (cssVar > -1)
+    addCssVar(i);
   if (char === 40)
     fn.push(x.slice(Math.max(lastSpace, valueStart), i));
   else if (char === 41)
     fn.pop();
   else if (char === 9 || char === 32)
     lastSpace = i + 1;
+  else if (char === 36)
+    cssVar = i;
+}
+function addCssVar(i) {
+  if (!isLetter(char)) {
+    value = value + x.slice(valueStart, cssVar) + "var(--" + x.slice(cssVar + 1, i) + ")";
+    valueStart = i;
+    cssVar = -1;
+  }
 }
 function addUnit(i) {
   if (!isUnit(char)) {
@@ -543,7 +557,7 @@ selectors.toString = function() {
 };
 function px(x2) {
   x2 = shorthand(x2);
-  if (isCssVar(x2) || x2 in pxCache)
+  if (asCssVar(x2) || x2 in pxCache)
     return pxCache[x2];
   try {
     div.style[x2] = "1px";
@@ -674,7 +688,7 @@ var NS = {
 s.isServer = isServer;
 function s(...x2) {
   const type = typeof x2[0];
-  return type === "string" ? S(Object.assign([x2[0]], { raw: [] }))(...x2.slice(1)) : S.bind(type === "function" ? new View(x2) : isFunction(x2[1]) ? new View(x2.reverse()) : tagged(x2));
+  return type === "string" ? S(Object.assign([x2[0]], { raw: [] }))(...x2.slice(1)) : S.bind(type === "function" ? isFunction(x2[1]) ? new View(x2.reverse()) : new View(x2) : tagged(x2));
 }
 function S(...x2) {
   return x2[0] && Array.isArray(x2[0].raw) ? S.bind(tagged(x2, this)) : execute(x2, this);
@@ -684,9 +698,9 @@ var mounts = /* @__PURE__ */ new Map();
 var deferrableSymbol = Symbol("deferrable");
 var observableSymbol = Symbol("observable");
 var componentSymbol = Symbol("component");
-var streamSymbol = Symbol("stream");
 var eventSymbol = Symbol("event");
 var arraySymbol = Symbol("array");
+var liveSymbol = Symbol("stream");
 var sizeSymbol = Symbol("size");
 var lifeSymbol = Symbol("life");
 var attrSymbol = Symbol("attr");
@@ -776,7 +790,7 @@ function catcher(error) {
   isServer ? console.error(error) : Promise.resolve().then(() => {
     throw error;
   });
-  return s`pre;m 0;c white;bc #ff0033;p 16;br 6;overflow auto`(s`code`(error && error.stack || error || new Error("Unknown Error").stack));
+  return s`pre;all initial;d block;ws pre-wrap;m 0;c white;bc #ff0033;p 8 12;br 6;overflow auto`(s`code`(error && error.stack || error || new Error("Unknown Error").stack));
 }
 function redraw() {
   idle && (requestAnimationFrame(globalRedraw), idle = false);
@@ -796,11 +810,17 @@ function draw({ view, attrs, context }, dom) {
   afterUpdate = [];
 }
 function updates(parent, next, context, before, last2 = parent.lastChild) {
-  const keys = next[0] && next[0].key != null && new Array(next.length), ref = before ? before.nextSibling : parent.firstChild, tracked = ref && keySymbol in ref, after = last2 ? last2.nextSibling : null;
+  const keys = next[0] && next[0].key != null && new Array(next.length), ref = getNext(before, parent), tracked = ref && keySymbol in ref, after = last2 ? last2.nextSibling : null;
   keys && (keys.rev = {}) && tracked ? keyed(parent, context, ref[keySymbol], next, keys, after) : nonKeyed(parent, context, next, keys, ref, after);
-  const first = before ? before.nextSibling : parent.firstChild;
+  const first = getNext(before, parent);
   keys && (first[keySymbol] = keys);
   return Ret(first, after && after.previousSibling || parent.lastChild);
+}
+function getNext(before, parent) {
+  let dom = before ? before.nextSibling : parent.firstChild;
+  while (removing.has(dom))
+    dom = dom.nextSibling;
+  return dom;
 }
 function Ref(keys, dom, key, i) {
   keys[i] = { dom, key };
@@ -884,21 +904,21 @@ function insertBefore(parent, { first, last: last2 }, before) {
   } while (parent.insertBefore(dom, before) !== last2);
 }
 function update(dom, view, context, parent, stack, create) {
-  return isFunction(view) ? isObservable(view) ? updateLive(dom, view, context, parent, stack, create) : update(dom, view(), context, parent, stack, create) : view instanceof View ? updateView(dom, view, context, parent, stack, create) : Array.isArray(view) ? updateArray(dom, view, context, parent) : view instanceof Node ? Ret(view) : updateValue(dom, view, parent, create);
+  return isObservable(view) ? updateLive(dom, view, context, parent, stack, create) : isFunction(view) ? update(dom, view(), context, parent, stack, create) : view instanceof View ? updateView(dom, view, context, parent, stack, create) : Array.isArray(view) ? updateArray(dom, view, context, parent) : view instanceof Node ? Ret(view) : updateValue(dom, view, parent, create);
 }
 function updateView(dom, view, context, parent, stack, create) {
   return view.component ? updateComponent(dom, view, context, parent, stack, create) : updateElement(dom, view, context, parent, create);
 }
 function updateLive(dom, view, context, parent) {
-  if (streamSymbol in dom)
-    return dom[streamSymbol];
+  if (dom && liveSymbol in dom && dom[liveSymbol] === view)
+    return dom[liveSymbol];
   let result;
-  run(view());
+  run(view.value);
   view.observe(run);
   return result;
   function run(x2) {
     result = update(dom, x2, context, parent || dom && dom.parentNode);
-    result.first[streamSymbol] = result;
+    result.first[liveSymbol] = result;
     dom = result.first;
   }
 }
@@ -1093,7 +1113,7 @@ function attributes(dom, view, context, create) {
   if (prev) {
     for (const attr in prev) {
       if (attr in view.attrs === false) {
-        isEvent(attr) ? removeEvent(dom, view.attrs, attr) : ignoredAttr(attr) ? attr === "deferrable" && (dom[deferrableSymbol] = false) : dom.removeAttribute(attr);
+        isEvent(attr) ? removeEvent(dom, attr) : ignoredAttr(attr) ? attr === "deferrable" && (dom[deferrableSymbol] = false) : dom.removeAttribute(attr);
       }
     }
   }
@@ -1146,21 +1166,21 @@ function setClass(dom, view) {
 }
 function setVars(dom, vars, args, init, reapply) {
   for (const id2 in vars) {
-    const cssVar = vars[id2];
-    const value2 = args[cssVar.index];
-    setVar(dom, id2, value2, cssVar, init, reapply);
+    const cssVar2 = vars[id2];
+    const value2 = args[cssVar2.index];
+    setVar(dom, id2, value2, cssVar2, init, reapply);
   }
 }
-function setVar(dom, id2, value2, cssVar, init, reapply, after) {
+function setVar(dom, id2, value2, cssVar2, init, reapply, after) {
   if (isObservable(value2)) {
-    init && value2.observe((x2) => dom.style.setProperty(id2, formatValue(x2, cssVar)));
-    init || reapply && setVar(dom, id2, value2.value, cssVar, init, init);
+    init && value2.observe((x2) => dom.style.setProperty(id2, formatValue(x2, cssVar2)));
+    init || reapply && setVar(dom, id2, value2.value, cssVar2, init, init);
     return;
   }
   if (isFunction(value2))
-    return setVar(dom, id2, value2(dom), cssVar, init, reapply, after);
-  dom.style.setProperty(id2, formatValue(value2, cssVar));
-  after && afterUpdate.push(() => dom.style.setProperty(id2, formatValue(value2, cssVar)));
+    return setVar(dom, id2, value2(dom), cssVar2, init, reapply, after);
+  dom.style.setProperty(id2, formatValue(value2, cssVar2));
+  after && afterUpdate.push(() => dom.style.setProperty(id2, formatValue(value2, cssVar2)));
 }
 function giveLife(dom, attrs, children, context, life) {
   afterUpdate.push(() => {
@@ -1198,7 +1218,7 @@ function handleEvent(dom) {
 }
 function callHandler(handler, e) {
   const result = isFunction(handler) ? handler.call(e.currentTarget, e) : isFunction(handler.handleEvent) && handler.handleEvent(e);
-  e.redraw !== false && !isObservable(handler) && redraw();
+  e.redraw !== false && !isObservable(result) && !isObservable(handler) && redraw();
   result && isFunction(result.then) && result.then(redraw);
 }
 function replace(old, dom, parent) {

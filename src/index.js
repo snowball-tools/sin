@@ -656,10 +656,11 @@ function mergeTag(a, b) {
   return a
 }
 
-function attributes(dom, view, context, create) {
+function attributes(dom, view, context) {
   let tag = view.tag
 
   const prev = dom[attrSymbol]
+      , create = !prev
 
   'id' in view.attrs === false
     && view.tag.id

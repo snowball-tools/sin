@@ -563,7 +563,7 @@ function hydrate(dom) {
 function dehydrate(x, stack) {
   x.first.nextSibling[componentSymbol] = stack
   x.first.remove()
-  x.last.remove()
+  x.last && x.last.remove()
 }
 
 function updateComponent(
@@ -899,6 +899,8 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
     if (dom.nodeValue.charCodeAt(0) === 97) { // a
       after = dom.nextSibling
       removeChild(parent, dom)
+      if (!after)
+        return after
       dom = after
       after = dom.nextSibling
     }

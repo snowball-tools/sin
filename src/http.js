@@ -40,7 +40,7 @@ export default function http(url, {
         }
 
         error || xhr.status >= 300
-          ? reject(error || xhr.status)
+          ? reject(Object.assign(error || new Error(xhr.statusText), { xhr, status: xhr.status, body }))
           : resolve(body)
 
         redraw && http.redraw && http.redraw()

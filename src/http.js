@@ -16,6 +16,7 @@ export default function http(url, {
   method = 'GET',
   redraw = true,
   body = null,
+  query = null,
   user = undefined,
   pass = undefined,
   headers = {},
@@ -50,6 +51,7 @@ export default function http(url, {
       , contentType = 'application/json; charset=utf-8'
 
     xhr.onerror = xhr.onabort = error => reject(error || xhr.statusText)
+    query && (url += url.replace(/(#)|$/, (url.indexOf('?') > -1 ? '&' : '?') + new URLSearchParams(query).toString() + '$1'))
     xhr.open(method, url, true, user, pass)
 
     Object.entries(headers).forEach(([header, value]) => {

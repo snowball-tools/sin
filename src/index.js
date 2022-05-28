@@ -591,7 +591,7 @@ function updateComponent(
     ? hydrate(dom)
     : update(
       dom,
-      mergeTag(catchInstance(create, instance, component, instance.context, stack), component),
+      instance.view && mergeTag(catchInstance(create, instance, component, instance.context, stack), component),
       instance.context,
       parent,
       stack,

@@ -15,18 +15,15 @@ const cache = {
   br: {}
 }
 
-export default function(app, { attrs, context, body = '', compress = false } = {}) {
+export default function(app, { attrs = {}, context = {}, body = '', compress = false } = {}) {
   return async function(req, res, next) {
-    if ((req.method !== 'HEAD' && req.method !== 'GET') || !req.headers.accept.match(/text\/html|\*\/\*/))
-      return next ? next() : res.end()
-
     const x = await ssr(app, attrs, { ...context, location: new URL(req.url, 'http://localhost/') })
     res.statusCode = x.status || 200
-    Object.entries(x.headers).forEach(([header, value]) => res.setHeader(header, value))
 
-    const out = x.html.slice(0, 15).toLowerCase() === '<!doctype html>'
-      ? x.html.replace('</head>', x.head + x.css + '</head>').replace('</body>', body + '</body>')
-      : wrap(x, body)
+    for (const header in x.headers)
+      res.setHeader(header, x.headers[header])
+
+    const out = wrap(x, body)
 
     compress
       ? compressEnd(req, res, out, next)

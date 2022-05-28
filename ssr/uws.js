@@ -1,24 +1,20 @@
-import wrap from './wrap.js'
+import { wrap } from './shared.js'
 import ssr from './index.js'
-import zlib from 'zlib'
 
-export default function SinMiddleware(app, { attrs, context, body }) {
-  return async function(req, res, next) {
-    if ((req.method !== 'HEAD' && req.method !== 'GET') || req.headers.accept.indexOf('text/html') === -1)
-      return next ? next() : res.end()
+export default function(app, { attrs = {}, context = {}, body = '' } = {}) {
+  console.log(context)
+  return async function(res, pathname) {
+    const x = await ssr(app, attrs, { ...context, location: new URL(pathname, 'http://x/') })
 
-    const x = await ssr(app, attrs, { ...context, location: new URL(req.url, 'http://localhost/') })
+    res.cork(() => {
+      res.writeStatus('' + (x.status || 200))
 
-    res.statusCode = x.status || 200
+      for (const header in x.headers)
+        res.writeHeader(header, x.headers[header])
 
-    Object.entries(x.headers).forEach(([header, value]) =>
-      res.setHeader(header, value)
-    )
-
-    res.end(
-      x.html.slice(0, 15).toLowerCase() === '<!doctype html>'
-        ? x.html.replace('</head>', x.head + x.css + '</head>').replace('</body>', body + '</body>')
-        : wrap(x, body)
-    )
+      res.end(
+        wrap(x, body)
+      )
+    })
   }
 }

@@ -4,6 +4,7 @@ import px from './px.js'
 const noop = () => { /* noop */ }
 
 Object.assign(window, {
+  XMLHttpRequest,
   addEventListener: noop,
   location: {
     pathname: '',
@@ -46,3 +47,128 @@ Object.assign(window, {
     }
   }
 })
+
+function XMLHttpRequest() {
+  const body = []
+      , headers = {}
+
+  let req
+    , res
+    , method
+    , url
+    , auth
+    , loaded = 0
+    , total
+
+  const xhr = {
+    UNSENT:           0, // Client has been created. open() not called yet.
+    OPENED:           1, // open() has been called.
+    HEADERS_RECEIVED: 2, // send() has been called, and headers and status are available.
+    LOADING:          3, // Downloading; responseText holds partial data.
+    DONE:             4, // The operation is complete.
+
+    status: 0,
+    readyState: 0,
+    responseType: '',
+
+    get response() {
+      return xhr.responseType === '' || xhr.responseText === 'text'
+        ? xhr.responseText
+        : xhr.responseType === 'json'
+        ? JSON.parse(xhr.responseText)
+        : xhr.responseType === 'arraybuffer'
+        ? Buffer.concat(body).buffer
+        : null
+    },
+
+    get responseText() {
+      return Buffer.concat(body).toString()
+    },
+
+    abort: () => {
+      state(xhr.UNSENT)
+      req && req.abort()
+    },
+
+    getResponseHeader(name) {
+      return res && res.headers[name.toLowerCase()] || null
+    },
+
+    getAllResponseHeaders() {
+      if (!res)
+        return null
+      let x = ''
+      for (let i = 0; i < res.rawHeaders.length; i++)
+        x += i % 2 === 0 ? (res.rawHeaders[i] + ': ') : (res.rawHeaders[i] + '\n')
+      return x
+    },
+
+    setRequestHeader(header, value) {
+      headers[header] = value
+    },
+
+    open(m, u, async, user = '', pass = '') {
+      if (xhr.readyState !== xhr.UNSENT)
+        return xhr.abort()
+
+      state(xhr.OPENED)
+      method = m
+      url = u
+      user && (auth = user + ':' + pass)
+    },
+
+    async send(data) {
+      const http = (url.startsWith('https:')
+        ? await import('https')
+        : await import('http')
+      ).default
+
+      try {
+        req = http.request(url, {
+          headers,
+          method,
+          auth
+        }, r => {
+          res = r
+          xhr.status = res.statusCode
+          total = res.headers['content-length']
+          state(xhr.HEADERS_RECEIVED)
+          res.on('data', x => {
+            state(xhr.LOADING)
+            loaded += x.length
+            xhr.onloadstart && xhr.onloadstart({ loaded, total, lengthComputable: total !== null })
+            xhr.onprogress && xhr.onprogress({ loaded, total, lengthComputable: total !== null })
+            body.push(x)
+          })
+          res.on('end', () => {
+            xhr.onloadend && xhr.onloadend({ loaded, total, lengthComputable: total !== null })
+            xhr.onload && xhr.onload({ loaded, total, lengthComputable: total !== null })
+            state(xhr.DONE)
+          })
+          res.on('error', xhr.onerror)
+        })
+        data && req.write(data)
+        req.end()
+      } catch (e) {
+        error(e)
+      }
+    }
+
+  }
+
+  return xhr
+
+  function state(x) {
+    if (xhr.readyState === x)
+      return
+    xhr.readyState = x
+    xhr.onreadystatechange && xhr.onreadystatechange({})
+  }
+
+  function error(error) {
+    xhr.response = null
+    xhr.status = 0
+    xhr.onerror && xhr.onerror(error)
+    xhr.onloadend && xhr.onloadend({ loaded, total, lengthComputable: total === 0 || total > 0 })
+  }
+}

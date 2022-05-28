@@ -74,6 +74,7 @@ s.on = on
 s.trust = trust
 s.route = router(s, '', { location: window.location })
 s.catcher = catcher
+s.window = window
 
 function trust(x) {
   return s(() => {

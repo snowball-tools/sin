@@ -8,7 +8,9 @@ export function parseAcceptEncoding(x, preferred = []) {
 }
 
 export function wrap({ html, css, title, head }, body = '') {
-  return `<!doctype html>
+  return html.slice(0, 15).toLowerCase() === '<!doctype html>'
+      ? html.replace('</head>', head + css + '</head>').replace('</body>', body + '</body>')
+      : `<!doctype html>
 <html><head>
 <meta charset="utf8">
 <title>${ title }</title>
@@ -20,7 +22,9 @@ export function wrap({ html, css, title, head }, body = '') {
 }</head>
 <body>${
   html
-}${
+}
+<script type="module" src="/index.js"></script>
+${
   body
 }</body>
 </html>`

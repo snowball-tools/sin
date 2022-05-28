@@ -168,6 +168,8 @@ function mount(dom, view, attrs = {}, context = {}) {
     dom = document.body
   }
 
+  view instanceof View === false && (view = s(view))
+
   'location' in context || (context.location = window.location)
   'catcher' in context || (context.catcher = catcher)
 

@@ -602,7 +602,7 @@ function updateComponent(
     )
 
   create && instance.promise && instance.promise
-    .then(view => instance.view = view)
+    .then(view => instance.view = 'default' in view ? view.default : view)
     .catch(error => instance.view = instance.catcher.bind(null, error))
     .then(() => instance.next.first[componentSymbol] && (
       hydrating && dehydrate(next, stack),

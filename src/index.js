@@ -350,11 +350,13 @@ function update(dom, view, context, parent, stack, create) {
       ? update(dom, view(), context, parent, stack, create)
       : view instanceof View
         ? updateView(dom, view, context, parent, stack, create)
-        : Array.isArray(view)
-          ? updateArray(dom, view, context, parent)
-          : view instanceof Node
-            ? Ret(view)
-            : updateValue(dom, view, parent, create)
+        : view instanceof Promise
+          ? updateView(dom, s(() => view)(), context, parent, stack, create)
+          : Array.isArray(view)
+            ? updateArray(dom, view, context, parent)
+            : view instanceof Node
+              ? Ret(view)
+              : updateValue(dom, view, parent, create)
 }
 
 function updateView(dom, view, context, parent, stack, create) {

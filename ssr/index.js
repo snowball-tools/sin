@@ -82,11 +82,13 @@ async function update(view, context) {
       ? view.component
         ? updateComponent(view, context)
         : updateElement(view, context)
-      : Array.isArray(view)
-        ? updateArray(view, context)
-        : view || view === 0 || view === ''
-          ? updateText(view)
-          : updateComment(view)
+      : view instanceof Promise
+        ? update(s(() => view)(), context)
+        : Array.isArray(view)
+          ? updateArray(view, context)
+          : view || view === 0 || view === ''
+            ? updateText(view)
+            : updateComment(view)
 }
 
 function tagName(view) {
@@ -184,6 +186,7 @@ async function updateComponent(view, context) {
   let x = view.component[0](view.attrs, view.children, context)
   const isAsync = x && isFunction(x.then) && ('<!--a' + context.uid++ + '-->') || ''
   isAsync && (x = await x)
+  'default' in x && (x = x.default)
   isFunction(x) && (x = x())
   return isAsync + (await update(x, context)) + isAsync
 }

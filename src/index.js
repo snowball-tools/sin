@@ -528,10 +528,8 @@ function Stack() {
       xs[i] = instance
       return xs[top = i++]
     },
-    next(view, context, parent, stack) {
-      const instance = i < xs.length && xs[top = i++]
-      instance && (instance.context = createContext(view, context, parent, stack, instance))
-      return instance
+    next() {
+      return i < xs.length && xs[top = i++]
     },
     pop() {
       return --i === 0 && !(xs.length = top + 1, top = 0)
@@ -577,7 +575,7 @@ function updateComponent(
 ) {
   const instance = create
     ? stack.add(component, context, parent, stack)
-    : stack.next(component, context, parent, stack)
+    : stack.next()
 
   if (!create && !force && instance.ignore) {
     stack.pop()

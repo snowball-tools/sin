@@ -2,8 +2,119 @@ import s from './src/index.js'
 
 window.run = s.redraw
 
-cssFun()
+keyIssue()
 
+function keyIssue() {
+  const x = s(() => (a, c) => [s`h1`({ dom: () => wats.push(c[0]) }, c[0])])
+
+  let wat = false
+  const wats = []
+  s.mount(() => s`main`(
+    s`button`({ onclick: () => wat = !wat }, 'toggle'),
+    wat
+      ? x({
+        key: 'a'
+      }, '1')
+      : x({
+        key: 'b'
+      }, '2'),
+    s`h2`('yas'),
+    wats
+  ))
+}
+
+function routeIssue() {
+  const routers = []
+
+  s.mount((a, c, { route }) => [
+    route.id,
+    s`button`({ onclick: () => p('redraw') }, 'redraw'),
+    s`div`(routers.join(',')),
+    s`a`({ href: 'a' }, 'a'),
+    s`a`({ href: 'b' }, 'b'),
+    s`a`({ href: 'c' }, 'c'),
+    route({
+      '/a': s((a, c, { route }) => [
+        routers.push(route.id) && route.id,
+        s`h1`('a'),
+        s`a`({
+          href: route + 'c'
+        }, 'c'),
+        s`a`({
+          href: route + 'd'
+        }, 'd'),
+        route({
+          '/c': () => s`h1`('c'),
+          '/d': ({}, [], { route }) => s`h1`('d' + route.id)
+        })
+      ]),
+      '/b': () => 'b',
+      '/c': () => import('./wat.js')
+    })
+  ])
+}
+
+function asyncIssue() {
+  const button = s(async({ count = 0 }) => ({}, [x]) =>
+    s`button
+      bc yellow
+      p 12 20
+      tt uppercase
+      br 100
+      border none
+      animation 2s {
+        from { o 0 }
+      }
+    `({
+      onclick: () => count++
+    },
+      x.split('').reverse().join(''),
+      s`strong
+        fs 40
+      `(count)
+    )
+  )
+
+  s.mount(() => [
+    button('Count'),
+    button`
+      bc gray
+
+      :hover {
+        bc blue
+      }
+      span {
+        fw bold
+        fs 60
+      }
+    `(
+      'Count',
+      s`span`('0')
+    )
+  ])
+}
+
+function hue() {
+  const hue = s.live(200)
+
+  s.mount(() => [
+    s`input`({
+      type: 'range',
+      min: 0,
+      max: 1,
+      step: 0.0001,
+      oninput: hue.set(e => e.target.value)
+    }, 'red'),
+    s`h1
+      background hsl(${ hue.get(e => e * 255) }, 100%, 50%)
+    `(
+      Date.now(),
+      'hej',
+      hue
+    ),
+    s`h2`('wat')
+  ])
+}
 
 function cssFun() {
   s.css`
@@ -46,7 +157,7 @@ function cssFun() {
     )
   })
 
-  s.mount(({ route }) => [
+  s.mount(({}, [], { route }) => [
     s`nav`(
       ['/', '/red', '/blue', '/yellow'].map(x =>
         s`a

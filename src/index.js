@@ -354,7 +354,7 @@ function update(dom, view, context, parent, stack, create) {
         : view instanceof Promise
           ? updateView(dom, s(() => view)(), context, parent, stack, create)
           : Array.isArray(view)
-            ? updateArray(dom, view, context, parent)
+            ? updateArray(dom, view, context, parent, create)
             : view instanceof Node
               ? Ret(view)
               : updateValue(dom, view, parent, create)
@@ -407,7 +407,8 @@ function getArray(dom) {
   return dom && arraySymbol in dom ? dom[arraySymbol] : fromComment(dom)
 }
 
-function updateArray(dom, view, context, parent) {
+function updateArray(dom, view, context, parent, create) {
+  create && dom && parent && (dom = updateArray(dom, [], context, parent).first)
   const last = getArray(dom) || dom
   const comment = updateValue(dom, '[' + view.length, parent, false, 8)
 

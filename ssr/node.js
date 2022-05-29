@@ -17,7 +17,7 @@ const cache = {
 
 export default function(app, { attrs = {}, context = {}, body = '', compress = false } = {}) {
   return async function(req, res, next) {
-    const x = await ssr(app, attrs, { ...context, location: new URL(req.url, 'http://localhost/') })
+    const x = await ssr(app, attrs, { ...context, location: new URL(req.url, 'http://x/') })
     res.statusCode = x.status || 200
 
     for (const header in x.headers)

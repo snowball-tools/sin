@@ -71,6 +71,7 @@ function http(url, {
   method = "GET",
   redraw: redraw2 = true,
   body = null,
+  query = null,
   user = void 0,
   pass = void 0,
   headers = {},
@@ -89,12 +90,13 @@ function http(url, {
         } catch (e) {
           error = e;
         }
-        error || xhr.status >= 300 ? reject(error || xhr.status) : resolve2(body2);
+        error || xhr.status >= 300 ? reject(Object.assign(error || new Error(xhr.statusText), { xhr, status: xhr.status, body: body2 })) : resolve2(body2);
         redraw2 && http.redraw && http.redraw();
       }
     };
     let accept = "application/json, text/*", contentType = "application/json; charset=utf-8";
     xhr.onerror = xhr.onabort = (error) => reject(error || xhr.statusText);
+    query && (url += url.replace(/(#)|$/, (url.indexOf("?") > -1 ? "&" : "?") + new URLSearchParams(query).toString() + "$1"));
     xhr.open(method, url, true, user, pass);
     Object.entries(headers).forEach(([header, value2]) => {
       xhr.setRequestHeader(header, value2);
@@ -719,6 +721,8 @@ s.live = Live;
 s.on = on;
 s.trust = trust;
 s.route = router(s, "", { location: window_default.location });
+s.catcher = catcher;
+s.window = window_default;
 function trust(x2) {
   return s(() => {
     const div2 = document.createElement("div"), frag = new DocumentFragment();
@@ -776,6 +780,7 @@ function mount(dom, view, attrs = {}, context = {}) {
     view = dom;
     dom = document.body;
   }
+  view instanceof View === false && (view = s(view));
   "location" in context || (context.location = window_default.location);
   "catcher" in context || (context.catcher = catcher);
   if (isServer)
@@ -904,7 +909,7 @@ function insertBefore(parent, { first, last: last2 }, before) {
   } while (parent.insertBefore(dom, before) !== last2);
 }
 function update(dom, view, context, parent, stack, create) {
-  return isObservable(view) ? updateLive(dom, view, context, parent, stack, create) : isFunction(view) ? update(dom, view(), context, parent, stack, create) : view instanceof View ? updateView(dom, view, context, parent, stack, create) : Array.isArray(view) ? updateArray(dom, view, context, parent) : view instanceof Node ? Ret(view) : updateValue(dom, view, parent, create);
+  return isObservable(view) ? updateLive(dom, view, context, parent, stack, create) : isFunction(view) ? update(dom, view(), context, parent, stack, create) : view instanceof View ? updateView(dom, view, context, parent, stack, create) : view instanceof Promise ? updateView(dom, s(() => view)(), context, parent, stack, create) : Array.isArray(view) ? updateArray(dom, view, context, parent, create) : view instanceof Node ? Ret(view) : updateValue(dom, view, parent, create);
 }
 function updateView(dom, view, context, parent, stack, create) {
   return view.component ? updateComponent(dom, view, context, parent, stack, create) : updateElement(dom, view, context, parent, create);
@@ -940,7 +945,8 @@ function fromComment(dom) {
 function getArray(dom) {
   return dom && arraySymbol in dom ? dom[arraySymbol] : fromComment(dom);
 }
-function updateArray(dom, view, context, parent) {
+function updateArray(dom, view, context, parent, create) {
+  create && dom && parent && (dom = updateArray(dom, [], context, parent).first);
   const last2 = getArray(dom) || dom;
   const comment = updateValue(dom, "[" + view.length, parent, false, 8);
   if (parent) {
@@ -971,6 +977,7 @@ function updateElement(dom, view, context, parent, create = dom === null || tagC
   size ? updates(dom, view.children, context) : dom[sizeSymbol] && removeChildren(dom.firstChild, dom);
   dom[sizeSymbol] = size;
   context.NS = previousNS;
+  view.key && (dom[keySymbol] = view.key);
   return Ret(dom);
 }
 function removeChildren(dom, parent) {
@@ -979,7 +986,7 @@ function removeChildren(dom, parent) {
   parent.innerHTML = "";
 }
 function tagChanged(dom, view) {
-  return dom.tagName !== (view.tag.name || "DIV").toUpperCase();
+  return dom[keySymbol] != view.key || dom.tagName !== (view.tag.name || "DIV").toUpperCase();
 }
 function createElement(view, context) {
   const is = view.attrs.is;
@@ -1014,10 +1021,8 @@ function Stack() {
       xs[i] = instance;
       return xs[top = i++];
     },
-    next(view, context, parent, stack2) {
-      const instance = i < xs.length && xs[top = i++];
-      instance && (instance.context = createContext(view, context, parent, stack2, instance));
-      return instance;
+    next() {
+      return i < xs.length && xs[top = i++];
     },
     pop() {
       return --i === 0 && !(xs.length = top + 1, top = 0);
@@ -1045,18 +1050,18 @@ function hydrate(dom) {
 function dehydrate(x2, stack) {
   x2.first.nextSibling[componentSymbol] = stack;
   x2.first.remove();
-  x2.last.remove();
+  x2.last && x2.last.remove();
 }
 function updateComponent(dom, component, context, parent, stack = dom && dom[componentSymbol] || Stack(), create = stack.exhausted || stack.key !== component.key, force = false) {
-  const instance = create ? stack.add(component, context, parent, stack) : stack.next(component, context, parent, stack);
+  const instance = create ? stack.add(component, context, parent, stack) : stack.next();
   if (!create && !force && instance.ignore) {
     stack.pop();
     return stack.dom;
   }
   component.key && create && (instance.key = component.key);
   const hydrating = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 97;
-  const next = instance.next = hydrating ? hydrate(dom) : update(dom, mergeTag(catchInstance(create, instance, component, instance.context, stack), component), instance.context, parent, stack, create || void 0);
-  create && instance.promise && instance.promise.then((view) => instance.view = view).catch((error) => instance.view = instance.catcher.bind(null, error)).then(() => instance.next.first[componentSymbol] && (hydrating && dehydrate(next, stack), delete stack.dom.first[lifeSymbol], instance.promise = false, redraw()));
+  const next = instance.next = hydrating ? hydrate(dom) : update(dom, instance.view && mergeTag(catchInstance(create, instance, component, instance.context, stack), component), instance.context, parent, stack, create || void 0);
+  create && instance.promise && instance.promise.then((view) => instance.view = "default" in view ? view.default : view).catch((error) => instance.view = instance.catcher.bind(null, error)).then(() => instance.next.first[componentSymbol] && (hydrating && dehydrate(next, stack), delete stack.dom.first[lifeSymbol], instance.promise = false, redraw()));
   const changed = dom !== next.first;
   if (stack.pop() && (changed || create)) {
     stack.dom = instance.next = next;
@@ -1092,9 +1097,9 @@ function mergeTag(a, b) {
   };
   return a;
 }
-function attributes(dom, view, context, create) {
+function attributes(dom, view, context) {
   let tag = view.tag;
-  const prev = dom[attrSymbol];
+  const prev = dom[attrSymbol], create = !prev;
   "id" in view.attrs === false && view.tag.id && (view.attrs.id = view.tag.id);
   if (create && view.tag.classes || view.attrs.class !== (prev && prev.class) || view.attrs.className !== (prev && prev.className) || dom.className !== view.tag.classes)
     setClass(dom, view);
@@ -1257,6 +1262,8 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
     if (dom.nodeValue.charCodeAt(0) === 97) {
       after = dom.nextSibling;
       removeChild(parent, dom);
+      if (!after)
+        return after;
       dom = after;
       after = dom.nextSibling;
     }

@@ -474,6 +474,7 @@ function updateElement(
   dom[sizeSymbol] = size
 
   context.NS = previousNS
+  view.key && (dom[keySymbol] = view.key)
 
   return Ret(dom)
 }
@@ -485,7 +486,8 @@ function removeChildren(dom, parent) {
 }
 
 function tagChanged(dom, view) {
-  return dom.tagName !== (view.tag.name || 'DIV').toUpperCase()
+  return dom[keySymbol] != view.key // eslint-disable-line
+      || dom.tagName !== (view.tag.name || 'DIV').toUpperCase()
 }
 
 function createElement(view, context) {

@@ -54,6 +54,7 @@ const removing = new WeakSet()
     , sizeSymbol = Symbol('size')
     , lifeSymbol = Symbol('life')
     , attrSymbol = Symbol('attr')
+    , keysSymbol = Symbol('keys')
     , keySymbol = Symbol('key')
 
 let idle = true
@@ -224,15 +225,15 @@ function draw({ view, attrs, context }, dom) {
 function updates(parent, next, context, before, last = parent.lastChild) {
   const keys = next[0] && next[0].key != null && new Array(next.length)
       , ref = getNext(before, parent)
-      , tracked = ref && keySymbol in ref
+      , tracked = ref && keysSymbol in ref
       , after = last ? last.nextSibling : null
 
   keys && (keys.rev = {}) && tracked
-    ? keyed(parent, context, ref[keySymbol], next, keys, after)
+    ? keyed(parent, context, ref[keysSymbol], next, keys, after)
     : nonKeyed(parent, context, next, keys, ref, after)
 
   const first = getNext(before, parent)
-  keys && (first[keySymbol] = keys)
+  keys && (first[keysSymbol] = keys)
 
   return Ret(first, after && after.previousSibling || parent.lastChild)
 }

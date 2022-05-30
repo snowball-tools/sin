@@ -24,7 +24,16 @@ const document = window.document
       math: 'http://www.w3.org/1998/Math/MathML'
     }
 
-s.isServer = isServer
+class Instance {
+  constructor(init, id, key, view, catcher, loader) {
+    this.init = init
+    this.id = id
+    this.key = key
+    this.view = view
+    this.catcher = catcher
+    this.loader = loader
+  }
+}
 
 export default function s(...x) {
   const type = typeof x[0]
@@ -33,8 +42,8 @@ export default function s(...x) {
     : S.bind(
       type === 'function'
         ? isFunction(x[1])
-          ? new View(x.reverse())
-          : new View(x)
+          ? new View(redrawing, x.reverse())
+          : new View(redrawing, x)
         : tagged(x)
     )
 }
@@ -60,7 +69,9 @@ const removing = new WeakSet()
 
 let idle = true
   , afterUpdate = []
+  , redrawing = false
 
+s.isServer = isServer
 s.pathmode = ''
 s.redraw = redraw
 s.mount = mount
@@ -135,6 +146,7 @@ function link(dom, route) {
 function tagged(x, parent) {
   const level = parent ? parent.level + 1 : 0
   return new View(
+    parent && parent.inline,
     parent && parent.component,
     parse(x, parent && parent.tag, level),
     level
@@ -144,6 +156,7 @@ function tagged(x, parent) {
 function execute(x, parent) {
   const hasAttrs = isAttrs(x && x[0])
   return new View(
+    parent.inline,
     parent.component,
     parent.tag,
     parent ? parent.level + 1 : 0,
@@ -207,12 +220,14 @@ function globalRedraw() {
 }
 
 function draw({ view, attrs, context }, dom) {
+  redrawing = true
   try {
     const x = view(attrs, [], context)
     updates(dom, asArray(x), context)
   } catch (error) {
     updates(dom, asArray(context.catcher(error, attrs, [], context)), context)
   }
+  redrawing = false
   afterUpdate.forEach(fn => fn())
   afterUpdate = []
 }
@@ -509,23 +524,23 @@ function Stack() {
 
   const stack = {
     life: [],
-    get exhausted() {
-      return i >= xs.length
-    },
-    get key() {
-      return i < xs.length
-        ? xs[i].key
-        : null
+    changed(view) {
+      if (i >= xs.length)
+        return true
+
+      const instance = xs[i]
+      return instance.key !== view.key || (instance.init && instance.init !== view.component[0])
     },
     add(view, context, parent, stack) {
       const [init, options] = view.component
-      const instance = {
-        id: window.count = (window.count || 0) + 1,
-        key: null,
-        view: init,
-        catcher: options && options.catcher || context.catcher,
-        loader: options && options.loader || context.loader
-      }
+      const instance = new Instance(
+        view.inline ? false : init,
+        window.count = (window.count || 0) + 1,
+        null,
+        init,
+        options && options.catcher || context.catcher,
+        options && options.loader || context.loader
+      )
 
       instance.context = createContext(view, context, parent, stack, instance)
       const next = catchInstance(true, instance, view, instance.context, stack)
@@ -579,7 +594,7 @@ function updateComponent(
   context,
   parent,
   stack = dom && dom[componentSymbol] || Stack(),
-  create = stack.exhausted || stack.key !== component.key,
+  create = stack.changed(component),
   force = false
 ) {
   const instance = create

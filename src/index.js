@@ -517,62 +517,57 @@ function createElement(view, context) {
       : document.createElement(view.tag.name || 'DIV')
 }
 
-function Stack() {
-  const xs = []
-  let i = 0
-    , top = 0
-
-  const stack = {
-    life: [],
-    changed(view) {
-      if (i >= xs.length)
-        return true
-
-      const instance = xs[i]
-      return instance.key !== view.key || (instance.init && instance.init !== view.component[0])
-    },
-    add(view, context, parent, stack) {
-      const [init, options] = view.component
-      const instance = new Instance(
-        view.inline ? false : init,
-        window.count = (window.count || 0) + 1,
-        null,
-        init,
-        options && options.catcher || context.catcher,
-        options && options.loader || context.loader
-      )
-
-      instance.context = createContext(view, context, parent, stack, instance)
-      const next = catchInstance(true, instance, view, instance.context, stack)
-
-      instance.promise = next && isFunction(next.then) && next
-      instance.stateful = instance.promise || isFunction(next)
-      instance.view = instance.promise ? instance.loader : next
-      xs.length = i
-      xs[i] = instance
-      return xs[top = i++]
-    },
-    next() {
-      return i < xs.length && xs[top = i++]
-    },
-    pop() {
-      return --i === 0 && !(xs.length = top + 1, top = 0)
-    },
-    cut() {
-      return xs.length = top = i
-    }
+class Stack {
+  constructor() {
+    this.life = []
+    this.xs = []
+    this.i = 0
+    this.top = 0
   }
 
-  return stack
-}
+  changed(view) {
+    if (this.i >= this.xs.length)
+      return true
 
-function createContext(view, context, parent, stack, instance) {
-  return Object.create(context, {
-    onremove: { value: fn => stack.life.push(() => fn) },
-    redraw: { value: () => updateComponent(stack.dom.first, view, context, parent, stack, false, true) },
-    reload: { value: () => updateComponent(stack.dom.first, view, context, parent, stack, true) },
-    ignore: { value: x => instance.ignore = x }
-  })
+    const instance = this.xs[this.i]
+    return instance.key !== view.key || (instance.init && instance.init !== view.component[0])
+  }
+  add(view, context, parent) {
+    const [init, options] = view.component
+    const instance = new Instance(
+      view.inline ? false : init,
+      window.count = (window.count || 0) + 1,
+      null,
+      init,
+      options && options.catcher || context.catcher,
+      options && options.loader || context.loader
+    )
+
+    instance.context = Object.create(context, {
+      onremove: { value: fn => this.life.push(() => fn) },
+      redraw: { value: () => updateComponent(this.dom.first, view, context, parent, this, false, true) },
+      reload: { value: () => updateComponent(this.dom.first, view, context, parent, this, true) },
+      ignore: { value: x => instance.ignore = x }
+    })
+
+    const next = catchInstance(true, instance, view, instance.context, this.stack)
+
+    instance.promise = next && isFunction(next.then) && next
+    instance.stateful = instance.promise || isFunction(next)
+    instance.view = instance.promise ? instance.loader : next
+    this.xs.length = this.i
+    this.xs[this.i] = instance
+    return this.xs[this.top = this.i++]
+  }
+  next() {
+    return this.i < this.xs.length && this.xs[this.top = this.i++]
+  }
+  pop() {
+    return --this.i === 0 && !(this.xs.length = this.top + 1, this.top = 0)
+  }
+  cut() {
+    return this.xs.length = this.top = this.i
+  }
 }
 
 function hydrate(dom) {
@@ -593,12 +588,12 @@ function updateComponent(
   component,
   context,
   parent,
-  stack = dom && dom[componentSymbol] || Stack(),
+  stack = dom && dom[componentSymbol] || new Stack(),
   create = stack.changed(component),
   force = false
 ) {
   const instance = create
-    ? stack.add(component, context, parent, stack)
+    ? stack.add(component, context, parent)
     : stack.next()
 
   if (!create && !force && instance.ignore) {

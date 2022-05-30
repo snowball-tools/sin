@@ -24,17 +24,6 @@ const document = window.document
       math: 'http://www.w3.org/1998/Math/MathML'
     }
 
-class Instance {
-  constructor(init, id, key, view, catcher, loader) {
-    this.init = init
-    this.id = id
-    this.key = key
-    this.view = view
-    this.catcher = catcher
-    this.loader = loader
-  }
-}
-
 export default function s(...x) {
   const type = typeof x[0]
   return type === 'string'
@@ -515,6 +504,17 @@ function createElement(view, context) {
     : is
       ? document.createElement(view.tag.name || 'DIV', { is })
       : document.createElement(view.tag.name || 'DIV')
+}
+
+class Instance {
+  constructor(init, id, key, view, catcher, loader) {
+    this.init = init
+    this.id = id
+    this.key = key
+    this.view = view
+    this.catcher = catcher
+    this.loader = loader
+  }
 }
 
 class Stack {

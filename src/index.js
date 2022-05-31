@@ -480,7 +480,7 @@ function updateElement(
   dom[sizeSymbol] = size
 
   context.NS = previousNS
-  view.key && (dom[keySymbol] = view.key)
+  view.key != null && (dom[keySymbol] = view.key)
 
   return Ret(dom)
 }

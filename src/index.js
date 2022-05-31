@@ -487,8 +487,7 @@ function updateElement(
 
 function removeChildren(dom, parent) {
   while (dom)
-    dom = remove(dom, parent, false)
-  parent.innerHTML = ''
+    dom = remove(dom, parent)
 }
 
 function tagChanged(dom, view) {
@@ -936,7 +935,8 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
     for (const life of dom[lifeSymbol]) {
       try {
         const promise = life(deferrable || root)
-        deferrable || root && promise && isFunction(promise.then) && promises.push(promise)
+        if (deferrable || root)
+          promise && isFunction(promise.then) && promises.push(promise)
       } catch (error) {
         console.error(error) // eslint-disable-line
       }

@@ -223,7 +223,7 @@ function draw({ view, attrs, context }, dom) {
 }
 
 function updates(parent, next, context, before, last = parent.lastChild) {
-  const keys = next[0] && next[0].key != null && new Array(next.length)
+  const keys = next[0] && next[0].key !== undefined && new Array(next.length)
       , ref = getNext(before, parent)
       , tracked = ref && keysSymbol in ref
       , after = last ? last.nextSibling : null
@@ -480,7 +480,7 @@ function updateElement(
   dom[sizeSymbol] = size
 
   context.NS = previousNS
-  view.key != null && (dom[keySymbol] = view.key)
+  view.key !== undefined && (dom[keySymbol] = view.key)
 
   return Ret(dom)
 }
@@ -492,7 +492,7 @@ function removeChildren(dom, parent) {
 }
 
 function tagChanged(dom, view) {
-  return dom[keySymbol] != view.key // eslint-disable-line
+  return dom[keySymbol] !== view.key // eslint-disable-line
       || dom.tagName !== (view.tag.name || 'DIV').toUpperCase()
 }
 
@@ -508,10 +508,10 @@ function createElement(view, context) {
 }
 
 class Instance {
-  constructor(init, id, key, view, catcher, loader) {
+  constructor(init, id, view, catcher, loader) {
     this.init = init
     this.id = id
-    this.key = key
+    this.key = undefined
     this.view = view
     this.catcher = catcher
     this.loader = loader
@@ -538,7 +538,6 @@ class Stack {
     const instance = new Instance(
       view.inline ? false : init,
       window.count = (window.count || 0) + 1,
-      null,
       init,
       options && options.catcher || context.catcher,
       options && options.loader || context.loader

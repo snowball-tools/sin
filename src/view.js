@@ -5,7 +5,7 @@ export default class View {
     this.inline = inline
     this.tag = tag
     this.attrs = attrs
-    this.key = attrs && 'key' in attrs ? attrs.key : null
+    this.key = attrs ? attrs.key : undefined
     this.dom = null
     this.children = children
   }

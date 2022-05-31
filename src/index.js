@@ -30,9 +30,9 @@ export default function s(...x) {
     ? S(Object.assign([x[0]], { raw: [] }))(...x.slice(1))
     : S.bind(
       type === 'function'
-        ? isFunction(x[1])
-          ? new View(redrawing, x.reverse())
-          : new View(redrawing, x)
+        ? new View(redrawing, x)
+        : isFunction(x[1])
+        ? new View(redrawing, x.reverse())
         : tagged(x)
     )
 }

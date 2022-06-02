@@ -74,8 +74,17 @@ s.live = live
 s.on = on
 s.trust = trust
 s.route = router(s, '', { location: window.location })
-s.catcher = catcher
 s.window = window
+s.catcher = s(({ error }) => {
+  isServer
+    ? console.error(error) // eslint-disable-line
+    : Promise.resolve().then(() => { throw error })
+  return () => s`pre;all initial;d block;ws pre-wrap;m 0;c white;bc #ff0033;p 8 12;br 6;overflow auto`(
+    s`code`(
+      error && error.stack || error || new Error('Unknown Error').stack
+    )
+  )
+})
 
 function trust(x) {
   return s(() => {
@@ -176,7 +185,7 @@ function mount(dom, view, attrs = {}, context = {}) {
   view instanceof View === false && (view = s(view))
 
   'location' in context || (context.location = window.location)
-  'catcher' in context || (context.catcher = catcher)
+  'catcher' in context || (context.catcher = s.catcher)
 
   if (isServer)
     return { view, attrs, context }
@@ -187,17 +196,6 @@ function mount(dom, view, attrs = {}, context = {}) {
   context.route = router(s, '', context)
   mounts.set(dom, { view, attrs, context })
   draw({ view, attrs, context }, dom)
-}
-
-function catcher(error) {
-  isServer
-    ? console.error(error) // eslint-disable-line
-    : Promise.resolve().then(() => { throw error })
-  return s`pre;all initial;d block;ws pre-wrap;m 0;c white;bc #ff0033;p 8 12;br 6;overflow auto`(
-    s`code`(
-      error && error.stack || error || new Error('Unknown Error').stack
-    )
-  )
 }
 
 function redraw() {
@@ -215,7 +213,8 @@ function draw({ view, attrs, context }, dom) {
     const x = view(attrs, [], context)
     updates(dom, asArray(x), context)
   } catch (error) {
-    updates(dom, asArray(context.catcher(error, attrs, [], context)), context)
+    attrs.error = error
+    updates(dom, asArray(context.catcher(attrs)), context)
   }
   redrawing = false
   afterUpdate.forEach(fn => fn())
@@ -549,7 +548,7 @@ class Stack {
       ignore: { value: x => instance.ignore = x }
     })
 
-    const next = catchInstance(true, instance, view, instance.context, this.stack)
+    const next = catchInstance(true, instance, view, instance.context, this)
 
     instance.promise = next && isFunction(next.then) && next
     instance.stateful = instance.promise || isFunction(next)
@@ -622,7 +621,10 @@ function updateComponent(
 
   create && instance.promise && instance.promise
     .then(view => instance.view = 'default' in view ? view.default : view)
-    .catch(error => instance.view = instance.error = instance.catcher.bind(null, error))
+    .catch(error => {
+      instance.error = component.attrs.error = error
+      instance.view = instance.catcher
+    })
     .then(() => instance.next.first[componentSymbol] && (
       hydrating && dehydrate(instance.next, stack),
       delete stack.dom.first[lifeSymbol],
@@ -645,7 +647,8 @@ function catchInstance(create, instance, view, context, stack) {
   try {
     return resolveInstance(create, instance, view, context)
   } catch (error) {
-    instance.view = instance.catcher.bind(null, error)
+    instance.error = view.attrs.error = error
+    instance.view = instance.catcher
     stack.cut()
     return resolveInstance(create, instance, view, context)
   }

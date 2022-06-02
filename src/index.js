@@ -603,36 +603,42 @@ function updateComponent(
   component.key && create && (instance.key = component.key)
 
   const hydrating = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 97 // a
-  const next = instance.next = hydrating
-    ? hydrate(dom)
-    : update(
+
+  if (hydrating) {
+    instance.next = hydrate(dom)
+  } else {
+    const view = catchInstance(create, instance, component, instance.context, stack)
+    instance.next = update(
       dom,
-      instance.view && mergeTag(catchInstance(create, instance, component, instance.context, stack), component),
+      !instance.error && !instance.promise && view instanceof View
+        ? mergeTag(view, component)
+        : view,
       instance.context,
       parent,
       stack,
       create || undefined
     )
+  }
 
   create && instance.promise && instance.promise
     .then(view => instance.view = 'default' in view ? view.default : view)
-    .catch(error => instance.view = instance.catcher.bind(null, error))
+    .catch(error => instance.view = instance.error = instance.catcher.bind(null, error))
     .then(() => instance.next.first[componentSymbol] && (
-      hydrating && dehydrate(next, stack),
+      hydrating && dehydrate(instance.next, stack),
       delete stack.dom.first[lifeSymbol],
       instance.promise = false,
       redraw()
     ))
 
-  const changed = dom !== next.first
+  const changed = dom !== instance.next.first
 
   if (stack.pop() && (changed || create)) {
-    stack.dom = instance.next = next
-    next.first[componentSymbol] = stack
-    !instance.promise && giveLife(next.first, component.attrs, component.children, instance.context, stack.life)
+    stack.dom = instance.next
+    instance.next.first[componentSymbol] = stack
+    !instance.promise && giveLife(instance.next.first, component.attrs, component.children, instance.context, stack.life)
   }
 
-  return next
+  return instance.next
 }
 
 function catchInstance(create, instance, view, context, stack) {
@@ -641,7 +647,7 @@ function catchInstance(create, instance, view, context, stack) {
   } catch (error) {
     instance.view = instance.catcher.bind(null, error)
     stack.cut()
-    return resolveInstance(instance.stateful || create, instance, view, context)
+    return resolveInstance(create, instance, view, context)
   }
 }
 

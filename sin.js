@@ -1,11 +1,12 @@
 // src/view.js
 var View = class {
-  constructor(component, tag = null, level = 0, attrs = null, children = null) {
+  constructor(inline, component, tag = null, level = 0, attrs = null, children = null) {
     this.level = level;
     this.component = component;
+    this.inline = inline;
     this.tag = tag;
     this.attrs = attrs;
-    this.key = attrs && "key" in attrs ? attrs.key : null;
+    this.key = attrs ? attrs.key : void 0;
     this.dom = null;
     this.children = children;
   }
@@ -687,10 +688,9 @@ var NS = {
   svg: "http://www.w3.org/2000/svg",
   math: "http://www.w3.org/1998/Math/MathML"
 };
-s.isServer = isServer;
 function s(...x2) {
   const type = typeof x2[0];
-  return type === "string" ? S(Object.assign([x2[0]], { raw: [] }))(...x2.slice(1)) : S.bind(type === "function" ? isFunction(x2[1]) ? new View(x2.reverse()) : new View(x2) : tagged(x2));
+  return type === "string" ? S(Object.assign([x2[0]], { raw: [] }))(...x2.slice(1)) : S.bind(type === "function" ? new View(redrawing, x2) : isFunction(x2[1]) ? new View(redrawing, x2.reverse()) : tagged(x2));
 }
 function S(...x2) {
   return x2[0] && Array.isArray(x2[0].raw) ? S.bind(tagged(x2, this)) : execute(x2, this);
@@ -706,9 +706,12 @@ var liveSymbol = Symbol("stream");
 var sizeSymbol = Symbol("size");
 var lifeSymbol = Symbol("life");
 var attrSymbol = Symbol("attr");
+var keysSymbol = Symbol("keys");
 var keySymbol = Symbol("key");
 var idle = true;
 var afterUpdate = [];
+var redrawing = false;
+s.isServer = isServer;
 s.pathmode = "";
 s.redraw = redraw;
 s.mount = mount;
@@ -721,8 +724,13 @@ s.live = Live;
 s.on = on;
 s.trust = trust;
 s.route = router(s, "", { location: window_default.location });
-s.catcher = catcher;
 s.window = window_default;
+s.catcher = s(({ error }) => {
+  isServer ? console.error(error) : Promise.resolve().then(() => {
+    throw error;
+  });
+  return () => s`pre;all initial;d block;ws pre-wrap;m 0;c white;bc #ff0033;p 8 12;br 6;overflow auto`(s`code`(error && error.stack || error || new Error("Unknown Error").stack));
+});
 function trust(x2) {
   return s(() => {
     const div2 = document.createElement("div"), frag = new DocumentFragment();
@@ -764,11 +772,11 @@ function link(dom, route) {
 }
 function tagged(x2, parent) {
   const level = parent ? parent.level + 1 : 0;
-  return new View(parent && parent.component, parse(x2, parent && parent.tag, level), level);
+  return new View(parent && parent.inline, parent && parent.component, parse(x2, parent && parent.tag, level), level);
 }
 function execute(x2, parent) {
   const hasAttrs = isAttrs(x2 && x2[0]);
-  return new View(parent.component, parent.tag, parent ? parent.level + 1 : 0, hasAttrs ? x2.shift() : {}, x2.length === 1 && Array.isArray(x2[0]) ? x2[0] : x2);
+  return new View(parent.inline, parent.component, parent.tag, parent ? parent.level + 1 : 0, hasAttrs ? x2.shift() : {}, x2.length === 1 && Array.isArray(x2[0]) ? x2[0] : x2);
 }
 function isAttrs(x2) {
   return x2 && typeof x2 === "object" && !(x2 instanceof Date) && !Array.isArray(x2) && !(x2 instanceof View);
@@ -782,7 +790,7 @@ function mount(dom, view, attrs = {}, context = {}) {
   }
   view instanceof View === false && (view = s(view));
   "location" in context || (context.location = window_default.location);
-  "catcher" in context || (context.catcher = catcher);
+  "catcher" in context || (context.catcher = s.catcher);
   if (isServer)
     return { view, attrs, context };
   context.title = s.live(document.title, (x2) => document.title = x2);
@@ -790,12 +798,6 @@ function mount(dom, view, attrs = {}, context = {}) {
   context.route = router(s, "", context);
   mounts.set(dom, { view, attrs, context });
   draw({ view, attrs, context }, dom);
-}
-function catcher(error) {
-  isServer ? console.error(error) : Promise.resolve().then(() => {
-    throw error;
-  });
-  return s`pre;all initial;d block;ws pre-wrap;m 0;c white;bc #ff0033;p 8 12;br 6;overflow auto`(s`code`(error && error.stack || error || new Error("Unknown Error").stack));
 }
 function redraw() {
   idle && (requestAnimationFrame(globalRedraw), idle = false);
@@ -805,20 +807,23 @@ function globalRedraw() {
   idle = true;
 }
 function draw({ view, attrs, context }, dom) {
+  redrawing = true;
   try {
     const x2 = view(attrs, [], context);
     updates(dom, asArray(x2), context);
   } catch (error) {
-    updates(dom, asArray(context.catcher(error, attrs, [], context)), context);
+    attrs.error = error;
+    updates(dom, asArray(context.catcher(attrs)), context);
   }
+  redrawing = false;
   afterUpdate.forEach((fn2) => fn2());
   afterUpdate = [];
 }
 function updates(parent, next, context, before, last2 = parent.lastChild) {
-  const keys = next[0] && next[0].key != null && new Array(next.length), ref = getNext(before, parent), tracked = ref && keySymbol in ref, after = last2 ? last2.nextSibling : null;
-  keys && (keys.rev = {}) && tracked ? keyed(parent, context, ref[keySymbol], next, keys, after) : nonKeyed(parent, context, next, keys, ref, after);
+  const keys = next[0] && next[0].key !== void 0 && new Array(next.length), ref = getNext(before, parent), tracked = ref && keysSymbol in ref, after = last2 ? last2.nextSibling : null;
+  keys && (keys.rev = {}) && tracked ? keyed(parent, context, ref[keysSymbol], next, keys, after) : nonKeyed(parent, context, next, keys, ref, after);
   const first = getNext(before, parent);
-  keys && (first[keySymbol] = keys);
+  keys && (first[keysSymbol] = keys);
   return Ret(first, after && after.previousSibling || parent.lastChild);
 }
 function getNext(before, parent) {
@@ -977,70 +982,70 @@ function updateElement(dom, view, context, parent, create = dom === null || tagC
   size ? updates(dom, view.children, context) : dom[sizeSymbol] && removeChildren(dom.firstChild, dom);
   dom[sizeSymbol] = size;
   context.NS = previousNS;
-  view.key && (dom[keySymbol] = view.key);
+  view.key !== void 0 && (dom[keySymbol] = view.key);
   return Ret(dom);
 }
 function removeChildren(dom, parent) {
   while (dom)
-    dom = remove(dom, parent, false);
-  parent.innerHTML = "";
+    dom = remove(dom, parent);
 }
 function tagChanged(dom, view) {
-  return dom[keySymbol] != view.key || dom.tagName !== (view.tag.name || "DIV").toUpperCase();
+  return dom[keySymbol] !== view.key || dom.tagName !== (view.tag.name || "DIV").toUpperCase();
 }
 function createElement(view, context) {
   const is = view.attrs.is;
   return context.NS || (context.NS = view.attrs.xmlns || NS[view.tag.name]) ? is ? document.createElementNS(context.NS, view.tag.name, { is }) : document.createElementNS(context.NS, view.tag.name) : is ? document.createElement(view.tag.name || "DIV", { is }) : document.createElement(view.tag.name || "DIV");
 }
-function Stack() {
-  const xs = [];
-  let i = 0, top = 0;
-  const stack = {
-    life: [],
-    get exhausted() {
-      return i >= xs.length;
-    },
-    get key() {
-      return i < xs.length ? xs[i].key : null;
-    },
-    add(view, context, parent, stack2) {
-      const [init, options] = view.component;
-      const instance = {
-        id: window_default.count = (window_default.count || 0) + 1,
-        key: null,
-        view: init,
-        catcher: options && options.catcher || context.catcher,
-        loader: options && options.loader || context.loader
-      };
-      instance.context = createContext(view, context, parent, stack2, instance);
-      const next = catchInstance(true, instance, view, instance.context, stack2);
-      instance.promise = next && isFunction(next.then) && next;
-      instance.stateful = instance.promise || isFunction(next);
-      instance.view = instance.promise ? instance.loader : next;
-      xs.length = i;
-      xs[i] = instance;
-      return xs[top = i++];
-    },
-    next() {
-      return i < xs.length && xs[top = i++];
-    },
-    pop() {
-      return --i === 0 && !(xs.length = top + 1, top = 0);
-    },
-    cut() {
-      return xs.length = top = i;
-    }
-  };
-  return stack;
-}
-function createContext(view, context, parent, stack, instance) {
-  return Object.create(context, {
-    onremove: { value: (fn2) => stack.life.push(() => fn2) },
-    redraw: { value: () => updateComponent(stack.dom.first, view, context, parent, stack, false, true) },
-    reload: { value: () => updateComponent(stack.dom.first, view, context, parent, stack, true) },
-    ignore: { value: (x2) => instance.ignore = x2 }
-  });
-}
+var Instance = class {
+  constructor(init, id2, view, catcher, loader) {
+    this.init = init;
+    this.id = id2;
+    this.key = void 0;
+    this.view = view;
+    this.catcher = catcher;
+    this.loader = loader;
+  }
+};
+var Stack = class {
+  constructor() {
+    this.life = [];
+    this.xs = [];
+    this.i = 0;
+    this.top = 0;
+  }
+  changed(view) {
+    if (this.i >= this.xs.length)
+      return true;
+    const instance = this.xs[this.i];
+    return instance.key !== view.key || instance.init && instance.init !== view.component[0];
+  }
+  add(view, context, parent) {
+    const [init, options] = view.component;
+    const instance = new Instance(view.inline ? false : init, window_default.count = (window_default.count || 0) + 1, init, options && options.catcher || context.catcher, options && options.loader || context.loader);
+    instance.context = Object.create(context, {
+      onremove: { value: (fn2) => this.life.push(() => fn2) },
+      redraw: { value: () => updateComponent(this.dom.first, view, context, parent, this, false, true) },
+      reload: { value: () => updateComponent(this.dom.first, view, context, parent, this, true) },
+      ignore: { value: (x2) => instance.ignore = x2 }
+    });
+    const next = catchInstance(true, instance, view, instance.context, this);
+    instance.promise = next && isFunction(next.then) && next;
+    instance.stateful = instance.promise || isFunction(next);
+    instance.view = instance.promise ? instance.loader : next;
+    this.xs.length = this.i;
+    this.xs[this.i] = instance;
+    return this.xs[this.top = this.i++];
+  }
+  next() {
+    return this.i < this.xs.length && this.xs[this.top = this.i++];
+  }
+  pop() {
+    return --this.i === 0 && !(this.xs.length = this.top + 1, this.top = 0);
+  }
+  cut() {
+    return this.xs.length = this.top = this.i;
+  }
+};
 function hydrate(dom) {
   let last2 = dom.nextSibling;
   while (last2 && (last2.nodeType !== 8 || last2.nodeValue !== dom.nodeValue))
@@ -1052,31 +1057,40 @@ function dehydrate(x2, stack) {
   x2.first.remove();
   x2.last && x2.last.remove();
 }
-function updateComponent(dom, component, context, parent, stack = dom && dom[componentSymbol] || Stack(), create = stack.exhausted || stack.key !== component.key, force = false) {
-  const instance = create ? stack.add(component, context, parent, stack) : stack.next();
+function updateComponent(dom, component, context, parent, stack = dom && dom[componentSymbol] || new Stack(), create = stack.changed(component), force = false) {
+  const instance = create ? stack.add(component, context, parent) : stack.next();
   if (!create && !force && instance.ignore) {
     stack.pop();
     return stack.dom;
   }
   component.key && create && (instance.key = component.key);
   const hydrating = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 97;
-  const next = instance.next = hydrating ? hydrate(dom) : update(dom, instance.view && mergeTag(catchInstance(create, instance, component, instance.context, stack), component), instance.context, parent, stack, create || void 0);
-  create && instance.promise && instance.promise.then((view) => instance.view = "default" in view ? view.default : view).catch((error) => instance.view = instance.catcher.bind(null, error)).then(() => instance.next.first[componentSymbol] && (hydrating && dehydrate(next, stack), delete stack.dom.first[lifeSymbol], instance.promise = false, redraw()));
-  const changed = dom !== next.first;
-  if (stack.pop() && (changed || create)) {
-    stack.dom = instance.next = next;
-    next.first[componentSymbol] = stack;
-    !instance.promise && giveLife(next.first, component.attrs, component.children, instance.context, stack.life);
+  if (hydrating) {
+    instance.next = hydrate(dom);
+  } else {
+    const view = catchInstance(create, instance, component, instance.context, stack);
+    instance.next = update(dom, !instance.error && !instance.promise && view instanceof View ? mergeTag(view, component) : view, instance.context, parent, stack, create || void 0);
   }
-  return next;
+  create && instance.promise && instance.promise.then((view) => instance.view = "default" in view ? view.default : view).catch((error) => {
+    instance.error = component.attrs.error = error;
+    instance.view = instance.catcher;
+  }).then(() => instance.next.first[componentSymbol] && (hydrating && dehydrate(instance.next, stack), delete stack.dom.first[lifeSymbol], instance.promise = false, redraw()));
+  const changed = dom !== instance.next.first;
+  if (stack.pop() && (changed || create)) {
+    stack.dom = instance.next;
+    instance.next.first[componentSymbol] = stack;
+    !instance.promise && giveLife(instance.next.first, component.attrs, component.children, instance.context, stack.life);
+  }
+  return instance.next;
 }
 function catchInstance(create, instance, view, context, stack) {
   try {
     return resolveInstance(create, instance, view, context);
   } catch (error) {
-    instance.view = instance.catcher.bind(null, error);
+    instance.error = view.attrs.error = error;
+    instance.view = instance.catcher;
     stack.cut();
-    return resolveInstance(instance.stateful || create, instance, view, context);
+    return resolveInstance(create, instance, view, context);
   }
 }
 function resolveInstance(create, instance, view, context) {
@@ -1279,7 +1293,8 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
     for (const life of dom[lifeSymbol]) {
       try {
         const promise = life(deferrable || root);
-        deferrable || root && promise && isFunction(promise.then) && promises.push(promise);
+        if (deferrable || root)
+          promise && isFunction(promise.then) && promises.push(promise);
       } catch (error) {
         console.error(error);
       }

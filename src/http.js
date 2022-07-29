@@ -1,6 +1,6 @@
 import window from './window.js'
 
-['get', 'put', 'post', 'delete', 'patch'].forEach(x =>
+['head', 'get', 'put', 'post', 'delete', 'patch'].forEach(x =>
   http[x] = function(url, object = {}) {
     object.method = x
     return http(url, object)

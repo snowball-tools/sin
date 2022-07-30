@@ -17,6 +17,7 @@ import {
   noop
 } from './shared.js'
 
+const constructor = { constructor: S }
 const document = window.document
     , NS = {
       html: 'http://www.w3.org/1999/xhtml',
@@ -28,18 +29,18 @@ export default function s(...x) {
   const type = typeof x[0]
   return type === 'string'
     ? S(Object.assign([x[0]], { raw: [] }))(...x.slice(1))
-    : S.bind(
+    : Object.assign(S.bind(
       type === 'function'
         ? new View(redrawing, x)
         : isFunction(x[1])
         ? new View(redrawing, x.reverse())
         : tagged(x)
-    )
+    ), constructor)
 }
 
 function S(...x) {
   return x[0] && Array.isArray(x[0].raw)
-    ? S.bind(tagged(x, this))
+    ? Object.assign(S.bind(tagged(x, this)), constructor)
     : execute(x, this)
 }
 
@@ -551,7 +552,7 @@ class Stack {
     const next = catchInstance(true, instance, view, instance.context, this)
 
     instance.promise = next && isFunction(next.then) && next
-    instance.stateful = instance.promise || isFunction(next)
+    instance.stateful = instance.promise || (isFunction(next) && next.constructor !== S)
     instance.view = instance.promise ? instance.loader : next
     this.xs.length = this.i
     this.xs[this.i] = instance
@@ -606,7 +607,8 @@ function updateComponent(
   if (hydrating) {
     instance.next = hydrate(dom)
   } else {
-    const view = catchInstance(create, instance, component, instance.context, stack)
+    let view = catchInstance(create, instance, component, instance.context, stack)
+    view && view.constructor === S && (view = view())
     instance.next = update(
       dom,
       !instance.error && !instance.promise && view instanceof View

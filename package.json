@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "lint": "eslint *.js",
+    "lint": "eslint */**/*.js",
     "build": "pnpm run build:min && pnpm run build:bundle && pnpm run build:gzip",
     "build:min": "esbuild src/index.js --minify --format=esm --bundle --outfile=sin.min.js",
     "build:bundle": "esbuild src/index.js --format=esm --bundle --outfile=sin.js",

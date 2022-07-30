@@ -28,24 +28,24 @@ export default function http(url, {
     const xhr = new window.XMLHttpRequest()
     method = method.toUpperCase()
 
-    xhr.onreadystatechange = function() {
+    xhr.addEventListener('readystatechange', function() {
       if (xhr.readyState === xhr.DONE) {
-        let body = xhr.responseText
-          , error
+        xhr.body = xhr.responseText
+        let error
 
         try {
-          body = parse(xhr)
+          xhr.body = parse(xhr)
         } catch (e) {
-          error = e
+          xhr.error = e
         }
 
         error || xhr.status >= 300
-          ? reject(Object.assign(error || new Error(xhr.statusText), { xhr, status: xhr.status, body }))
-          : resolve(body)
+          ? reject(xhr)
+          : resolve(xhr)
 
         redraw && http.redraw && http.redraw()
       }
-    }
+    })
 
     let accept = 'application/json, text/*'
       , contentType = 'application/json; charset=utf-8'

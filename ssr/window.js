@@ -51,6 +51,7 @@ Object.assign(window, {
 function XMLHttpRequest() {
   const body = []
       , headers = {}
+      , events = new Map()
 
   let req
     , res
@@ -85,7 +86,21 @@ function XMLHttpRequest() {
       return Buffer.concat(body).toString()
     },
 
-    abort: () => {
+    addEventListener(name, fn) {
+      events.has(name) || events.set(name, new Set())
+      events.get(name).add(fn)
+    },
+
+    removeEventListener(name, fn) {
+      if (!events.has(name))
+        return
+
+      const xs = events.get(name)
+      xs.delete(fn)
+      xs.size === 0 && events.delete(name)
+    },
+
+    abort() {
       state(xhr.UNSENT)
       req && req.abort()
     },
@@ -136,13 +151,13 @@ function XMLHttpRequest() {
           res.on('data', x => {
             state(xhr.LOADING)
             loaded += x.length
-            xhr.onloadstart && xhr.onloadstart({ loaded, total, lengthComputable: total !== null })
-            xhr.onprogress && xhr.onprogress({ loaded, total, lengthComputable: total !== null })
+            callEvent('loadstart', { loaded, total, lengthComputable: total !== null })
+            callEvent('progress', { loaded, total, lengthComputable: total !== null })
             body.push(x)
           })
           res.on('end', () => {
-            xhr.onloadend && xhr.onloadend({ loaded, total, lengthComputable: total !== null })
-            xhr.onload && xhr.onload({ loaded, total, lengthComputable: total !== null })
+            callEvent('loadend', { loaded, total, lengthComputable: total !== null })
+            callEvent('load', { loaded, total, lengthComputable: total !== null })
             state(xhr.DONE)
           })
           res.on('error', xhr.onerror)
@@ -162,13 +177,18 @@ function XMLHttpRequest() {
     if (xhr.readyState === x)
       return
     xhr.readyState = x
-    xhr.onreadystatechange && xhr.onreadystatechange({})
+    callEvent('readystatechange', {})
   }
 
   function error(error) {
     xhr.response = null
     xhr.status = 0
-    xhr.onerror && xhr.onerror(error)
-    xhr.onloadend && xhr.onloadend({ loaded, total, lengthComputable: total === 0 || total > 0 })
+    callEvent('error', error)
+    callEvent('loadend', { loaded, total, lengthComputable: total === 0 || total > 0 })
+  }
+
+  function callEvent(name, x) {
+    'on' + name in xhr && xhr['on' + name](x)
+    events.has(name) && events.get(name).forEach(fn => fn(x))
   }
 }

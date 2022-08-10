@@ -51,8 +51,7 @@ export default function http(url, {
       , contentType = 'application/json; charset=utf-8'
 
     xhr.onerror = xhr.onabort = error => reject(error || xhr.statusText)
-    query && (url += url.replace(/(#)|$/, (url.indexOf('?') > -1 ? '&' : '?') + new URLSearchParams(query).toString() + '$1'))
-    xhr.open(method, url, true, user, pass)
+    xhr.open(method, appendQuery(url, query), true, user, pass)
 
     Object.entries(headers).forEach(([header, value]) => {
       xhr.setRequestHeader(header, value)
@@ -68,4 +67,14 @@ export default function http(url, {
       ? xhr.send()
       : xhr.send(serialize(body))
   })
+}
+
+function appendQuery(x, q) {
+  const u = new URL(x, location)
+      , qs = new URLSearchParams(q || '').toString()
+
+  return x.split(/\?|#/)[0]
+    + u.search
+    + (qs ? (u.search ? '&' : '?') + qs : '')
+    + (u.hash || '')
 }

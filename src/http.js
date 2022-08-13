@@ -42,7 +42,7 @@ export default function http(url, {
         xhr.body = await parse(xhr.response, xhr)
         xhr.status === 304 || (xhr.status >= 200 && xhr.status < 300)
           ? resolve(xhr)
-          : reject(new Error(xhr.statusText))
+          : reject(statusError(xhr))
       } catch (e) {
         reject(e)
       }
@@ -50,7 +50,8 @@ export default function http(url, {
       redraw && http.redraw && http.redraw()
     })
 
-    xhr.onerror = xhr.onabort = e => reject(e || xhr.statusText)
+    xhr.addEventListener('error', () => statusError(xhr))
+    xhr.addEventListener('abort', () => statusError(xhr))
     xhr.open(method, appendQuery(url, query), true, user, pass)
     xhr.timeout = timeout
     responseType && (xhr.responseType = responseType)
@@ -81,8 +82,12 @@ export default function http(url, {
   })
 }
 
+function statusError(xhr) {
+  return new Error(xhr.status + (xhr.statusText ? ' ' + xhr.statusText : ''))
+}
+
 function appendQuery(x, q) {
-  const u = new URL(x, location)
+  const u = new URL(x, 'http://x')
       , qs = new URLSearchParams(q || '').toString()
 
   return x.split(/\?|#/)[0]

@@ -60,6 +60,7 @@ function XMLHttpRequest() {
     , auth
     , loaded = 0
     , total
+    , responseText
 
   const xhr = {
     UNSENT:           0, // Client has been created. open() not called yet.
@@ -83,7 +84,7 @@ function XMLHttpRequest() {
     },
 
     get responseText() {
-      return Buffer.concat(body).toString()
+      return responseText || (responseText = Buffer.concat(body).toString())
     },
 
     addEventListener(name, fn) {
@@ -160,7 +161,7 @@ function XMLHttpRequest() {
             emit('load', { loaded, total, lengthComputable: total !== null })
             state(xhr.DONE)
           })
-          res.on('error', xhr.onerror)
+          res.on('error', e => emit('error', e))
         })
         xhr.timeout && req.setTimeout(xhr.timeout)
         data && req.write(data)

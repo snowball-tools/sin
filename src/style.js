@@ -3,7 +3,7 @@ import { isFunction, snake, asCssVar } from './shared.js'
 import { popular, initials } from './shorthands.js'
 
 const doc = window.document
-    , style = doc && doc.querySelector && (doc.querySelector('style.sin') || doc.createElement('style'))
+    , style = doc.querySelector('style.sin') || doc.createElement('style')
     , vendorRegex = /^(ms|moz|webkit)[-A-Z]/i
     , prefix = style && style.getAttribute('id') || 'sin-'
     , div = doc.createElement('div')

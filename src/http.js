@@ -40,9 +40,9 @@ export default function http(url, {
 
       try {
         xhr.body = await parse(xhr.response, xhr)
-        xhr.status >= 300
-          ? reject(new Error(xhr.statusText))
-          : resolve(xhr)
+        xhr.status === 304 || (xhr.status >= 200 && xhr.status < 300)
+          ? resolve(xhr)
+          : reject(new Error(xhr.statusText))
       } catch (e) {
         reject(e)
       }

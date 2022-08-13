@@ -151,13 +151,13 @@ function XMLHttpRequest() {
           res.on('data', x => {
             state(xhr.LOADING)
             loaded += x.length
-            callEvent('loadstart', { loaded, total, lengthComputable: total !== null })
-            callEvent('progress', { loaded, total, lengthComputable: total !== null })
+            emit('loadstart', { loaded, total, lengthComputable: total !== null })
+            emit('progress', { loaded, total, lengthComputable: total !== null })
             body.push(x)
           })
           res.on('end', () => {
-            callEvent('loadend', { loaded, total, lengthComputable: total !== null })
-            callEvent('load', { loaded, total, lengthComputable: total !== null })
+            emit('loadend', { loaded, total, lengthComputable: total !== null })
+            emit('load', { loaded, total, lengthComputable: total !== null })
             state(xhr.DONE)
           })
           res.on('error', xhr.onerror)
@@ -177,17 +177,17 @@ function XMLHttpRequest() {
     if (xhr.readyState === x)
       return
     xhr.readyState = x
-    callEvent('readystatechange', {})
+    emit('readystatechange', {})
   }
 
   function error(error) {
     xhr.response = null
     xhr.status = 0
-    callEvent('error', error)
-    callEvent('loadend', { loaded, total, lengthComputable: total === 0 || total > 0 })
+    emit('error', error)
+    emit('loadend', { loaded, total, lengthComputable: total === 0 || total > 0 })
   }
 
-  function callEvent(name, x) {
+  function emit(name, x) {
     'on' + name in xhr && xhr['on' + name](x)
     events.has(name) && events.get(name).forEach(fn => fn(x))
   }

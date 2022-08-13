@@ -162,6 +162,7 @@ function XMLHttpRequest() {
           })
           res.on('error', xhr.onerror)
         })
+        xhr.timeout && req.setTimeout(xhr.timeout)
         data && req.write(data)
         req.end()
       } catch (e) {

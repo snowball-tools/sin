@@ -1,3 +1,4 @@
+/* global globalThis */
 import window from './window.js'
 
 ['head', 'get', 'put', 'post', 'delete', 'patch'].forEach(x =>
@@ -9,63 +10,74 @@ import window from './window.js'
 
 http.redraw = () => { /* noop */ }
 
-const serializeJSON = x => JSON.stringify(x)
-    , parseJSON = x => JSON.parse(x.responseText)
+const json = 'application/json'
+    , identity = x => x
+    , serializeJSON = x => JSON.stringify(x)
+    , parseJSON = x => JSON.parse(x)
+    , rich = 'Blob ArrayBuffer TypedArray DataView FormData URLSearchParams'.split(' ').map(x => globalThis[x]).filter(x => x)
 
 export default function http(url, {
   method = 'GET',
   redraw = true,
-  body = null,
-  query = null,
-  user = undefined,
-  pass = undefined,
+  responseType,
+  query,
+  body,
+  user,
+  pass,
   headers = {},
   config,
-  parse = parseJSON,
-  serialize = serializeJSON
+  timeout = 0,
+  parse = identity,
+  serialize = identity
 } = {}) {
+  const xhr = new window.XMLHttpRequest()
   return new Promise((resolve, reject) => {
-    const xhr = new window.XMLHttpRequest()
     method = method.toUpperCase()
 
-    xhr.addEventListener('readystatechange', function() {
-      if (xhr.readyState === xhr.DONE) {
-        xhr.body = xhr.responseText
-        let error
+    xhr.addEventListener('readystatechange', async function() {
+      if (xhr.readyState !== xhr.DONE)
+        return
 
-        try {
-          xhr.body = parse(xhr)
-        } catch (e) {
-          xhr.error = e
-        }
-
-        error || xhr.status >= 300
-          ? reject(xhr)
+      try {
+        xhr.body = await parse(xhr.response, xhr)
+        xhr.status >= 300
+          ? reject(new Error(xhr.statusText))
           : resolve(xhr)
-
-        redraw && http.redraw && http.redraw()
+      } catch (e) {
+        reject(e)
       }
+
+      redraw && http.redraw && http.redraw()
     })
 
-    let accept = 'application/json, text/*'
-      , contentType = 'application/json; charset=utf-8'
-
-    xhr.onerror = xhr.onabort = error => reject(error || xhr.statusText)
+    xhr.onerror = xhr.onabort = e => reject(e || xhr.statusText)
     xhr.open(method, appendQuery(url, query), true, user, pass)
+    xhr.timeout = timeout
+    responseType && (xhr.responseType = responseType)
 
-    Object.entries(headers).forEach(([header, value]) => {
-      xhr.setRequestHeader(header, value)
-      header.toLowerCase() === 'accept' ? (accept = false) :
-      header.toLowerCase() === 'content-type' && (contentType = false)
+    let accept = false
+      , contentType = false
+
+    Object.entries(headers).forEach(([x, v]) => {
+      xhr.setRequestHeader(x, v)
+      x.toLowerCase() === 'accept' && (accept = v)
+      x.toLowerCase() === 'content-type' && (contentType = v)
     })
 
-    accept && parse === parseJSON && xhr.setRequestHeader('Accept', accept)
-    contentType && serialize === serializeJSON && xhr.setRequestHeader('Content-Type', contentType)
+    !accept && !responseType && xhr.setRequestHeader('Accept', accept = json)
+    accept && accept.indexOf(json) === 0 && parse === identity && (parse = parseJSON)
+
+    !contentType && body !== undefined && !rich.some(x => body instanceof x) && xhr.setRequestHeader('Content-Type', contentType = json)
+    contentType && body !== undefined && contentType.indexOf(json) === 0 && serialize === identity && (serialize = serializeJSON)
+
     config && config(xhr)
 
     body === null
       ? xhr.send()
-      : xhr.send(serialize(body))
+      : xhr.send(serialize(body, xhr))
+  }).catch(error => {
+    xhr.error = error
+    return xhr
   })
 }
 

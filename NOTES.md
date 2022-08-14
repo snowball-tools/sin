@@ -2,14 +2,14 @@
 Cleanup of life if component changes but dom node stays the same (only issue w non keyed)
 
 ## Todo
+- Perhaps use top level await for server window polyfill
 - scroll restoration for async loaded content?
 - Check anchor handling (#wee scroll etc)
 - shorthand `d` in svg should be d instead of display
-- properly handle xhr errors
 
 ## Ideas
 - streaming ssr by waiting for first context.head() call
-- document.querySelector(location.hash).scrollIntoView() on load ?
+- document.querySelector(location.hash).scrollIntoView() on load ? (no need if ssr)
 - support css multilines without colon and semicolon (end would be next valid selector line, prop / eol)
 - traverse nonKeyed in reverse too
 - signals as local redraws can include / exclude global redraw

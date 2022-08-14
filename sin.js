@@ -57,57 +57,79 @@ function classObject(x2) {
 }
 
 // src/window.js
+typeof globalThis === "undefined" && (window.globalThis = window);
 var window_default = isServer ? {} : window;
 
 // src/http.js
-["get", "put", "post", "delete", "patch"].forEach((x2) => http[x2] = function(url, object = {}) {
-  object.method = x2;
-  return http(url, object);
-});
+["head", "get", "put", "post", "delete", "patch"].forEach(
+  (x2) => http[x2] = function(url, object = {}) {
+    object.method = x2;
+    return http(url, object);
+  }
+);
 http.redraw = () => {
 };
+var json = "application/json";
+var identity = (x2) => x2;
 var serializeJSON = (x2) => JSON.stringify(x2);
-var parseJSON = (x2) => JSON.parse(x2.responseText);
+var parseJSON = (x2) => JSON.parse(x2);
+var rich = "Blob ArrayBuffer TypedArray DataView FormData URLSearchParams".split(" ").map((x2) => globalThis[x2]).filter((x2) => x2);
 function http(url, {
   method = "GET",
   redraw: redraw2 = true,
-  body = null,
-  query = null,
-  user = void 0,
-  pass = void 0,
+  responseType,
+  query,
+  body,
+  user,
+  pass,
   headers = {},
   config,
-  parse: parse2 = parseJSON,
-  serialize = serializeJSON
+  timeout = 0,
+  parse: parse2 = identity,
+  serialize = identity
 } = {}) {
+  const xhr = new window_default.XMLHttpRequest();
   return new Promise((resolve2, reject) => {
-    const xhr = new window_default.XMLHttpRequest();
     method = method.toUpperCase();
-    xhr.onreadystatechange = function() {
-      if (xhr.readyState === xhr.DONE) {
-        let body2 = xhr.responseText, error;
-        try {
-          body2 = parse2(xhr);
-        } catch (e) {
-          error = e;
-        }
-        error || xhr.status >= 300 ? reject(Object.assign(error || new Error(xhr.statusText), { xhr, status: xhr.status, body: body2 })) : resolve2(body2);
-        redraw2 && http.redraw && http.redraw();
+    xhr.addEventListener("readystatechange", async function() {
+      if (xhr.readyState !== xhr.DONE)
+        return;
+      try {
+        xhr.body = await parse2(xhr.response, xhr);
+        xhr.status === 304 || xhr.status >= 200 && xhr.status < 300 ? resolve2(xhr) : reject(statusError(xhr));
+      } catch (e) {
+        reject(e);
       }
-    };
-    let accept = "application/json, text/*", contentType = "application/json; charset=utf-8";
-    xhr.onerror = xhr.onabort = (error) => reject(error || xhr.statusText);
-    query && (url += url.replace(/(#)|$/, (url.indexOf("?") > -1 ? "&" : "?") + new URLSearchParams(query).toString() + "$1"));
-    xhr.open(method, url, true, user, pass);
-    Object.entries(headers).forEach(([header, value2]) => {
-      xhr.setRequestHeader(header, value2);
-      header.toLowerCase() === "accept" ? accept = false : header.toLowerCase() === "content-type" && (contentType = false);
+      redraw2 && http.redraw && http.redraw();
     });
-    accept && parse2 === parseJSON && xhr.setRequestHeader("Accept", accept);
-    contentType && serialize === serializeJSON && xhr.setRequestHeader("Content-Type", contentType);
+    xhr.addEventListener("error", () => statusError(xhr));
+    xhr.addEventListener("abort", () => statusError(xhr));
+    xhr.open(method, appendQuery(url, query), true, user, pass);
+    xhr.timeout = timeout;
+    responseType && (xhr.responseType = responseType);
+    let accept = false, contentType = false;
+    Object.entries(headers).forEach(([x2, v]) => {
+      xhr.setRequestHeader(x2, v);
+      x2.toLowerCase() === "accept" && (accept = v);
+      x2.toLowerCase() === "content-type" && (contentType = v);
+    });
+    !accept && !responseType && xhr.setRequestHeader("Accept", accept = json);
+    accept && accept.indexOf(json) === 0 && parse2 === identity && (parse2 = parseJSON);
+    !contentType && body !== void 0 && !rich.some((x2) => body instanceof x2) && xhr.setRequestHeader("Content-Type", contentType = json);
+    contentType && body !== void 0 && contentType.indexOf(json) === 0 && serialize === identity && (serialize = serializeJSON);
     config && config(xhr);
-    body === null ? xhr.send() : xhr.send(serialize(body));
+    body === null ? xhr.send() : xhr.send(serialize(body, xhr));
+  }).catch((error) => {
+    xhr.error = error;
+    return xhr;
   });
+}
+function statusError(xhr) {
+  return new Error(xhr.status + (xhr.statusText ? " " + xhr.statusText : ""));
+}
+function appendQuery(x2, q) {
+  const u = new URL(x2, "http://x"), qs = new URLSearchParams(q || "").toString();
+  return x2.split(/\?|#/)[0] + u.search + (qs ? (u.search ? "&" : "?") + qs : "") + (u.hash || "");
 }
 
 // src/live.js
@@ -225,7 +247,7 @@ var popular = [
 
 // src/style.js
 var doc = window_default.document;
-var style = doc && doc.querySelector && (doc.querySelector("style.sin") || doc.createElement("style"));
+var style = doc.querySelector("style.sin") || doc.createElement("style");
 var vendorRegex = /^(ms|moz|webkit)[-A-Z]/i;
 var prefix = style && style.getAttribute("id") || "sin-";
 var div = doc.createElement("div");
@@ -244,7 +266,9 @@ var pxCache = {
   "border-bottom": "px",
   "@media": "px"
 };
-var properties = Array.from(Object.keys(div.style.hasOwnProperty("width") ? div.style : Object.getPrototypeOf(div.style)).reduce((acc, x2) => (acc.add(x2.match(vendorRegex) ? "-" + snake(x2) : snake(x2)), acc), /* @__PURE__ */ new Set(["float"])));
+var properties = Array.from(
+  Object.keys(div.style.hasOwnProperty("width") ? div.style : Object.getPrototypeOf(div.style)).reduce((acc, x2) => (acc.add(x2.match(vendorRegex) ? "-" + snake(x2) : snake(x2)), acc), /* @__PURE__ */ new Set(["float"]))
+);
 var shorthands = Object.assign(properties.reduce(initials, {}), popular.reduce(initials, {}));
 var vendorMap = properties.reduce((acc, x2) => {
   const vendor2 = x2.match(/-(ms|o|webkit|moz)-/g);
@@ -327,7 +351,10 @@ function insert(rule2, index) {
   }
   if (style && style.sheet) {
     try {
-      style.sheet.insertRule(rule2, index != null ? index : style.sheet.cssRules.length);
+      style.sheet.insertRule(
+        rule2,
+        index != null ? index : style.sheet.cssRules.length
+      );
     } catch (e) {
       console.error("Insert rule error:", e, rule2);
     }
@@ -368,7 +395,9 @@ function parse([xs, ...args], parent, nesting = 0, root) {
   }
   if (hasRules) {
     if (root) {
-      Object.entries(rules).forEach(([k, v]) => insert(k.replace(/&\s+/g, "") + "{" + v + "}"));
+      Object.entries(rules).forEach(
+        ([k, v]) => insert(k.replace(/&\s+/g, "") + "{" + v + "}")
+      );
     } else {
       temp = prefix + Math.abs(hash).toString(31);
       classes2 += (classes2 ? " " : "") + temp;
@@ -404,7 +433,10 @@ function parseSelector(xs, j, args, parent) {
     } else if (!isStartChar(char) || i === x.length) {
       classes2 = (classIdx !== -1 ? x.slice(classIdx + 1, i).replace(/\./g, " ") : "") + classes2 + (parent ? " " + parent.classes : "");
       id === "" && (id = (idIdx !== -1 ? x.slice(idIdx, classIdx === -1 ? i : classIdx) : "") || (parent ? parent.id : null));
-      name = x.slice(0, id ? idIdx - 1 : classIdx !== -1 ? classIdx : i) || parent && parent.name;
+      name = x.slice(
+        0,
+        id ? idIdx - 1 : classIdx !== -1 ? classIdx : i
+      ) || parent && parent.name;
       idIdx = classIdx = -1;
       styles = true;
     } else if (char === 35) {
@@ -467,10 +499,12 @@ function startBlock(i) {
     rule = "";
   } else {
     rule && (rules[path || "&"] = rule);
-    selector = startChar === 64 ? atHelper(prop + value + x.slice(valueStart, i).trim()) : x.slice(start, i).trim();
+    selector = startChar === 64 ? atHelper(prop + (value || " ") + x.slice(valueStart, i).trim()) : x.slice(start, i).trim();
     selector.indexOf(",") !== -1 && (selector = splitSelector(selector));
     value = prop = "";
-    selectors.push((noSpace(startChar) ? "" : " ") + (selector === "@font-face" ? Array(++fontFaces + 1).join(" ") : "") + selector);
+    selectors.push(
+      (noSpace(startChar) ? "" : " ") + (selector === "@font-face" ? Array(++fontFaces + 1).join(" ") : "") + selector
+    );
     path = selectors.toString();
     rule = rules[path || "&"] || "";
   }
@@ -555,7 +589,9 @@ function formatValue(v, { property, unit }) {
 }
 selectors.toString = function() {
   let a = "", b = "";
-  selectors.forEach((x2) => x2.charCodeAt(0) === 64 && x2 !== "@font-face" ? a += x2 : b += x2);
+  selectors.forEach(
+    (x2) => x2.charCodeAt(0) === 64 && x2 !== "@font-face" ? a += x2 : b += x2
+  );
   return (a ? a + "{" : "") + (b === "@font-face" || b === ":root" ? "" : "&") + b;
 };
 function px(x2) {
@@ -594,7 +630,11 @@ function Query(s2, l) {
     return last2 === l.search ? usp : (last2 = l.search, usp = new U(last2));
   }
   function update2() {
-    window_default.history.pushState(window_default.history.state, null, l.pathname + (usp + "" ? "?" + (usp + "").replace(/=$/g, "") : "") + l.hash);
+    window_default.history.pushState(
+      window_default.history.state,
+      null,
+      l.pathname + (usp + "" ? "?" + (usp + "").replace(/=$/g, "") : "") + l.hash
+    );
     s2.redraw();
   }
 }
@@ -609,7 +649,10 @@ function tokenizePath(x2) {
   return x2.split(/(?=\/)/);
 }
 function getScore(match, path2) {
-  return match.reduce((acc, x2, i) => acc + (x2 === "404" ? 1 : x2 === path2[i] ? 6 : x2 && path2[i] && x2.toLowerCase() === path2[i].toLowerCase() ? 5 : x2[1] === ":" && path2[i] && path2[i].length > 1 ? 4 : x2 === "/" && !path2[i] ? 3 : x2 === "*" || x2 === "/*" ? 2 : -Infinity), 0);
+  return match.reduce(
+    (acc, x2, i) => acc + (x2 === "404" ? 1 : x2 === path2[i] ? 6 : x2 && path2[i] && x2.toLowerCase() === path2[i].toLowerCase() ? 5 : x2[1] === ":" && path2[i] && path2[i].length > 1 ? 4 : x2 === "/" && !path2[i] ? 3 : x2 === "*" || x2 === "/*" ? 2 : -Infinity),
+    0
+  );
 }
 function params(path2, xs) {
   return path2.reduce((acc, x2, i) => {
@@ -672,16 +715,20 @@ function router(s2, root, rootContext) {
     const subRoute = router(s2, current.replace(/\/$/, ""), rootContext);
     subRoute.parent = route;
     subRoute.root = route.parent ? route.parent.root : route;
-    return routed({
-      key: current || "/",
-      route: subRoute,
-      ...root + path2 === current && routeState[root + path2] || {},
-      ...params(match || [], pathTokens)
-    }, view);
+    return routed(
+      {
+        key: current || "/",
+        route: subRoute,
+        ...root + path2 === current && routeState[root + path2] || {},
+        ...params(match || [], pathTokens)
+      },
+      view
+    );
   }
 }
 
 // src/index.js
+var constructor = { constructor: S };
 var document = window_default.document;
 var NS = {
   html: "http://www.w3.org/1999/xhtml",
@@ -690,10 +737,12 @@ var NS = {
 };
 function s(...x2) {
   const type = typeof x2[0];
-  return type === "string" ? S(Object.assign([x2[0]], { raw: [] }))(...x2.slice(1)) : S.bind(type === "function" ? new View(redrawing, x2) : isFunction(x2[1]) ? new View(redrawing, x2.reverse()) : tagged(x2));
+  return type === "string" ? S(Object.assign([x2[0]], { raw: [] }))(...x2.slice(1)) : Object.assign(S.bind(
+    type === "function" ? new View(redrawing, x2) : isFunction(x2[1]) ? new View(redrawing, x2.reverse()) : tagged(x2)
+  ), constructor);
 }
 function S(...x2) {
-  return x2[0] && Array.isArray(x2[0].raw) ? S.bind(tagged(x2, this)) : execute(x2, this);
+  return x2[0] && Array.isArray(x2[0].raw) ? Object.assign(S.bind(tagged(x2, this)), constructor) : execute(x2, this);
 }
 var removing = /* @__PURE__ */ new WeakSet();
 var mounts = /* @__PURE__ */ new Map();
@@ -702,7 +751,7 @@ var observableSymbol = Symbol("observable");
 var componentSymbol = Symbol("component");
 var eventSymbol = Symbol("event");
 var arraySymbol = Symbol("array");
-var liveSymbol = Symbol("stream");
+var liveSymbol = Symbol("live");
 var sizeSymbol = Symbol("size");
 var lifeSymbol = Symbol("life");
 var attrSymbol = Symbol("attr");
@@ -729,7 +778,11 @@ s.catcher = s(({ error }) => {
   isServer ? console.error(error) : Promise.resolve().then(() => {
     throw error;
   });
-  return () => s`pre;all initial;d block;ws pre-wrap;m 0;c white;bc #ff0033;p 8 12;br 6;overflow auto`(s`code`(error && error.stack || error || new Error("Unknown Error").stack));
+  return () => s`pre;all initial;d block;ws pre-wrap;m 0;c white;bc #ff0033;p 8 12;br 6;overflow auto`(
+    s`code`(
+      error && error.stack || error || new Error("Unknown Error").stack
+    )
+  );
 });
 function trust(x2) {
   return s(() => {
@@ -754,7 +807,9 @@ function animate(dom) {
     let running = false;
     dom.setAttribute("animate", "exit");
     dom.addEventListener("transitionrun", () => (running = true, end(r)), { once: true, passive: true });
-    raf3(() => running ? end(r) : r());
+    raf3(
+      () => running ? end(r) : r()
+    );
   });
   function end(r) {
     dom.addEventListener("transitionend", r, { once: true, passive: true });
@@ -772,11 +827,23 @@ function link(dom, route) {
 }
 function tagged(x2, parent) {
   const level = parent ? parent.level + 1 : 0;
-  return new View(parent && parent.inline, parent && parent.component, parse(x2, parent && parent.tag, level), level);
+  return new View(
+    parent && parent.inline,
+    parent && parent.component,
+    parse(x2, parent && parent.tag, level),
+    level
+  );
 }
 function execute(x2, parent) {
   const hasAttrs = isAttrs(x2 && x2[0]);
-  return new View(parent.inline, parent.component, parent.tag, parent ? parent.level + 1 : 0, hasAttrs ? x2.shift() : {}, x2.length === 1 && Array.isArray(x2[0]) ? x2[0] : x2);
+  return new View(
+    parent.inline,
+    parent.component,
+    parent.tag,
+    parent ? parent.level + 1 : 0,
+    hasAttrs ? x2.shift() : {},
+    x2.length === 1 && Array.isArray(x2[0]) ? x2[0] : x2
+  );
 }
 function isAttrs(x2) {
   return x2 && typeof x2 === "object" && !(x2 instanceof Date) && !Array.isArray(x2) && !(x2 instanceof View);
@@ -969,14 +1036,22 @@ function updateArray(dom, view, context, parent, create) {
 }
 function updateValue(dom, view, parent, create, nodeType = typeof view === "boolean" || view == null ? 8 : 3) {
   const nodeChange = create || !dom || dom.nodeType !== nodeType;
-  nodeChange && replace(dom, dom = nodeType === 8 ? document.createComment(view) : document.createTextNode(view), parent);
+  nodeChange && replace(
+    dom,
+    dom = nodeType === 8 ? document.createComment(view) : document.createTextNode(view),
+    parent
+  );
   if (!nodeChange && dom.nodeValue !== "" + view)
     dom.nodeValue = view;
   return Ret(dom);
 }
 function updateElement(dom, view, context, parent, create = dom === null || tagChanged(dom, view)) {
   const previousNS = context.NS;
-  create && replace(dom, dom = createElement(view, context), parent);
+  create && replace(
+    dom,
+    dom = createElement(view, context),
+    parent
+  );
   const size = view.children && view.children.length;
   attributes(dom, view, context, create);
   size ? updates(dom, view.children, context) : dom[sizeSymbol] && removeChildren(dom.firstChild, dom);
@@ -1021,7 +1096,13 @@ var Stack = class {
   }
   add(view, context, parent) {
     const [init, options] = view.component;
-    const instance = new Instance(view.inline ? false : init, window_default.count = (window_default.count || 0) + 1, init, options && options.catcher || context.catcher, options && options.loader || context.loader);
+    const instance = new Instance(
+      view.inline ? false : init,
+      window_default.count = (window_default.count || 0) + 1,
+      init,
+      options && options.catcher || context.catcher,
+      options && options.loader || context.loader
+    );
     instance.context = Object.create(context, {
       onremove: { value: (fn2) => this.life.push(() => fn2) },
       redraw: { value: () => updateComponent(this.dom.first, view, context, parent, this, false, true) },
@@ -1030,7 +1111,7 @@ var Stack = class {
     });
     const next = catchInstance(true, instance, view, instance.context, this);
     instance.promise = next && isFunction(next.then) && next;
-    instance.stateful = instance.promise || isFunction(next);
+    instance.stateful = instance.promise || isFunction(next) && next.constructor !== S;
     instance.view = instance.promise ? instance.loader : next;
     this.xs.length = this.i;
     this.xs[this.i] = instance;
@@ -1068,8 +1149,16 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
   if (hydrating) {
     instance.next = hydrate(dom);
   } else {
-    const view = catchInstance(create, instance, component, instance.context, stack);
-    instance.next = update(dom, !instance.error && !instance.promise && view instanceof View ? mergeTag(view, component) : view, instance.context, parent, stack, create || void 0);
+    let view = catchInstance(create, instance, component, instance.context, stack);
+    view && view.constructor === S && (view = view());
+    instance.next = update(
+      dom,
+      !instance.error && !instance.promise && view instanceof View ? mergeTag(view, component) : view,
+      instance.context,
+      parent,
+      stack,
+      create || void 0
+    );
   }
   create && instance.promise && instance.promise.then((view) => instance.view = "default" in view ? view.default : view).catch((error) => {
     instance.error = component.attrs.error = error;
@@ -1228,7 +1317,10 @@ function removeEvent(dom, name2) {
   dom.removeEventListener(name2.slice(2), dom[eventSymbol]);
 }
 function addEvent(dom, attrs, name2) {
-  dom.addEventListener(name2.slice(2), dom[eventSymbol] || (dom[eventSymbol] = handleEvent(dom)));
+  dom.addEventListener(
+    name2.slice(2),
+    dom[eventSymbol] || (dom[eventSymbol] = handleEvent(dom))
+  );
 }
 function handleEvent(dom) {
   return {
@@ -1280,8 +1372,7 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
         return after;
       dom = after;
       after = dom.nextSibling;
-    }
-    if (dom.nodeValue.charCodeAt(0) === 91) {
+    } else if (dom.nodeValue.charCodeAt(0) === 91) {
       after = removeArray(dom, parent, root, promises, deferrable);
     }
   }

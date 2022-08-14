@@ -29,6 +29,9 @@ function isFunction(x2) {
 function isEvent(x2) {
   return x2.charCodeAt(0) === 111 && x2.charCodeAt(1) === 110;
 }
+function isTagged(x2) {
+  return x2 && Array.isArray(x2.raw);
+}
 function asCssVar(x2) {
   return x2.charCodeAt(0) === 36 ? "--" + x2.slice(1) : x2.charCodeAt(0) === 45 && x2.charCodeAt(1) === 45 ? x2 : null;
 }
@@ -728,7 +731,6 @@ function router(s2, root, rootContext) {
 }
 
 // src/index.js
-var constructor = { constructor: S };
 var document = window_default.document;
 var NS = {
   html: "http://www.w3.org/1999/xhtml",
@@ -737,12 +739,27 @@ var NS = {
 };
 function s(...x2) {
   const type = typeof x2[0];
-  return type === "string" ? S(Object.assign([x2[0]], { raw: [] }))(...x2.slice(1)) : Object.assign(S.bind(
-    type === "function" ? new View(redrawing, x2) : isFunction(x2[1]) ? new View(redrawing, x2.reverse()) : tagged(x2)
-  ), constructor);
+  return type === "string" ? S(Object.assign([x2[0]], { raw: [] }))(...x2.slice(1)) : bind(
+    S,
+    isTagged(x2[0]) ? tagged(x2) : type === "function" ? new View(redrawing, x2) : new View(redrawing, [x2[1], x2[0]])
+  );
 }
 function S(...x2) {
-  return x2[0] && Array.isArray(x2[0].raw) ? Object.assign(S.bind(tagged(x2, this)), constructor) : execute(x2, this);
+  return isTagged(x2[0]) ? bind(S, tagged(x2, this)) : execute(x2, this);
+}
+function tagged(x2, parent) {
+  const level = parent ? parent.level + 1 : 0;
+  return new View(
+    parent && parent.inline,
+    parent && parent.component,
+    parse(x2, parent && parent.tag, level),
+    level
+  );
+}
+function bind(x2, that) {
+  const fn2 = x2.bind(that);
+  fn2[sSymbol] = true;
+  return fn2;
 }
 var removing = /* @__PURE__ */ new WeakSet();
 var mounts = /* @__PURE__ */ new Map();
@@ -757,6 +774,7 @@ var lifeSymbol = Symbol("life");
 var attrSymbol = Symbol("attr");
 var keysSymbol = Symbol("keys");
 var keySymbol = Symbol("key");
+var sSymbol = Symbol("s");
 var idle = true;
 var afterUpdate = [];
 var redrawing = false;
@@ -824,15 +842,6 @@ function link(dom, route) {
       route(dom.getAttribute("href"), { state });
     }
   });
-}
-function tagged(x2, parent) {
-  const level = parent ? parent.level + 1 : 0;
-  return new View(
-    parent && parent.inline,
-    parent && parent.component,
-    parse(x2, parent && parent.tag, level),
-    level
-  );
 }
 function execute(x2, parent) {
   const hasAttrs = isAttrs(x2 && x2[0]);
@@ -1111,7 +1120,7 @@ var Stack = class {
     });
     const next = catchInstance(true, instance, view, instance.context, this);
     instance.promise = next && isFunction(next.then) && next;
-    instance.stateful = instance.promise || isFunction(next) && next.constructor !== S;
+    instance.stateful = instance.promise || isFunction(next) && !next[sSymbol];
     instance.view = instance.promise ? instance.loader : next;
     this.xs.length = this.i;
     this.xs[this.i] = instance;
@@ -1150,7 +1159,7 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
     instance.next = hydrate(dom);
   } else {
     let view = catchInstance(create, instance, component, instance.context, stack);
-    view && view.constructor === S && (view = view());
+    view && view[sSymbol] && (view = view());
     instance.next = update(
       dom,
       !instance.error && !instance.promise && view instanceof View ? mergeTag(view, component) : view,
@@ -1183,7 +1192,7 @@ function catchInstance(create, instance, view, context, stack) {
   }
 }
 function resolveInstance(create, instance, view, context) {
-  return instance.stateful || create ? isFunction(instance.view) ? instance.view(view.attrs, view.children, context) : instance.view : view.component[0](view.attrs, view.children, context);
+  return instance.stateful || create ? isFunction(instance.view) && !instance.view[sSymbol] ? instance.view(view.attrs, view.children, context) : instance.view : view.component[0](view.attrs, view.children, context);
 }
 function mergeTag(a, b) {
   if (!b || !b.tag)
@@ -1282,7 +1291,8 @@ function setVars(dom, vars, args, init, reapply) {
 function setVar(dom, id2, value2, cssVar2, init, reapply, after) {
   if (isObservable(value2)) {
     init && value2.observe((x2) => dom.style.setProperty(id2, formatValue(x2, cssVar2)));
-    init || reapply && setVar(dom, id2, value2.value, cssVar2, init, init);
+    if (init || reapply)
+      setVar(dom, id2, value2.value, cssVar2, init, init);
     return;
   }
   if (isFunction(value2))

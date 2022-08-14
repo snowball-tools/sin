@@ -931,8 +931,7 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
         return after
       dom = after
       after = dom.nextSibling
-    }
-    if (dom.nodeValue.charCodeAt(0) === 91) { // [
+    } else if (dom.nodeValue.charCodeAt(0) === 91) { // [
       after = removeArray(dom, parent, root, promises, deferrable)
     }
   }

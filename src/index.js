@@ -9,6 +9,7 @@ import {
   ignoredAttr,
   isObservable,
   isFunction,
+  isTagged,
   styleProp,
   notValue,
   isServer,
@@ -17,7 +18,6 @@ import {
   noop
 } from './shared.js'
 
-const constructor = { constructor: S }
 const document = window.document
     , NS = {
       html: 'http://www.w3.org/1999/xhtml',
@@ -29,19 +29,34 @@ export default function s(...x) {
   const type = typeof x[0]
   return type === 'string'
     ? S(Object.assign([x[0]], { raw: [] }))(...x.slice(1))
-    : Object.assign(S.bind(
-      type === 'function'
-        ? new View(redrawing, x)
-        : isFunction(x[1])
-        ? new View(redrawing, x.reverse())
-        : tagged(x)
-    ), constructor)
+    : bind(S, isTagged(x[0])
+        ? tagged(x)
+        : type === 'function'
+          ? new View(redrawing, x)
+          : new View(redrawing, [x[1], x[0]])
+    )
 }
 
 function S(...x) {
-  return x[0] && Array.isArray(x[0].raw)
-    ? Object.assign(S.bind(tagged(x, this)), constructor)
+  return isTagged(x[0])
+    ? bind(S, tagged(x, this))
     : execute(x, this)
+}
+
+function tagged(x, parent) {
+  const level = parent ? parent.level + 1 : 0
+  return new View(
+    parent && parent.inline,
+    parent && parent.component,
+    parse(x, parent && parent.tag, level),
+    level
+  )
+}
+
+function bind(x, that) {
+  const fn = x.bind(that)
+  fn[sSymbol] = true
+  return fn
 }
 
 const removing = new WeakSet()
@@ -57,6 +72,7 @@ const removing = new WeakSet()
     , attrSymbol = Symbol('attr')
     , keysSymbol = Symbol('keys')
     , keySymbol = Symbol('key')
+    , sSymbol = Symbol('s')
 
 let idle = true
   , afterUpdate = []
@@ -141,16 +157,6 @@ function link(dom, route) {
       route(dom.getAttribute('href'), { state })
     }
   })
-}
-
-function tagged(x, parent) {
-  const level = parent ? parent.level + 1 : 0
-  return new View(
-    parent && parent.inline,
-    parent && parent.component,
-    parse(x, parent && parent.tag, level),
-    level
-  )
 }
 
 function execute(x, parent) {
@@ -552,7 +558,7 @@ class Stack {
     const next = catchInstance(true, instance, view, instance.context, this)
 
     instance.promise = next && isFunction(next.then) && next
-    instance.stateful = instance.promise || (isFunction(next) && next.constructor !== S)
+    instance.stateful = instance.promise || (isFunction(next) && !next[sSymbol])
     instance.view = instance.promise ? instance.loader : next
     this.xs.length = this.i
     this.xs[this.i] = instance
@@ -608,7 +614,7 @@ function updateComponent(
     instance.next = hydrate(dom)
   } else {
     let view = catchInstance(create, instance, component, instance.context, stack)
-    view && view.constructor === S && (view = view())
+    view && view[sSymbol] && (view = view())
     instance.next = update(
       dom,
       !instance.error && !instance.promise && view instanceof View
@@ -658,7 +664,7 @@ function catchInstance(create, instance, view, context, stack) {
 
 function resolveInstance(create, instance, view, context) {
   return instance.stateful || create
-    ? isFunction(instance.view)
+    ? isFunction(instance.view) && !instance.view[sSymbol]
       ? instance.view(view.attrs, view.children, context)
       : instance.view
     : view.component[0](view.attrs, view.children, context)
@@ -803,7 +809,7 @@ function setVars(dom, vars, args, init, reapply) {
 function setVar(dom, id, value, cssVar, init, reapply, after) {
   if (isObservable(value)) {
     init && value.observe(x => dom.style.setProperty(id, formatValue(x, cssVar)))
-    init || reapply && setVar(dom, id, value.value, cssVar, init, init)
+    if (init || reapply) setVar(dom, id, value.value, cssVar, init, init)
     return
   }
 

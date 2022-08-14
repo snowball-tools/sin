@@ -20,6 +20,10 @@ export function isEvent(x) {
   return x.charCodeAt(0) === 111 && x.charCodeAt(1) === 110 // on
 }
 
+export function isTagged(x) {
+  return x && Array.isArray(x.raw)
+}
+
 export function asCssVar(x) {
   return x.charCodeAt(0) === 36 // 36
     ? '--' + x.slice(1)

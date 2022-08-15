@@ -14,7 +14,8 @@ const json = 'application/json'
     , identity = x => x
     , serializeJSON = x => JSON.stringify(x)
     , parseJSON = x => JSON.parse(x)
-    , rich = 'Blob ArrayBuffer TypedArray DataView FormData URLSearchParams'.split(' ').map(x => globalThis[x]).filter(x => x)
+    , TypedArray = typeof Uint8Array === 'undefined' ? [] : [Object.getPrototypeOf(Uint8Array)]
+    , rich = 'Blob ArrayBuffer DataView FormData URLSearchParams'.split(' ').map(x => globalThis[x]).filter(x => x).concat(TypedArray)
 
 export default function http(url, {
   method = 'GET',

@@ -51,8 +51,8 @@ export default function http(url, {
       redraw && http.redraw && http.redraw()
     })
 
-    xhr.addEventListener('error', () => statusError(xhr))
-    xhr.addEventListener('abort', () => statusError(xhr))
+    xhr.addEventListener('error', () => reject(statusError(xhr)))
+    xhr.addEventListener('abort', () => reject(statusError(xhr)))
     xhr.open(method, appendQuery(url, query), true, user, pass)
     xhr.timeout = timeout
     responseType && (xhr.responseType = responseType)

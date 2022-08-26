@@ -47,7 +47,7 @@ const vendorMap = properties.reduce((acc, x) => {
 }, {})
 
 const cache = new Map()
-    , cssVars = typeof window !== 'undefined' && window.CSS && CSS.supports('color', 'var(--support-test)')
+    , cssVars = isServer || (typeof window !== 'undefined' && window.CSS && CSS.supports('color', 'var(--support-test)'))
     , pxFunctions = ['perspective', 'blur', 'drop-shadow', 'inset', 'polygon']
     , isPxFunction = x => (x.indexOf('translate') === 0 || pxFunctions.indexOf(x) > -1)
     , isDegFunction = x => x.indexOf('rotate') === 0 || x.indexOf('skew') === 0

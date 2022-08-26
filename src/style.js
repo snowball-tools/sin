@@ -314,7 +314,7 @@ function startBlock(i) {
       + (selector === '@font-face' ? Array(++fontFaces + 1).join(' ') : '')
       + selector
     )
-    path = selectors.toString()
+    path = getPath(selectors)
     rule = rules[path || '&'] || ''
   }
   start = valueStart = -1
@@ -333,7 +333,7 @@ function endBlock() {
   } else {
     rule && (rules[path || '&'] = rule)
     selectors.pop()
-    path = selectors.toString()
+    path = getPath(selectors)
     rule = rules[path || '&'] || ''
   }
   start = valueStart = -1
@@ -416,7 +416,7 @@ export function formatValue(v, { property, unit }) {
   return value + v.slice(valueStart)
 }
 
-selectors.toString = function() {
+function getPath(selectors) {
   let a = ''
     , b = ''
 

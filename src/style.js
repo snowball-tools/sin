@@ -1,5 +1,5 @@
 import window from './window.js'
-import { isFunction, snake, asCssVar } from './shared.js'
+import { isFunction, snake, asCssVar, isServer } from './shared.js'
 import { popular, initials } from './shorthands.js'
 
 const doc = window.document

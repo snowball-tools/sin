@@ -422,10 +422,10 @@ function getPath(selectors) {
 
   selectors.forEach(x =>
     x.charCodeAt(0) === 64 && x !== '@font-face'
-      ? (a += x)
+      ? (a += x + '{')
       : (b += x)
   )
-  return (a ? a + '{' : '') + (b === '@font-face' || b === ':root' ? '' : '&') + b
+  return a + (b === '@font-face' || b === ':root' ? '' : '&') + b
 }
 
 function px(x) {

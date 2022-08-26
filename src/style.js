@@ -287,7 +287,7 @@ function addRule(i) {
 
   prop === '@import'
     ? insert(prop + ' ' + x.slice(valueStart, i), 0)
-    : rule += propValue(prop, value + x.slice(valueStart, i))
+    : rule += propValue(prop, value + x.slice(valueStart, i).trim())
   hasRules = true
   start = valueStart = -1
   colon = false

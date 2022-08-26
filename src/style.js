@@ -332,8 +332,8 @@ function endBlock() {
     rule = (rules[path || '&'] || '') + propValue('animation', animation + ' ' + temp)
     animation = ''
   } else {
-    rule && (rules[path || '&'] = rule)
     selectors.pop()
+    rule && (rules[path || '&'] = rule + selectors.map(x => x.charCodeAt(0) === 64 ? '}' : '').join(''))
     path = getPath(selectors)
     rule = rules[path || '&'] || ''
   }

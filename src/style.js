@@ -173,8 +173,9 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
 
   if (hasRules) {
     if (root) {
-      Object.entries(rules).forEach(([k, v]) =>
-        insert(k.replace(/&\s+/g, '') + '{' + v + '}')
+      Object.entries(rules).forEach(([k, v]) => {
+        insert(k.replace(/&\s+/g, '').replace(/{&$/, '') + '{' + v + '}')
+      }
       )
     } else {
       temp = prefix + Math.abs(hash).toString(31)

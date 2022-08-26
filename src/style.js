@@ -395,7 +395,7 @@ export function formatValue(v, { property, unit }) {
   if (!v && v !== 0)
     return ''
 
-  isFunction(v) && (v = value())
+  isFunction(v) && (v = v())
   if (typeof v === 'number')
     return v + unit
 

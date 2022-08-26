@@ -102,8 +102,8 @@ function shorthand(x) {
   return shorthands[x] || x
 }
 
-function propValue(x, v) {
-  return (colon ? x : renderProp(x)) + ':' + v + ';'
+function propValue(r, x, v) {
+  return (r ? ';' : '') + (colon ? x : renderProp(x)) + ':' + v
 }
 
 function renderProp(x) {
@@ -287,7 +287,7 @@ function addRule(i) {
 
   prop === '@import'
     ? insert(prop + ' ' + x.slice(valueStart, i), 0)
-    : rule += propValue(prop, value + x.slice(valueStart, i).trim())
+    : rule += propValue(rule, prop, value + x.slice(valueStart, i).trim())
   hasRules = true
   start = valueStart = -1
   colon = false
@@ -329,7 +329,7 @@ function endBlock() {
   } else if (animation) {
     temp = prefix + Math.abs(hash).toString(31)
     insert('@keyframes ' + temp + '{' + keyframes + '}')
-    rule = (rules[path || '&'] || '') + propValue('animation', animation + ' ' + temp)
+    rule = (rules[path || '&'] || '') + propValue(rule, 'animation', animation + ' ' + temp)
     animation = ''
   } else {
     selectors.pop()

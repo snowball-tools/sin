@@ -311,7 +311,7 @@ function startBlock(i) {
     value = prop = ''
     selectors.push(
       (noSpace(startChar) ? '' : ' ')
-      + (selector === '@font-face' ? Array(++fontFaces + 1).join(' ') : '')
+      + (selector === '@font-face' ? Array(++fontFaces + 1).join(' ') : '') // unique font-face selector for rules
       + selector
     )
     path = getPath(selectors)

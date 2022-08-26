@@ -333,7 +333,9 @@ function endBlock() {
     animation = ''
   } else {
     selectors.pop()
-    rule && (rules[path || '&'] = rule + selectors.map(x => x.charCodeAt(0) === 64 ? '}' : '').join(''))
+    selectors.length && selectors[0].indexOf('@keyframes') === 0
+      ? rules[selectors[0]] = (rules[selectors[0]] || '') + selector + '{' + rule + '}'
+      : (rule && (rules[path || '&'] = rule + selectors.map(x => x.charCodeAt(0) === 64 ? '}' : '').join('')))
     path = getPath(selectors)
     rule = rules[path || '&'] || ''
   }

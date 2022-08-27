@@ -2,7 +2,197 @@ import s from './src/index.js'
 
 window.run = s.redraw
 
-keyIssue()
+const comp = s(() => {
+  p('init')
+  return () => s`h1`('Yas')
+})
+
+let show = true
+
+s.mount(() =>
+  s`div`(
+    s`button`({
+      onclick: () => show = !show
+    }, 'init'),
+    s`button`({
+      onclick: () => p('redraw')
+    }, 'render'),
+    show && comp()
+  )
+)
+
+
+
+
+function testCSSParsing() {
+  s.css`
+    @import 'custom.css'
+
+    @counter-style thumbs {
+      system: cyclic;
+      symbols: "\\1F44D";
+      suffix: " ";
+    }
+
+    @keyframes fade {
+      from { o 0 }
+      to { o 1 }
+    }
+
+    @supports (display: grid) {
+      div {
+        display: grid;
+      }
+      span {
+        display: grid;
+      }
+    }
+
+    @media (max-width:500px) {
+      div {
+        bc gray
+      }
+    }
+
+    * {
+      animation fade 1s
+    }
+    ul {
+      list-style: thumbs;
+    }
+
+    @font-face {
+      font-family Avenir
+      font-weight normal
+      src url("/fonts/e9167238-3b3f-4813-a04a-a384394eed42.eot?#iefix")
+      src: url("/fonts/e9167238-3b3f-4813-a04a-a384394eed42.eot?#iefix") format("eot"),
+          url("/fonts/2cd55546-ec00-4af9-aeca-4a3cd186da53.woff2") format("woff2"),
+          url("/fonts/1e9892c0-6927-4412-9874-1b82801ba47a.woff") format("woff"),
+          url("/fonts/46cf1067-688d-4aab-b0f7-bd942af6efd8.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family Avenir
+      font-weight 600
+      src url("/fonts/1a7c9181-cd24-4943-a9d9-d033189524e0.eot?#iefix")
+      src: url("/fonts/1a7c9181-cd24-4943-a9d9-d033189524e0.eot?#iefix") format("eot"),
+          url("/fonts/627fbb5a-3bae-4cd9-b617-2f923e29d55e.woff2") format("woff2"),
+          url("/fonts/f26faddb-86cc-4477-a253-1e1287684336.woff") format("woff"),
+          url("/fonts/63a74598-733c-4d0c-bd91-b01bffcd6e69.ttf") format("truetype");
+    }
+  `
+
+  s.mount(() =>
+    s`div
+      bc teal
+
+      @media (max-width:700px) {
+        ff impact
+
+        div {
+          bc blue
+        }
+      }
+
+      @media screen {
+        @media (min-width: 1px) {
+          @media (min-height: 1px) {
+            @media (max-width: 9999px) {
+              @media (max-height: 9999px) {
+                span {
+                  fs 100
+                }
+              }
+            }
+
+            div {
+              c white
+            }
+          }
+        }
+      }
+
+      div {
+        animation fade 2s
+        bc yellow
+
+        span {
+          bc green
+        }
+      }
+    `(
+      1,
+      s`span`('yo'),
+      s`div`(
+        2,
+        s`span`('f')
+      )
+    )
+  )
+}
+
+function dndLists() {
+  const a = [...Array(10)].map((x, i) => ({ key: i + 1 }))
+  const b = [...Array(10)].map((x, i) => ({ key: i + 11 }))
+  const d = []
+
+  const item = s((x) => () =>
+    s`li
+      w 200
+      h 20
+      bc steelblue
+      br 5
+      max-height 20
+      overflow-y hidden
+      transition all 0.3s
+      animation 0.3s {
+        from { o 0; max-height 0 }
+      }
+      [animate] {
+        max-height 0
+      }
+
+      [removed] {
+        opacity 0
+      }
+    `({
+      dom: s.animate,
+      draggable: true,
+      removed: x.dragging,
+      life: dom => {
+
+      },
+      ondragstart: e => {
+        x.dragging = true
+      },
+      ondragend: e => {
+        x.dragging = false
+        a.splice(a.indexOf(x), 1)
+      },
+      ondragover: e => {
+        e.preventDefault()
+        p(x.key, e.clientY)
+      },
+      ondragenter: e => {
+        e.target.style.marginTop = '20px'
+      },
+      ondragleave: e => {
+        e.target.style.marginTop = '0px'
+      },
+      ondrop: (e) => {
+      }
+    }, x.key)
+  )
+
+  s.mount(() => [
+    s`ul`(
+      a.map(item)
+    ),
+    s`ul`(
+      b.map(item)
+    )
+  ])
+}
 
 function keyIssue() {
   const x = s(() => (a, c) => [s`h1`({ dom: () => wats.push(c[0]) }, c[0])])

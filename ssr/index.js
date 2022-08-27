@@ -58,7 +58,7 @@ export default async function({ view, attrs, context }, serverAttrs = {}, server
     x = context.catcher(attrs, [], context)
   }
 
-  const html = await Promise.race([
+  const html = '<!--h-->' + await Promise.race([
     updateChildren(asArray(x), context),
     new Promise((r, e) => setTimeout(e, 'timeout' in context ? context.timeout : defaultTimeout, new TimeoutError()))
   ]).catch(async error => {

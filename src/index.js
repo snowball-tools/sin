@@ -199,10 +199,15 @@ function mount(dom, view, attrs = {}, context = {}) {
 
   context.title = s.live(document.title, x => document.title = x)
   context.status = context.head = context.headers = noop
+  context.hydrating = shouldHydrate(dom.firstChild)
 
   context.route = router(s, '', context)
   mounts.set(dom, { view, attrs, context })
   draw({ view, attrs, context }, dom)
+}
+
+function shouldHydrate(dom) {
+  return dom && dom.nodeType === 8 && dom.nodeValue === 'h' && (dom.remove(), true)
 }
 
 function redraw() {
@@ -513,13 +518,14 @@ function createElement(view, context) {
 }
 
 class Instance {
-  constructor(init, id, view, catcher, loader) {
+  constructor(init, id, view, catcher, loader, hydrating) {
     this.init = init
     this.id = id
     this.key = undefined
     this.view = view
     this.catcher = catcher
     this.loader = loader
+    this.hydrating = undefined
   }
 }
 
@@ -545,9 +551,9 @@ class Stack {
       window.count = (window.count || 0) + 1,
       init,
       options && options.catcher || context.catcher,
-      options && options.loader || context.loader
+      options && options.loader || context.loader,
+      context.hydrating
     )
-
     instance.context = Object.create(context, {
       onremove: { value: fn => this.life.push(() => fn) },
       redraw: { value: () => updateComponent(this.dom.first, view, context, parent, this, false, true) },
@@ -623,8 +629,9 @@ function updateComponent(
       instance.context,
       parent,
       stack,
-      create || undefined
+      create && instance.hydrating ? true : undefined
     )
+    instance.hydrating && (instance.hydrating = false)
   }
 
   create && instance.promise && instance.promise

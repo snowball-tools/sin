@@ -608,9 +608,9 @@ function updateComponent(
 
   component.key && create && (instance.key = component.key)
 
-  const hydrating = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 97 // a
+  const hydratingAsync = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 97 // a
 
-  if (hydrating) {
+  if (hydratingAsync) {
     instance.next = hydrate(dom)
   } else {
     let view = catchInstance(create, instance, component, instance.context, stack)
@@ -634,7 +634,7 @@ function updateComponent(
       instance.view = instance.catcher
     })
     .then(() => instance.next.first[componentSymbol] && (
-      hydrating && dehydrate(instance.next, stack),
+      hydratingAsync && dehydrate(instance.next, stack),
       delete stack.dom.first[lifeSymbol],
       instance.promise = false,
       redraw()

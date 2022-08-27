@@ -1,4 +1,4 @@
-import html from '../../src/ssr/index.js'
+import html from '../../ssr/index.js'
 import app from './index.js'
 import http from 'http'
 import esbuild from 'esbuild'

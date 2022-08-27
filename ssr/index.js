@@ -136,7 +136,7 @@ function getCssVars(view) {
   return ' style="'
     + escapeAttrValue(
       Object.entries(view.tag.vars).reduce((acc, [k, v]) =>
-        acc += k + ':' + formatValue(v, view.tag.args[v.index]) + ';', ''
+        acc += k + ':' + formatValue(view.tag.args[v.index], v) + ';', ''
       )
       + (view.attrs.style || '')
     )

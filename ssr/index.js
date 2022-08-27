@@ -44,10 +44,10 @@ export default async function({ view, attrs, context }, serverAttrs = {}, server
     status: s.live(200),
     head: s.live('', x => head += x instanceof View ? headElement(x) : x),
     headers: s.live({}),
-    route: router(s, '', context),
     uid: 1
   }
 
+  context.route = router(s, '', context)
   context.headers.observe(x => Object.assign(headers, x))
 
   let x

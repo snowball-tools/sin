@@ -286,7 +286,7 @@ function addRule(i) {
     : cssVar > -1 && addCssVar(i)
 
   prop === '@import'
-    ? insert(prop + ' ' + x.slice(valueStart, i), 0)
+    ? insert(prop + ' ' + x.slice(valueStart, i) + ';', 0)
     : rule += propValue(rule, prop, value + x.slice(valueStart, i).trim())
   hasRules = true
   start = valueStart = -1

@@ -76,7 +76,8 @@ var json = "application/json";
 var identity = (x2) => x2;
 var serializeJSON = (x2) => JSON.stringify(x2);
 var parseJSON = (x2) => JSON.parse(x2);
-var rich = "Blob ArrayBuffer TypedArray DataView FormData URLSearchParams".split(" ").map((x2) => globalThis[x2]).filter((x2) => x2);
+var TypedArray = typeof Uint8Array === "undefined" ? [] : [Object.getPrototypeOf(Uint8Array)];
+var rich = "Blob ArrayBuffer DataView FormData URLSearchParams".split(" ").map((x2) => globalThis[x2]).filter((x2) => x2).concat(TypedArray);
 function http(url, {
   method = "GET",
   redraw: redraw2 = true,
@@ -105,8 +106,8 @@ function http(url, {
       }
       redraw2 && http.redraw && http.redraw();
     });
-    xhr.addEventListener("error", () => statusError(xhr));
-    xhr.addEventListener("abort", () => statusError(xhr));
+    xhr.addEventListener("error", () => reject(statusError(xhr)));
+    xhr.addEventListener("abort", () => reject(statusError(xhr)));
     xhr.open(method, appendQuery(url, query), true, user, pass);
     xhr.timeout = timeout;
     responseType && (xhr.responseType = responseType);
@@ -286,7 +287,7 @@ var vendorMap = properties.reduce((acc, x2) => {
   return acc;
 }, {});
 var cache = /* @__PURE__ */ new Map();
-var cssVars = typeof window_default !== "undefined" && window_default.CSS && CSS.supports("color", "var(--support-test)");
+var cssVars = isServer || typeof window_default !== "undefined" && window_default.CSS && CSS.supports("color", "var(--support-test)");
 var pxFunctions = ["perspective", "blur", "drop-shadow", "inset", "polygon"];
 var isPxFunction = (x2) => x2.indexOf("translate") === 0 || pxFunctions.indexOf(x2) > -1;
 var isDegFunction = (x2) => x2.indexOf("rotate") === 0 || x2.indexOf("skew") === 0;
@@ -338,8 +339,8 @@ var hash = 0;
 function shorthand(x2) {
   return shorthands[x2] || x2;
 }
-function propValue(x2, v) {
-  return (colon ? x2 : renderProp(x2)) + ":" + v + ";";
+function propValue(r, x2, v) {
+  return (r ? ";" : "") + (colon ? x2 : renderProp(x2)) + ":" + v;
 }
 function renderProp(x2) {
   return propCache[x2] || (propCache[x2] = vendor(shorthand(x2)));
@@ -399,7 +400,9 @@ function parse([xs, ...args], parent, nesting = 0, root) {
   if (hasRules) {
     if (root) {
       Object.entries(rules).forEach(
-        ([k, v]) => insert(k.replace(/&\s+/g, "") + "{" + v + "}")
+        ([k, v]) => {
+          insert(k.replace(/&\s+/g, "").replace(/{&$/, "") + "{" + v + "}");
+        }
       );
     } else {
       temp = prefix + Math.abs(hash).toString(31);
@@ -485,7 +488,7 @@ function parseStyles(idx, end) {
 }
 function addRule(i) {
   numberStart > -1 && !isUnit(char) ? addUnit(i) : cssVar > -1 && addCssVar(i);
-  prop === "@import" ? insert(prop + " " + x.slice(valueStart, i), 0) : rule += propValue(prop, value + x.slice(valueStart, i));
+  prop === "@import" ? insert(prop + " " + x.slice(valueStart, i) + ";", 0) : rule += propValue(rule, prop, value + x.slice(valueStart, i).trim());
   hasRules = true;
   start = valueStart = -1;
   colon = false;
@@ -502,13 +505,13 @@ function startBlock(i) {
     rule = "";
   } else {
     rule && (rules[path || "&"] = rule);
-    selector = startChar === 64 ? atHelper(prop + (value || " ") + x.slice(valueStart, i).trim()) : x.slice(start, i).trim();
+    selector = startChar === 64 ? atHelper(prop + (value || " ") + x.slice(valueStart, i)).trim() : x.slice(start, i).trim();
     selector.indexOf(",") !== -1 && (selector = splitSelector(selector));
     value = prop = "";
     selectors.push(
       (noSpace(startChar) ? "" : " ") + (selector === "@font-face" ? Array(++fontFaces + 1).join(" ") : "") + selector
     );
-    path = selectors.toString();
+    path = getPath(selectors);
     rule = rules[path || "&"] || "";
   }
   start = valueStart = -1;
@@ -521,12 +524,12 @@ function endBlock() {
   } else if (animation) {
     temp = prefix + Math.abs(hash).toString(31);
     insert("@keyframes " + temp + "{" + keyframes + "}");
-    rule = (rules[path || "&"] || "") + propValue("animation", animation + " " + temp);
+    rule = (rules[path || "&"] || "") + propValue(rule, "animation", animation + " " + temp);
     animation = "";
   } else {
-    rule && (rules[path || "&"] = rule);
     selectors.pop();
-    path = selectors.toString();
+    selectors.length && selectors[0].indexOf("@keyframes") === 0 ? rules[selectors[0]] = (rules[selectors[0]] || "") + selector + "{" + rule + "}" : rule && (rules[path || "&"] = rule + selectors.map((x2) => x2.charCodeAt(0) === 64 ? "}" : "").join(""));
+    path = getPath(selectors);
     rule = rules[path || "&"] || "";
   }
   start = valueStart = -1;
@@ -572,7 +575,7 @@ function getUnit(prop2, fn2 = "") {
 function formatValue(v, { property, unit }) {
   if (!v && v !== 0)
     return "";
-  isFunction(v) && (v = value());
+  isFunction(v) && (v = v());
   if (typeof v === "number")
     return v + unit;
   typeof v !== "string" && (v = "" + v);
@@ -590,13 +593,13 @@ function formatValue(v, { property, unit }) {
   }
   return value + v.slice(valueStart);
 }
-selectors.toString = function() {
+function getPath(selectors2) {
   let a = "", b = "";
-  selectors.forEach(
-    (x2) => x2.charCodeAt(0) === 64 && x2 !== "@font-face" ? a += x2 : b += x2
+  selectors2.forEach(
+    (x2) => x2.charCodeAt(0) === 64 && x2 !== "@font-face" ? a += x2 + "{" : b += x2
   );
-  return (a ? a + "{" : "") + (b === "@font-face" || b === ":root" ? "" : "&") + b;
-};
+  return a + (b === "@font-face" || b === ":root" ? "" : "&") + b;
+}
 function px(x2) {
   x2 = shorthand(x2);
   if (asCssVar(x2) || x2 in pxCache)
@@ -674,19 +677,19 @@ function router(s2, root, rootContext) {
   });
   route.query = Query(s2, rootContext.location);
   route.toString = route;
-  route.has = (x2) => x2 === "/" ? getPath(location) === root || getPath(location) === "/" && root === "" : getPath(location).indexOf(cleanSlash(root + "/" + x2)) === 0;
+  route.has = (x2) => x2 === "/" ? getPath2(location) === root || getPath2(location) === "/" && root === "" : getPath2(location).indexOf(cleanSlash(root + "/" + x2)) === 0;
   Object.defineProperty(route, "path", {
     get() {
-      const path2 = getPath(location), idx = path2.indexOf("/", root.length + 1);
+      const path2 = getPath2(location), idx = path2.indexOf("/", root.length + 1);
       return idx === -1 ? path2 : path2.slice(0, idx);
     }
   });
   return route;
-  function getPath(location2, x2 = 0) {
+  function getPath2(location2, x2 = 0) {
     return (s2.pathmode[0] === "#" ? location2.hash.slice(s2.pathmode.length + x2) : s2.pathmode[0] === "?" ? location2.search.slice(s2.pathmode.length + x2) : location2.pathname.slice(s2.pathmode + x2)).replace(/(.)\/$/, "$1");
   }
   function reroute(path2, { state, replace: replace2 = false, scroll = rootChange(path2) } = {}) {
-    if (path2 === getPath(location))
+    if (path2 === getPath2(location))
       return;
     s2.pathmode[0] === "#" ? window_default.location.hash = s2.pathmode + path2 : s2.pathmode[0] === "?" ? window_default.location.search = s2.pathmode + path2 : window_default.history[replace2 ? "replaceState" : "pushState"](state, null, s2.pathmode + path2);
     routeState[path2] = state;
@@ -705,7 +708,7 @@ function router(s2, root, rootContext) {
       routing = true;
       s2.pathmode[0] === "#" ? window_default.addEventListener("hashchange", s2.redraw, { passive: true }) : isFunction(window_default.history.pushState) && window_default.addEventListener("popstate", s2.redraw, { passive: true });
     }
-    const path2 = getPath(location, root.length);
+    const path2 = getPath2(location, root.length);
     const pathTokens = tokenizePath(path2);
     const [, match, view] = Object.entries(routes).reduce((acc, [match2, view2]) => {
       match2 = tokenizePath(cleanSlash(match2));
@@ -871,9 +874,13 @@ function mount(dom, view, attrs = {}, context = {}) {
     return { view, attrs, context };
   context.title = s.live(document.title, (x2) => document.title = x2);
   context.status = context.head = context.headers = noop;
+  context.hydrating = shouldHydrate(dom.firstChild);
   context.route = router(s, "", context);
   mounts.set(dom, { view, attrs, context });
   draw({ view, attrs, context }, dom);
+}
+function shouldHydrate(dom) {
+  return dom && dom.nodeType === 8 && dom.nodeValue === "h" && (dom.remove(), true);
 }
 function redraw() {
   idle && (requestAnimationFrame(globalRedraw), idle = false);
@@ -1081,13 +1088,14 @@ function createElement(view, context) {
   return context.NS || (context.NS = view.attrs.xmlns || NS[view.tag.name]) ? is ? document.createElementNS(context.NS, view.tag.name, { is }) : document.createElementNS(context.NS, view.tag.name) : is ? document.createElement(view.tag.name || "DIV", { is }) : document.createElement(view.tag.name || "DIV");
 }
 var Instance = class {
-  constructor(init, id2, view, catcher, loader) {
+  constructor(init, id2, view, catcher, loader, hydrating) {
     this.init = init;
     this.id = id2;
     this.key = void 0;
     this.view = view;
     this.catcher = catcher;
     this.loader = loader;
+    this.hydrating = void 0;
   }
 };
 var Stack = class {
@@ -1110,7 +1118,8 @@ var Stack = class {
       window_default.count = (window_default.count || 0) + 1,
       init,
       options && options.catcher || context.catcher,
-      options && options.loader || context.loader
+      options && options.loader || context.loader,
+      context.hydrating
     );
     instance.context = Object.create(context, {
       onremove: { value: (fn2) => this.life.push(() => fn2) },
@@ -1154,8 +1163,8 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
     return stack.dom;
   }
   component.key && create && (instance.key = component.key);
-  const hydrating = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 97;
-  if (hydrating) {
+  const hydratingAsync = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 97;
+  if (hydratingAsync) {
     instance.next = hydrate(dom);
   } else {
     let view = catchInstance(create, instance, component, instance.context, stack);
@@ -1166,13 +1175,14 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
       instance.context,
       parent,
       stack,
-      create || void 0
+      create && instance.hydrating ? true : void 0
     );
+    instance.hydrating && (instance.hydrating = false);
   }
   create && instance.promise && instance.promise.then((view) => instance.view = "default" in view ? view.default : view).catch((error) => {
     instance.error = component.attrs.error = error;
     instance.view = instance.catcher;
-  }).then(() => instance.next.first[componentSymbol] && (hydrating && dehydrate(instance.next, stack), delete stack.dom.first[lifeSymbol], instance.promise = false, redraw()));
+  }).then(() => instance.next.first[componentSymbol] && (hydratingAsync && dehydrate(instance.next, stack), delete stack.dom.first[lifeSymbol], instance.promise = false, redraw()));
   const changed = dom !== instance.next.first;
   if (stack.pop() && (changed || create)) {
     stack.dom = instance.next;

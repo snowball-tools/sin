@@ -244,6 +244,7 @@ var popular = [
   "text-align",
   "text-decoration",
   "text-transform",
+  "text-shadow",
   "white-space",
   "width",
   "z-index"
@@ -268,6 +269,7 @@ var pxCache = {
   "border-left": "px",
   "border-right": "px",
   "border-bottom": "px",
+  "text-shadow": "px",
   "@media": "px"
 };
 var properties = Array.from(
@@ -488,7 +490,7 @@ function parseStyles(idx, end) {
 }
 function addRule(i) {
   numberStart > -1 && !isUnit(char) ? addUnit(i) : cssVar > -1 && addCssVar(i);
-  prop === "@import" ? insert(prop + " " + x.slice(valueStart, i) + ";", 0) : rule += propValue(rule, prop, value + x.slice(valueStart, i).trim());
+  prop === "@import" ? insert(prop + " " + x.slice(valueStart, i) + ";", 0) : rule += propValue(rule, prop, value + x.slice(valueStart, i)).trim();
   hasRules = true;
   start = valueStart = -1;
   colon = false;

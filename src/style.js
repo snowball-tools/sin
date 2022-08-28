@@ -371,7 +371,7 @@ function addCssVar(i) {
 }
 
 function addUnit(i) {
-  if (!isUnit(char)) {
+  if (!isUnit(char) && x.charCodeAt(numberStart - 1) !== 35) {
     value = value + x.slice(valueStart, i) + getUnit(prop, last(fn))
     valueStart = i
   }

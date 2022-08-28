@@ -23,6 +23,7 @@ const pxCache = {
   'border-left': 'px',
   'border-right': 'px',
   'border-bottom': 'px',
+  'text-shadow': 'px',
   '@media': 'px'
 }
 

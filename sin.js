@@ -524,9 +524,10 @@ function endBlock() {
     keyframes += keyframe + "{" + rule + "}";
     keyframe = rule = "";
   } else if (animation) {
+    rule = rules[path || "&"] || "";
     temp = prefix + Math.abs(hash).toString(31);
     insert("@keyframes " + temp + "{" + keyframes + "}");
-    rule = (rules[path || "&"] || "") + propValue(rule, "animation", animation + " " + temp);
+    rule += propValue(rule, "animation", animation + " " + temp);
     animation = "";
   } else {
     selectors.pop();

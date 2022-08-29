@@ -490,7 +490,7 @@ function parseStyles(idx, end) {
 }
 function addRule(i) {
   numberStart > -1 && !isUnit(char) ? addUnit(i) : cssVar > -1 && addCssVar(i);
-  prop === "@import" ? insert(prop + " " + x.slice(valueStart, i) + ";", 0) : rule += propValue(rule, prop, value + x.slice(valueStart, i)).trim();
+  prop === "@import" ? insert(prop + " " + x.slice(valueStart, i) + ";", 0) : rule += propValue(rule, prop, value + x.slice(valueStart, i));
   hasRules = true;
   start = valueStart = -1;
   colon = false;
@@ -561,7 +561,7 @@ function addCssVar(i) {
   }
 }
 function addUnit(i) {
-  if (!isUnit(char)) {
+  if (!isUnit(char) && x.charCodeAt(numberStart - 1) !== 35) {
     value = value + x.slice(valueStart, i) + getUnit(prop, last(fn));
     valueStart = i;
   }

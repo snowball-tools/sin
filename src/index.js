@@ -841,7 +841,7 @@ function updateAttribute(dom, context, attrs, attr, old, value) { // eslint-disa
   if (old === value)
     return
 
-  if (attr === 'href' && value && !value.match(/^([a-z]+:|\/\/)/)) {
+  if (attr === 'href' && value && !String(value).match(/^([a-z]+:|\/\/)/)) {
     value = s.pathmode + cleanSlash(value)
     link(dom, context.route)
   }

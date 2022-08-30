@@ -629,7 +629,7 @@ function updateComponent(
       instance.context,
       parent,
       stack,
-      create && instance.hydrating ? true : undefined
+      create && !instance.hydrating ? true : undefined
     )
     instance.hydrating && (instance.hydrating = false)
   }

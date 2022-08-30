@@ -1178,7 +1178,7 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
       instance.context,
       parent,
       stack,
-      create && instance.hydrating ? true : void 0
+      create && !instance.hydrating ? true : void 0
     );
     instance.hydrating && (instance.hydrating = false);
   }

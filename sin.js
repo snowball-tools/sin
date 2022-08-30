@@ -1178,14 +1178,15 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
       instance.context,
       parent,
       stack,
-      create && !instance.hydrating ? true : void 0
+      (create || instance.recreate) && !instance.hydrating ? true : void 0
     );
     instance.hydrating && (instance.hydrating = false);
+    instance.recreate && (instance.recreate = false);
   }
   create && instance.promise && instance.promise.then((view) => instance.view = "default" in view ? view.default : view).catch((error) => {
     instance.error = component.attrs.error = error;
     instance.view = instance.catcher;
-  }).then(() => instance.next.first[componentSymbol] && (hydratingAsync && dehydrate(instance.next, stack), delete stack.dom.first[lifeSymbol], instance.promise = false, redraw()));
+  }).then(() => instance.next.first[componentSymbol] && (hydratingAsync && dehydrate(instance.next, stack), instance.recreate = true, instance.promise = false, redraw()));
   const changed = dom !== instance.next.first;
   if (stack.pop() && (changed || create)) {
     stack.dom = instance.next;
@@ -1322,7 +1323,7 @@ function giveLife(dom, attrs, children, context, life) {
 function updateAttribute(dom, context, attrs, attr, old, value2) {
   if (old === value2)
     return;
-  if (attr === "href" && value2 && !value2.match(/^([a-z]+:|\/\/)/)) {
+  if (attr === "href" && value2 && !String(value2).match(/^([a-z]+:|\/\/)/)) {
     value2 = s.pathmode + cleanSlash(value2);
     link(dom, context.route);
   }

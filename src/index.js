@@ -629,9 +629,10 @@ function updateComponent(
       instance.context,
       parent,
       stack,
-      create && !instance.hydrating ? true : undefined
+      (create || instance.recreate) && !instance.hydrating ? true : undefined
     )
     instance.hydrating && (instance.hydrating = false)
+    instance.recreate && (instance.recreate = false)
   }
 
   create && instance.promise && instance.promise
@@ -642,7 +643,7 @@ function updateComponent(
     })
     .then(() => instance.next.first[componentSymbol] && (
       hydratingAsync && dehydrate(instance.next, stack),
-      delete stack.dom.first[lifeSymbol],
+      instance.recreate = true,
       instance.promise = false,
       redraw()
     ))

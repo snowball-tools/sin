@@ -525,7 +525,7 @@ class Instance {
     this.view = view
     this.catcher = catcher
     this.loader = loader
-    this.hydrating = undefined
+    this.hydrating = hydrating
   }
 }
 

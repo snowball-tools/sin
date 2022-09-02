@@ -109,10 +109,7 @@ function trust(x) {
 
     div.innerHTML = x
 
-    while (div.lastChild)
-      frag.appendChild(div.lastChild)
-
-    return () => frag
+    return () => [...div.childNodes]
   })
 }
 

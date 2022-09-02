@@ -811,9 +811,7 @@ function trust(x2) {
   return s(() => {
     const div2 = document.createElement("div"), frag = new DocumentFragment();
     div2.innerHTML = x2;
-    while (div2.lastChild)
-      frag.appendChild(div2.lastChild);
-    return () => frag;
+    return () => [...div2.childNodes];
   });
 }
 function on(target, event, fn2, options) {

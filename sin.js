@@ -739,7 +739,6 @@ function router(s2, root, rootContext) {
 // src/index.js
 var document = window_default.document;
 var NS = {
-  html: "http://www.w3.org/1999/xhtml",
   svg: "http://www.w3.org/2000/svg",
   math: "http://www.w3.org/1998/Math/MathML"
 };
@@ -1066,6 +1065,7 @@ function updateValue(dom, view, parent, create, nodeType = typeof view === "bool
 }
 function updateElement(dom, view, context, parent, create = dom === null || tagChanged(dom, view)) {
   const previousNS = context.NS;
+  view.attrs.xmlns || NS[view.tag.name] && (context.NS = view.attrs.xmlns || NS[view.tag.name]);
   create && replace(
     dom,
     dom = createElement(view, context),
@@ -1084,11 +1084,11 @@ function removeChildren(dom, parent) {
     dom = remove(dom, parent);
 }
 function tagChanged(dom, view) {
-  return dom[keySymbol] !== view.key || dom.tagName !== (view.tag.name || "DIV").toUpperCase();
+  return dom[keySymbol] !== view.key || dom.nodeName.toUpperCase() !== (view.tag.name || "div").toUpperCase();
 }
 function createElement(view, context) {
   const is = view.attrs.is;
-  return context.NS || (context.NS = view.attrs.xmlns || NS[view.tag.name]) ? is ? document.createElementNS(context.NS, view.tag.name, { is }) : document.createElementNS(context.NS, view.tag.name) : is ? document.createElement(view.tag.name || "DIV", { is }) : document.createElement(view.tag.name || "DIV");
+  return context.NS ? is ? document.createElementNS(context.NS, view.tag.name, { is }) : document.createElementNS(context.NS, view.tag.name) : is ? document.createElement(view.tag.name || "DIV", { is }) : document.createElement(view.tag.name || "DIV");
 }
 var Instance = class {
   constructor(init, id2, view, catcher, loader, hydrating) {
@@ -1228,9 +1228,9 @@ function attributes(dom, view, context) {
   const prev = dom[attrSymbol], create = !prev;
   "id" in view.attrs === false && view.tag.id && (view.attrs.id = view.tag.id);
   if (create && view.tag.classes || view.attrs.class !== (prev && prev.class) || view.attrs.className !== (prev && prev.className) || dom.className !== view.tag.classes)
-    setClass(dom, view);
-  create && observe(dom, view.attrs.class, () => setClass(dom, view));
-  create && observe(dom, view.attrs.className, () => setClass(dom, view));
+    setClass(dom, view, context);
+  create && observe(dom, view.attrs.class, () => setClass(dom, view, context));
+  create && observe(dom, view.attrs.className, () => setClass(dom, view, context));
   view.attrs.type != null && setAttribute(dom, "type", view.attrs.type, context);
   for (const attr in view.attrs) {
     if (ignoredAttr(attr)) {
@@ -1291,9 +1291,9 @@ function observe(dom, x2, fn2) {
   has || (dom[observableSymbol] = xs);
   xs.add(x2.observe(fn2));
 }
-function setClass(dom, view) {
+function setClass(dom, view, context) {
   const x2 = className(view);
-  x2 ? dom.className = x2 : dom.removeAttribute("class");
+  x2 ? context.NS ? dom.setAttribute("class", x2) : dom.className = x2 : dom.removeAttribute("class");
 }
 function setVars(dom, vars, args, init, reapply) {
   for (const id2 in vars) {

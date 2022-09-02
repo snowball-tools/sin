@@ -712,10 +712,10 @@ function attributes(dom, view, context) {
      view.attrs.className !== (prev && prev.className) ||
      dom.className !== view.tag.classes
   )
-    setClass(dom, view)
+    setClass(dom, view, context)
 
-  create && observe(dom, view.attrs.class, () => setClass(dom, view))
-  create && observe(dom, view.attrs.className, () => setClass(dom, view))
+  create && observe(dom, view.attrs.class, () => setClass(dom, view, context))
+  create && observe(dom, view.attrs.className, () => setClass(dom, view, context))
 
   view.attrs.type != null && setAttribute(dom, 'type', view.attrs.type, context)
 
@@ -799,10 +799,12 @@ function observe(dom, x, fn) {
   xs.add(x.observe(fn))
 }
 
-function setClass(dom, view) {
+function setClass(dom, view, context) {
   const x = className(view)
   x
-    ? dom.className = x
+    ? context.NS
+      ? dom.setAttribute('class', x)
+      : dom.className = x
     : dom.removeAttribute('class')
 }
 

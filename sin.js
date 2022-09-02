@@ -507,7 +507,7 @@ function startBlock(i) {
     rule = "";
   } else {
     rule && (rules[path || "&"] = rule);
-    selector = startChar === 64 ? atHelper(prop) + (value || " ") + x.slice(valueStart, i) : x.slice(start, i).trim();
+    selector = (startChar === 64 ? atHelper(prop) + (value || " ") + x.slice(valueStart, i) : x.slice(start, i)).trim();
     selector.indexOf(",") !== -1 && (selector = splitSelector(selector));
     value = prop = "";
     selectors.push(

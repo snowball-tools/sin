@@ -102,14 +102,12 @@ s.catcher = s(({ error }) => {
   )
 })
 
-function trust(x) {
+function trust(strings, ...values) {
   return s(() => {
     const div = document.createElement('div')
-        , frag = new DocumentFragment()
-
-    div.innerHTML = x
-
-    return () => [...div.childNodes]
+    div.innerHTML = String.raw({ raw: strings }, ...values)
+    const nodes = [...div.childNodes]
+    return () => nodes
   })
 }
 

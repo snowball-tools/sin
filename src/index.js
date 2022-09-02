@@ -503,7 +503,7 @@ function removeChildren(dom, parent) {
 
 function tagChanged(dom, view) {
   return dom[keySymbol] !== view.key // eslint-disable-line
-      || dom.tagName !== (view.tag.name || 'DIV').toUpperCase()
+      || dom.nodeName.toUpperCase() !== (view.tag.name || 'div').toUpperCase()
 }
 
 function createElement(view, context) {

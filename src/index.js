@@ -20,7 +20,6 @@ import {
 
 const document = window.document
     , NS = {
-      html: 'http://www.w3.org/1999/xhtml',
       svg: 'http://www.w3.org/2000/svg',
       math: 'http://www.w3.org/1998/Math/MathML'
     }
@@ -475,6 +474,7 @@ function updateElement(
   create = dom === null || tagChanged(dom, view)
 ) {
   const previousNS = context.NS
+  view.attrs.xmlns || NS[view.tag.name] && (context.NS = view.attrs.xmlns || NS[view.tag.name])
   create && replace(
     dom,
     dom = createElement(view, context),
@@ -508,7 +508,7 @@ function tagChanged(dom, view) {
 
 function createElement(view, context) {
   const is = view.attrs.is
-  return (context.NS || (context.NS = view.attrs.xmlns || NS[view.tag.name]))
+  return context.NS
     ? is
       ? document.createElementNS(context.NS, view.tag.name, { is })
       : document.createElementNS(context.NS, view.tag.name)

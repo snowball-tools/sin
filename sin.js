@@ -807,11 +807,12 @@ s.catcher = s(({ error }) => {
     )
   );
 });
-function trust(x2) {
+function trust(strings, ...values) {
   return s(() => {
-    const div2 = document.createElement("div"), frag = new DocumentFragment();
-    div2.innerHTML = x2;
-    return () => [...div2.childNodes];
+    const div2 = document.createElement("div");
+    div2.innerHTML = String.raw({ raw: strings }, ...values);
+    const nodes = [...div2.childNodes];
+    return () => nodes;
   });
 }
 function on(target, event, fn2, options) {

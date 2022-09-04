@@ -100,6 +100,7 @@ function tagName(view) {
 async function updateElement(view, context) {
   lastWasText = false
   const tag = tagName(view)
+  'id' in view.attrs === false && view.tag.id && (view.attrs.id = view.tag.id)
   return openingTag(view, tag)
     + (voidTags.has(tag)
       ? ''

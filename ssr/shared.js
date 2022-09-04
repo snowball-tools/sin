@@ -23,7 +23,6 @@ export function wrap({ html, css, title, head }, body = '') {
 <body>${
   html
 }
-<script type="module" src="/index.js"></script>
 ${
   body
 }</body>

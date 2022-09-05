@@ -551,8 +551,8 @@ class Stack {
     )
     instance.context = Object.create(context, {
       onremove: { value: fn => this.life.push(() => fn) },
-      redraw: { value: () => updateComponent(this.dom.first, view, context, parent, this, false, true) },
-      reload: { value: () => updateComponent(this.dom.first, view, context, parent, this, true) },
+      redraw: { value: () => { updateComponent(this.dom.first, view, context, parent, this, false, true) } },
+      reload: { value: () => { updateComponent(this.dom.first, view, context, parent, this, true) } },
       ignore: { value: x => instance.ignore = x }
     })
 

@@ -91,7 +91,7 @@ s.on = on
 s.trust = trust
 s.route = router(s, '', { location: window.location })
 s.window = window
-s.catcher = s(({ error }) => {
+s.catcher = s((error) => {
   isServer
     ? console.error(error) // eslint-disable-line
     : Promise.resolve().then(() => { throw error })
@@ -486,7 +486,7 @@ function updateElement(
   dom[sizeSymbol] = size
 
   context.NS = previousNS
-  view.key !== undefined && (dom[keySymbol] = view.key)
+  'key' in view && (dom[keySymbol] = view.key)
 
   return Ret(dom)
 }
@@ -633,8 +633,8 @@ function updateComponent(
   create && instance.promise && instance.promise
     .then(view => instance.view = 'default' in view ? view.default : view)
     .catch(error => {
-      instance.error = component.attrs.error = error
-      instance.view = instance.catcher
+      instance.error = error
+      instance.view = instance.catcher.bind(instance.catcher, error)
     })
     .then(() => instance.next.first[componentSymbol] && (
       hydratingAsync && dehydrate(instance.next, stack),
@@ -658,8 +658,8 @@ function catchInstance(create, instance, view, context, stack) {
   try {
     return resolveInstance(create, instance, view, context)
   } catch (error) {
-    instance.error = view.attrs.error = error
-    instance.view = instance.catcher
+    instance.error = error
+    instance.view = instance.catcher.bind(instance.catcher, error)
     stack.cut()
     return resolveInstance(create, instance, view, context)
   }

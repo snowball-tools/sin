@@ -797,7 +797,7 @@ s.on = on;
 s.trust = trust;
 s.route = router(s, "", { location: window_default.location });
 s.window = window_default;
-s.catcher = s(({ error }) => {
+s.catcher = s((error) => {
   isServer ? console.error(error) : Promise.resolve().then(() => {
     throw error;
   });
@@ -1075,7 +1075,7 @@ function updateElement(dom, view, context, parent, create = dom === null || tagC
   size ? updates(dom, view.children, context) : dom[sizeSymbol] && removeChildren(dom.firstChild, dom);
   dom[sizeSymbol] = size;
   context.NS = previousNS;
-  view.key !== void 0 && (dom[keySymbol] = view.key);
+  "key" in view && (dom[keySymbol] = view.key);
   return Ret(dom);
 }
 function removeChildren(dom, parent) {
@@ -1125,8 +1125,12 @@ var Stack = class {
     );
     instance.context = Object.create(context, {
       onremove: { value: (fn2) => this.life.push(() => fn2) },
-      redraw: { value: () => updateComponent(this.dom.first, view, context, parent, this, false, true) },
-      reload: { value: () => updateComponent(this.dom.first, view, context, parent, this, true) },
+      redraw: { value: () => {
+        updateComponent(this.dom.first, view, context, parent, this, false, true);
+      } },
+      reload: { value: () => {
+        updateComponent(this.dom.first, view, context, parent, this, true);
+      } },
       ignore: { value: (x2) => instance.ignore = x2 }
     });
     const next = catchInstance(true, instance, view, instance.context, this);
@@ -1183,8 +1187,8 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
     instance.recreate && (instance.recreate = false);
   }
   create && instance.promise && instance.promise.then((view) => instance.view = "default" in view ? view.default : view).catch((error) => {
-    instance.error = component.attrs.error = error;
-    instance.view = instance.catcher;
+    instance.error = error;
+    instance.view = instance.catcher.bind(instance.catcher, error);
   }).then(() => instance.next.first[componentSymbol] && (hydratingAsync && dehydrate(instance.next, stack), instance.recreate = true, instance.promise = false, redraw()));
   const changed = dom !== instance.next.first;
   if (stack.pop() && (changed || create)) {
@@ -1198,8 +1202,8 @@ function catchInstance(create, instance, view, context, stack) {
   try {
     return resolveInstance(create, instance, view, context);
   } catch (error) {
-    instance.error = view.attrs.error = error;
-    instance.view = instance.catcher;
+    instance.error = error;
+    instance.view = instance.catcher.bind(instance.catcher, error);
     stack.cut();
     return resolveInstance(create, instance, view, context);
   }

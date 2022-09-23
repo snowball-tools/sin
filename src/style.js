@@ -164,11 +164,11 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
         temp = prefix + Math.abs(hash).toString(31)
         vars[varName = '--' + temp + j] = { property: prop, unit: getUnit(prop, last(fn)), index: j }
         value += before + 'var(' + varName + ')'
-        valueStart = 0
       } else {
         args[j] && (x = args[j] + x)
         cacheable = false
       }
+      valueStart = 0
     }
   }
 

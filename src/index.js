@@ -514,13 +514,13 @@ function createElement(view, context) {
 }
 
 class Instance {
-  constructor(init, id, view, error, loader, hydrating) {
+  constructor(init, id, view, error, loading, hydrating) {
     this.init = init
     this.id = id
     this.key = undefined
     this.view = view
     this.error = error
-    this.loader = loader
+    this.loading = loading
     this.hydrating = hydrating
   }
 }
@@ -547,7 +547,7 @@ class Stack {
       window.count = (window.count || 0) + 1,
       init,
       options && options.error || context.error,
-      options && options.loader || context.loader,
+      options && options.loading || context.loading,
       context.hydrating
     )
     instance.context = Object.create(context, {
@@ -561,7 +561,7 @@ class Stack {
 
     instance.promise = next && isFunction(next.then) && next
     instance.stateful = instance.promise || (isFunction(next) && !next[sSymbol])
-    instance.view = instance.promise ? instance.loader : next
+    instance.view = instance.promise ? instance.loading : next
     this.xs.length = this.i
     this.xs[this.i] = instance
     return this.xs[this.top = this.i++]

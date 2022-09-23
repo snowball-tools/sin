@@ -220,7 +220,7 @@ function draw({ view, attrs, context }, dom) {
     updates(dom, asArray(x), context)
   } catch (error) {
     attrs.error = error
-    updates(dom, asArray(context.catcher(attrs)), context)
+    updates(dom, asArray(context.catcher(attrs, [], context)), context)
   }
   redrawing = false
   afterUpdate.forEach(fn => fn())

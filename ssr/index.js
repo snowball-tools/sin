@@ -55,7 +55,7 @@ export default async function({ view, attrs, context }, serverAttrs = {}, server
     x = view(attrs, [], context)
   } catch (error) {
     attrs.error = error
-    x = context.catcher(attrs, [], context)
+    x = context.error(attrs, [], context)
   }
 
   const html = '<!--h-->' + await Promise.race([
@@ -64,7 +64,7 @@ export default async function({ view, attrs, context }, serverAttrs = {}, server
   ]).catch(async error => {
     context.status(error instanceof TimeoutError ? 408 : 500)
     attrs.error = error
-    return await updateChildren([].concat(context.catcher(attrs, [], context)), context)
+    return await updateChildren([].concat(context.error(attrs, [], context)), context)
   })
 
   return {

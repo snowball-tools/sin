@@ -1,4 +1,4 @@
-import { isFunction } from './shared.js'
+import { noop, isFunction } from './shared.js'
 
 export class Observable {
   constructor(live, transform) {
@@ -21,7 +21,7 @@ export default function Live(value, fn) {
   isFunction(fn) && observers.add(fn)
   live.observe = fn => (observers.add(fn), () => observers.delete(fn))
   live.valueOf = live.toString = live.toJSON = () => value || ''
-  live.detach = () => { /* */ }
+  live.detach = noop
   live.reduce = reduce
   live.set = x => (...args) => (live(isFunction(x) ? x(...args) : x), live)
   live.get = prop => new Observable(live, x => isFunction(prop) ? prop(x) : x[prop])

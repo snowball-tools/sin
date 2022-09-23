@@ -392,20 +392,18 @@ function parse([xs, ...args], parent, nesting = 0, root) {
         temp = prefix + Math.abs(hash).toString(31);
         vars[varName = "--" + temp + j] = { property: prop, unit: getUnit(prop, last(fn)), index: j };
         value += before + "var(" + varName + ")";
-        valueStart = 0;
       } else {
         args[j] && (x = args[j] + x);
         cacheable = false;
       }
+      valueStart = 0;
     }
   }
   if (hasRules) {
     if (root) {
-      Object.entries(rules).forEach(
-        ([k, v]) => {
-          insert(k.replace(/&\s+/g, "").replace(/{&$/, "") + "{" + v + "}");
-        }
-      );
+      Object.entries(rules).forEach(([k, v]) => {
+        insert(k.replace(/&\s+/g, "").replace(/{&$/, "") + "{" + v + "}");
+      });
     } else {
       temp = prefix + Math.abs(hash).toString(31);
       classes2 += (classes2 ? " " : "") + temp;
@@ -413,7 +411,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
       for (let i = 0; i < nesting; i++)
         specificity += "." + temp;
       Object.entries(rules).forEach(([k, v]) => {
-        insert(k.replace(/&/g, "." + temp + specificity) + "{" + v + "}");
+        insert(k.replace(/&/g, (k === "&" ? "." + temp : "") + "." + temp + specificity) + "{" + v + "}");
       });
     }
   }
@@ -783,6 +781,7 @@ var sSymbol = Symbol("s");
 var idle = true;
 var afterUpdate = [];
 var redrawing = false;
+s.sleep = (x2, ...xs) => new Promise((r) => setTimeout(r, x2, ...xs));
 s.isServer = isServer;
 s.pathmode = "";
 s.redraw = redraw;
@@ -897,7 +896,7 @@ function draw({ view, attrs, context }, dom) {
     updates(dom, asArray(x2), context);
   } catch (error) {
     attrs.error = error;
-    updates(dom, asArray(context.catcher(attrs)), context);
+    updates(dom, asArray(context.catcher(attrs, [], context)), context);
   }
   redrawing = false;
   afterUpdate.forEach((fn2) => fn2());

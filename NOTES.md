@@ -6,6 +6,11 @@ Cleanup of life if component changes but dom node stays the same (only issue w n
 - scroll restoration for async loaded content?
 - Check anchor handling (#wee scroll etc)
 - shorthand `d` in svg should be d instead of display
+- Allow promise return to the dom method, and redraw on resolve
+- Component specific property for reload
+- reload(optimistic) does not show loading view reload({ loading: false, error: false })
+- [s.key]:, [s.dom]:, [s.reload]:
+- deferrable shorter removal children are not removed first (deferrableBug)
 
 ## Ideas
 - streaming ssr by waiting for first context.head() call

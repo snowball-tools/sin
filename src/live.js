@@ -42,7 +42,7 @@ export default function Live(value, fn) {
       return
 
     value = x
-    observers.forEach(fn => fn(x))
+    observers.forEach(async fn => fn(x))
   }
 
   function reduce(fn, initial) {

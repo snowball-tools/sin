@@ -92,7 +92,7 @@ s.on = on
 s.trust = trust
 s.route = router(s, '', { location: window.location })
 s.window = window
-s.catcher = s((error) => {
+s.error = s((error) => {
   isServer
     ? console.error(error) // eslint-disable-line
     : Promise.resolve().then(() => { throw error })
@@ -187,7 +187,7 @@ function mount(dom, view, attrs = {}, context = {}) {
   view instanceof View === false && (view = s(view))
 
   'location' in context || (context.location = window.location)
-  'catcher' in context || (context.catcher = s.catcher)
+  'error' in context || (context.error = s.error)
 
   if (isServer)
     return { view, attrs, context }
@@ -221,7 +221,7 @@ function draw({ view, attrs, context }, dom) {
     updates(dom, asArray(x), context)
   } catch (error) {
     attrs.error = error
-    updates(dom, asArray(context.catcher(attrs, [], context)), context)
+    updates(dom, asArray(context.error(attrs, [], context)), context)
   }
   redrawing = false
   afterUpdate.forEach(fn => fn())
@@ -514,12 +514,12 @@ function createElement(view, context) {
 }
 
 class Instance {
-  constructor(init, id, view, catcher, loader, hydrating) {
+  constructor(init, id, view, error, loader, hydrating) {
     this.init = init
     this.id = id
     this.key = undefined
     this.view = view
-    this.catcher = catcher
+    this.error = error
     this.loader = loader
     this.hydrating = hydrating
   }
@@ -546,7 +546,7 @@ class Stack {
       view.inline ? false : init,
       window.count = (window.count || 0) + 1,
       init,
-      options && options.catcher || context.catcher,
+      options && options.error || context.error,
       options && options.loader || context.loader,
       context.hydrating
     )
@@ -635,7 +635,7 @@ function updateComponent(
     .then(view => instance.view = 'default' in view ? view.default : view)
     .catch(error => {
       instance.error = error
-      instance.view = instance.catcher.bind(instance.catcher, error)
+      instance.view = instance.error.bind(instance.error, error)
     })
     .then(() => instance.next.first[componentSymbol] && (
       hydratingAsync && dehydrate(instance.next, stack),
@@ -660,7 +660,7 @@ function catchInstance(create, instance, view, context, stack) {
     return resolveInstance(create, instance, view, context)
   } catch (error) {
     instance.error = error
-    instance.view = instance.catcher.bind(instance.catcher, error)
+    instance.view = instance.error.bind(instance.error, error)
     stack.cut()
     return resolveInstance(create, instance, view, context)
   }

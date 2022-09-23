@@ -20,7 +20,7 @@ export default function Live(value, fn) {
   const observers = new Set()
   isFunction(fn) && observers.add(fn)
   live.observe = fn => (observers.add(fn), () => observers.delete(fn))
-  live.valueOf = live.toString = live.toJSON = () => value || ''
+  live.valueOf = live.toString = live.toJSON = () => value
   live.detach = noop
   live.reduce = reduce
   live.set = x => (...args) => (live(isFunction(x) ? x(...args) : x), live)

@@ -1189,7 +1189,7 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
   }
   create && instance.promise && instance.promise.then((view) => instance.view = "default" in view ? view.default : view).catch((error) => {
     instance.caught = error;
-    instance.view = instance.error.bind(instance.caught, error);
+    instance.view = instance.error.bind(instance.error, error);
   }).then(() => instance.next.first[componentSymbol] && (hydratingAsync && dehydrate(instance.next, stack), instance.recreate = true, instance.promise = false, redraw()));
   const changed = dom !== instance.next.first;
   if (stack.pop() && (changed || create)) {
@@ -1204,7 +1204,7 @@ function catchInstance(create, instance, view, context, stack) {
     return resolveInstance(create, instance, view, context);
   } catch (error) {
     instance.caught = error;
-    instance.view = instance.error.bind(instance.caught, error);
+    instance.view = instance.error.bind(instance.error, error);
     stack.cut();
     return resolveInstance(create, instance, view, context);
   }

@@ -1096,6 +1096,7 @@ var Instance = class {
     this.key = void 0;
     this.view = view;
     this.error = error;
+    this.caught = void 0;
     this.loading = loading;
     this.hydrating = hydrating;
   }
@@ -1177,7 +1178,7 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
     view && view[sSymbol] && (view = view());
     instance.next = update(
       dom,
-      !instance.error && !instance.promise && view instanceof View ? mergeTag(view, component) : view,
+      !instance.caught && !instance.promise && view instanceof View ? mergeTag(view, component) : view,
       instance.context,
       parent,
       stack,
@@ -1187,8 +1188,8 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
     instance.recreate && (instance.recreate = false);
   }
   create && instance.promise && instance.promise.then((view) => instance.view = "default" in view ? view.default : view).catch((error) => {
-    instance.error = error;
-    instance.view = instance.error.bind(instance.error, error);
+    instance.caught = error;
+    instance.view = instance.error.bind(instance.caught, error);
   }).then(() => instance.next.first[componentSymbol] && (hydratingAsync && dehydrate(instance.next, stack), instance.recreate = true, instance.promise = false, redraw()));
   const changed = dom !== instance.next.first;
   if (stack.pop() && (changed || create)) {
@@ -1202,8 +1203,8 @@ function catchInstance(create, instance, view, context, stack) {
   try {
     return resolveInstance(create, instance, view, context);
   } catch (error) {
-    instance.error = error;
-    instance.view = instance.error.bind(instance.error, error);
+    instance.caught = error;
+    instance.view = instance.error.bind(instance.caught, error);
     stack.cut();
     return resolveInstance(create, instance, view, context);
   }

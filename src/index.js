@@ -636,7 +636,7 @@ function updateComponent(
     .then(view => instance.view = 'default' in view ? view.default : view)
     .catch(error => {
       instance.caught = error
-      instance.view = instance.error.bind(instance.caught, error)
+      instance.view = instance.error.bind(instance.error, error)
     })
     .then(() => instance.next.first[componentSymbol] && (
       hydratingAsync && dehydrate(instance.next, stack),
@@ -661,7 +661,7 @@ function catchInstance(create, instance, view, context, stack) {
     return resolveInstance(create, instance, view, context)
   } catch (error) {
     instance.caught = error
-    instance.view = instance.error.bind(instance.caught, error)
+    instance.view = instance.error.bind(instance.error, error)
     stack.cut()
     return resolveInstance(create, instance, view, context)
   }

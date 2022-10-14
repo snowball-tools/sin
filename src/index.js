@@ -520,6 +520,7 @@ class Instance {
     this.key = undefined
     this.view = view
     this.error = error
+    this.caught = undefined
     this.loading = loading
     this.hydrating = hydrating
   }
@@ -619,7 +620,7 @@ function updateComponent(
     view && view[sSymbol] && (view = view())
     instance.next = update(
       dom,
-      !instance.error && !instance.promise && view instanceof View
+      !instance.caught && !instance.promise && view instanceof View
         ? mergeTag(view, component)
         : view,
       instance.context,
@@ -634,8 +635,8 @@ function updateComponent(
   create && instance.promise && instance.promise
     .then(view => instance.view = 'default' in view ? view.default : view)
     .catch(error => {
-      instance.error = error
-      instance.view = instance.error.bind(instance.error, error)
+      instance.caught = error
+      instance.view = instance.error.bind(instance.caught, error)
     })
     .then(() => instance.next.first[componentSymbol] && (
       hydratingAsync && dehydrate(instance.next, stack),
@@ -659,8 +660,8 @@ function catchInstance(create, instance, view, context, stack) {
   try {
     return resolveInstance(create, instance, view, context)
   } catch (error) {
-    instance.error = error
-    instance.view = instance.error.bind(instance.error, error)
+    instance.caught = error
+    instance.view = instance.error.bind(instance.caught, error)
     stack.cut()
     return resolveInstance(create, instance, view, context)
   }

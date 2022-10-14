@@ -162,9 +162,8 @@ function Live(value2, fn2) {
   const observers = /* @__PURE__ */ new Set();
   isFunction(fn2) && observers.add(fn2);
   live.observe = (fn3) => (observers.add(fn3), () => observers.delete(fn3));
-  live.valueOf = live.toString = live.toJSON = () => value2 || "";
-  live.detach = () => {
-  };
+  live.valueOf = live.toString = live.toJSON = () => value2;
+  live.detach = noop;
   live.reduce = reduce;
   live.set = (x2) => (...args) => (live(isFunction(x2) ? x2(...args) : x2), live);
   live.get = (prop2) => new Observable(live, (x2) => isFunction(prop2) ? prop2(x2) : x2[prop2]);
@@ -181,7 +180,7 @@ function Live(value2, fn2) {
     if (x2 === value2)
       return;
     value2 = x2;
-    observers.forEach((fn3) => fn3(x2));
+    observers.forEach(async (fn3) => fn3(x2));
   }
   function reduce(fn3, initial) {
     let i = 1;
@@ -239,12 +238,14 @@ var popular = [
   "padding-right",
   "padding-top",
   "place-items",
+  "pointer-events",
   "right",
   "top",
   "text-align",
   "text-decoration",
   "text-transform",
   "text-shadow",
+  "user-select",
   "white-space",
   "width",
   "z-index"
@@ -560,7 +561,7 @@ function addCssVar(i) {
   }
 }
 function addUnit(i) {
-  if (!isUnit(char) && x.charCodeAt(numberStart - 1) !== 35) {
+  if (!isUnit(char) && x.charCodeAt(lastSpace) !== 35) {
     value = value + x.slice(valueStart, i) + getUnit(prop, last(fn));
     valueStart = i;
   }
@@ -796,7 +797,7 @@ s.on = on;
 s.trust = trust;
 s.route = router(s, "", { location: window_default.location });
 s.window = window_default;
-s.catcher = s((error) => {
+s.error = s((error) => {
   isServer ? console.error(error) : Promise.resolve().then(() => {
     throw error;
   });
@@ -869,7 +870,7 @@ function mount(dom, view, attrs = {}, context = {}) {
   }
   view instanceof View === false && (view = s(view));
   "location" in context || (context.location = window_default.location);
-  "catcher" in context || (context.catcher = s.catcher);
+  "error" in context || (context.error = s.error);
   if (isServer)
     return { view, attrs, context };
   context.title = s.live(document.title, (x2) => document.title = x2);
@@ -896,7 +897,7 @@ function draw({ view, attrs, context }, dom) {
     updates(dom, asArray(x2), context);
   } catch (error) {
     attrs.error = error;
-    updates(dom, asArray(context.catcher(attrs, [], context)), context);
+    updates(dom, asArray(context.error(attrs, [], context)), context);
   }
   redrawing = false;
   afterUpdate.forEach((fn2) => fn2());
@@ -1089,13 +1090,13 @@ function createElement(view, context) {
   return context.NS ? is ? document.createElementNS(context.NS, view.tag.name, { is }) : document.createElementNS(context.NS, view.tag.name) : is ? document.createElement(view.tag.name || "DIV", { is }) : document.createElement(view.tag.name || "DIV");
 }
 var Instance = class {
-  constructor(init, id2, view, catcher, loader, hydrating) {
+  constructor(init, id2, view, error, loading, hydrating) {
     this.init = init;
     this.id = id2;
     this.key = void 0;
     this.view = view;
-    this.catcher = catcher;
-    this.loader = loader;
+    this.error = error;
+    this.loading = loading;
     this.hydrating = hydrating;
   }
 };
@@ -1118,8 +1119,8 @@ var Stack = class {
       view.inline ? false : init,
       window_default.count = (window_default.count || 0) + 1,
       init,
-      options && options.catcher || context.catcher,
-      options && options.loader || context.loader,
+      options && options.error || context.error,
+      options && options.loading || context.loading,
       context.hydrating
     );
     instance.context = Object.create(context, {
@@ -1135,7 +1136,7 @@ var Stack = class {
     const next = catchInstance(true, instance, view, instance.context, this);
     instance.promise = next && isFunction(next.then) && next;
     instance.stateful = instance.promise || isFunction(next) && !next[sSymbol];
-    instance.view = instance.promise ? instance.loader : next;
+    instance.view = instance.promise ? instance.loading : next;
     this.xs.length = this.i;
     this.xs[this.i] = instance;
     return this.xs[this.top = this.i++];
@@ -1187,7 +1188,7 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
   }
   create && instance.promise && instance.promise.then((view) => instance.view = "default" in view ? view.default : view).catch((error) => {
     instance.error = error;
-    instance.view = instance.catcher.bind(instance.catcher, error);
+    instance.view = instance.error.bind(instance.error, error);
   }).then(() => instance.next.first[componentSymbol] && (hydratingAsync && dehydrate(instance.next, stack), instance.recreate = true, instance.promise = false, redraw()));
   const changed = dom !== instance.next.first;
   if (stack.pop() && (changed || create)) {
@@ -1202,7 +1203,7 @@ function catchInstance(create, instance, view, context, stack) {
     return resolveInstance(create, instance, view, context);
   } catch (error) {
     instance.error = error;
-    instance.view = instance.catcher.bind(instance.catcher, error);
+    instance.view = instance.error.bind(instance.error, error);
     stack.cut();
     return resolveInstance(create, instance, view, context);
   }

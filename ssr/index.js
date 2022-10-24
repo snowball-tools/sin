@@ -1,13 +1,15 @@
-import './window.js'
+import window from './window.js'
 import View from '../src/view.js'
 import { className, ignoredAttr, isEvent, isFunction, asArray, notValue } from '../src/shared.js'
 import { formatValue, cssRules } from '../src/style.js'
 import { router } from '../src/router.js'
 import s from '../src/index.js'
 
-let lastWasText = false
-
 class TimeoutError extends Error {}
+
+s.trust = (strings, ...values) => new window.Node(String.raw({ raw: strings }, ...values))
+
+let lastWasText = false
 
 const defaultTimeout = 1000 * 60 * 2
 const voidTags = new Set([
@@ -84,11 +86,13 @@ async function update(view, context) {
         : updateElement(view, context)
       : view instanceof Promise
         ? update(s(() => view)(), context)
-        : Array.isArray(view)
-          ? updateArray(view, context)
-          : view || view === 0 || view === ''
-            ? updateText(view)
-            : updateComment(view)
+        : view instanceof window.Node
+          ? view.trusted
+          : Array.isArray(view)
+            ? updateArray(view, context)
+            : view || view === 0 || view === ''
+              ? updateText(view)
+              : updateComment(view)
 }
 
 function tagName(view) {

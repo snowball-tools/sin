@@ -79,7 +79,7 @@ export default function http(url, {
       : xhr.send(serialize(body, xhr))
   }).catch(error => {
     xhr.error = error
-    return xhr
+    throw xhr
   })
 }
 

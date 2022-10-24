@@ -820,8 +820,10 @@ function setVar(dom, id, value, cssVar, init, reapply, after) {
     return
   }
 
-  if (isFunction(value))
-    return setVar(dom, id, value(dom), cssVar, init, reapply, after)
+  if (isFunction(value)) {
+    requestAnimationFrame(() => setVar(dom, id, value(dom), cssVar, init, reapply, after))
+    return
+  }
 
   dom.style.setProperty(id, formatValue(value, cssVar))
   after && afterUpdate.push(() => dom.style.setProperty(id, formatValue(value, cssVar)))

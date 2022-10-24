@@ -311,7 +311,7 @@ function startBlock(i) {
   } else {
     rule && (rules[path || '&'] = rule)
     selector = (startChar === 64 // @
-      ? atHelper(prop) + (value || ' ') + x.slice(valueStart, i)
+      ? atHelper(prop) + (value || '') + x.slice(valueStart - 1, i)
       : x.slice(start, i)
     ).trim()
     selector.indexOf(',') !== -1 && (selector = splitSelector(selector))

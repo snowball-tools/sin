@@ -78,6 +78,7 @@ let idle = true
   , redrawing = false
 
 s.sleep = (x, ...xs) => new Promise(r => setTimeout(r, x, ...xs))
+s.with = (x, fn) => fn(x)
 s.isServer = isServer
 s.pathmode = ''
 s.redraw = redraw

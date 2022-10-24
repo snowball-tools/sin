@@ -59,7 +59,7 @@ const cache = new Map()
     , quoteChar = x => x === 34 || x === 39 // '"
     , propEndChar = x => x === 32 || x === 58 || x === 9 // ws : \t
     , valueEndChar = x => x === 59 || x === 10 || x === 125 // ; \n }
-    , noSpace = x => x === 58 || x === 64 || x === 38 || x === 91 // : @ & [
+    , noSpace = x => x === 38 || x === 58 || x === 64 || x === 91 // & : @ [
     , strict = x => x === 59 || x === 125
     , last = xs => xs[xs.length - 1]
     , selectors = []
@@ -188,7 +188,7 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
         insert(
           k.replace(
             /&/g,
-            (k.charCodeAt(0) === 38 ? '.' + temp : '') + '.' + temp + specificity // &
+            (noSpace(k.charCodeAt(0)) ? '.' + temp : '') + '.' + temp + specificity
           ) + '{' + v + '}'
         )
       })

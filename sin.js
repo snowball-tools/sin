@@ -125,7 +125,7 @@ function http(url, {
     body === null ? xhr.send() : xhr.send(serialize(body, xhr));
   }).catch((error) => {
     xhr.error = error;
-    return xhr;
+    throw xhr;
   });
 }
 function statusError(xhr) {
@@ -412,7 +412,12 @@ function parse([xs, ...args], parent, nesting = 0, root) {
       for (let i = 0; i < nesting; i++)
         specificity += "." + temp;
       Object.entries(rules).forEach(([k, v]) => {
-        insert(k.replace(/&/g, (k === "&" ? "." + temp : "") + "." + temp + specificity) + "{" + v + "}");
+        insert(
+          k.replace(
+            /&/g,
+            (k.charCodeAt(0) === 38 ? "." + temp : "") + "." + temp + specificity
+          ) + "{" + v + "}"
+        );
       });
     }
   }
@@ -506,7 +511,7 @@ function startBlock(i) {
     rule = "";
   } else {
     rule && (rules[path || "&"] = rule);
-    selector = (startChar === 64 ? atHelper(prop) + (value || " ") + x.slice(valueStart, i) : x.slice(start, i)).trim();
+    selector = (startChar === 64 ? atHelper(prop) + (value || "") + x.slice(valueStart - 1, i) : x.slice(start, i)).trim();
     selector.indexOf(",") !== -1 && (selector = splitSelector(selector));
     value = prop = "";
     selectors.push(
@@ -783,6 +788,7 @@ var idle = true;
 var afterUpdate = [];
 var redrawing = false;
 s.sleep = (x2, ...xs) => new Promise((r) => setTimeout(r, x2, ...xs));
+s.with = (x2, fn2) => fn2(x2);
 s.isServer = isServer;
 s.pathmode = "";
 s.redraw = redraw;
@@ -859,7 +865,7 @@ function execute(x2, parent) {
   );
 }
 function isAttrs(x2) {
-  return x2 && typeof x2 === "object" && !(x2 instanceof Date) && !Array.isArray(x2) && !(x2 instanceof View);
+  return x2 && typeof x2 === "object" && !(x2 instanceof Date) && !Array.isArray(x2) && !(x2 instanceof View) && !(x2 instanceof window_default.Node);
 }
 function mount(dom, view, attrs = {}, context = {}) {
   if (!isFunction(view)) {
@@ -1313,8 +1319,10 @@ function setVar(dom, id2, value2, cssVar2, init, reapply, after) {
       setVar(dom, id2, value2.value, cssVar2, init, init);
     return;
   }
-  if (isFunction(value2))
-    return setVar(dom, id2, value2(dom), cssVar2, init, reapply, after);
+  if (isFunction(value2)) {
+    requestAnimationFrame(() => setVar(dom, id2, value2(dom), cssVar2, init, reapply, after));
+    return;
+  }
   dom.style.setProperty(id2, formatValue(value2, cssVar2));
   after && afterUpdate.push(() => dom.style.setProperty(id2, formatValue(value2, cssVar2)));
 }

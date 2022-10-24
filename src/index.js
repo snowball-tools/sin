@@ -175,6 +175,7 @@ function isAttrs(x) {
     && !(x instanceof Date)
     && !Array.isArray(x)
     && !(x instanceof View)
+    && !(x instanceof window.Node)
 }
 
 function mount(dom, view, attrs = {}, context = {}) {

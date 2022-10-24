@@ -3,7 +3,12 @@ import px from './px.js'
 
 const noop = () => { /* noop */ }
 
+class Node { constructor(x) { this.trusted = x }}
+
+export default window
+
 Object.assign(window, {
+  Node,
   XMLHttpRequest,
   addEventListener: noop,
   location: {

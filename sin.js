@@ -301,7 +301,7 @@ var isUnit = (x2) => x2 === 37 || x2 >= 65 && x2 <= 90 || x2 >= 97 && x2 <= 122;
 var quoteChar = (x2) => x2 === 34 || x2 === 39;
 var propEndChar = (x2) => x2 === 32 || x2 === 58 || x2 === 9;
 var valueEndChar = (x2) => x2 === 59 || x2 === 10 || x2 === 125;
-var noSpace = (x2) => x2 === 58 || x2 === 64 || x2 === 38 || x2 === 91;
+var noSpace = (x2) => x2 === 38 || x2 === 58 || x2 === 64 || x2 === 91;
 var strict = (x2) => x2 === 59 || x2 === 125;
 var last = (xs) => xs[xs.length - 1];
 var selectors = [];
@@ -415,7 +415,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
         insert(
           k.replace(
             /&/g,
-            (k.charCodeAt(0) === 38 ? "." + temp : "") + "." + temp + specificity
+            (noSpace(k.charCodeAt(0)) ? "." + temp : "") + "." + temp + specificity
           ) + "{" + v + "}"
         );
       });

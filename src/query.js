@@ -6,8 +6,8 @@ export default function Query(s, l) {
   let usp = new U(last)
 
   const query = { replace: x => (usp = new U(x), update()) }
-  for (let key in U.prototype)
-    query[key] = (...xs) => (key = USP()[key](...xs), update(), key)
+  for (const key in U.prototype)
+    query[key] = (...xs) => { const x = USP()[key](...xs); update(); return x }
 
   return query
 

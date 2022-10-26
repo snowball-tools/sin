@@ -97,12 +97,38 @@ s.error = s((error) => {
   isServer
     ? console.error(error) // eslint-disable-line
     : Promise.resolve().then(() => { throw error })
-  return () => s`pre;all initial;d block;ws pre-wrap;m 0;c white;bc #ff0033;p 8 12;br 6;overflow auto`(
-    s`code`(
-      error && error.stack || error || new Error('Unknown Error').stack
-    )
-  )
+
+  const stack = parseStackTrace(error.stack)
+  return () => s`pre;all initial;d block;ws pre-wrap;m 0;c white;bc #ff0033;p 8 12;br 6;overflow auto`(s`code`(
+    '' + error,
+    stack.map(({ name, file, line, col }) =>
+      s` o 0.75`(
+        '    at ',
+        name && (name + ' '),
+        s`a c white`({
+          href: file,
+          target: '_BLANK'
+        },
+          file + ':' + line + ':' + col
+        )
+      )
+    ),
+    typeof error === 'object' && JSON.stringify(error, null, 2).replace(/"([a-z]\w+)":/ig, '$1:')
+  ))
 })
+
+function parseStackTrace(x) {
+  return x.split('\n').reduce((acc, x) => (
+    x = x.match(/( +at )?(.*)[@\(](.+):([0-9]+):([0-9]+)/),
+    x && acc.push({
+      name: x[2].trim(),
+      file: x[3].replace(location.origin, ''),
+      line: parseInt(x[4]),
+      col: parseInt(x[5])
+    }),
+    acc
+  ), [])
+}
 
 function trust(strings, ...values) {
   return s(() => {

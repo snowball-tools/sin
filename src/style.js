@@ -56,7 +56,7 @@ const cache = new Map()
     , isNumber = x => (x >= 48 && x <= 57) || x === 46 // 0-9-.
     , isLetter = x => (x >= 65 && x <= 90) || (x >= 97 && x <= 122) // a-z A-Z
     , isUnit = x => x === 37 || (x >= 65 && x <= 90) || (x >= 97 && x <= 122) // % a-z A-Z
-    , quoteChar = x => x === 34 || x === 39 // '"
+    , quoteChar = x => x === 34 || x === 39 // ' "
     , propEndChar = x => x === 32 || x === 58 || x === 9 // ws : \t
     , valueEndChar = x => x === 59 || x === 10 || x === 125 // ; \n }
     , noSpace = x => x === 38 || x === 58 || x === 64 || x === 91 // & : @ [

@@ -12,8 +12,6 @@ http.redraw = () => { /* noop */ }
 
 const json = 'application/json'
     , identity = x => x
-    , serializeJSON = x => JSON.stringify(x)
-    , parseJSON = x => JSON.parse(x)
     , TypedArray = typeof Uint8Array === 'undefined' ? [] : [Object.getPrototypeOf(Uint8Array)]
     , rich = 'Blob ArrayBuffer DataView FormData URLSearchParams'.split(' ').map(x => globalThis[x]).filter(x => x).concat(TypedArray)
 
@@ -27,22 +25,24 @@ export default function http(url, {
   pass,
   headers = {},
   config,
-  timeout = 0,
-  parse = identity,
-  serialize = identity
+  timeout = 0
 } = {}) {
+  const origin = !window.chrome && new Error()
   const xhr = new window.XMLHttpRequest()
-  return new Promise((resolve, reject) => {
+  let full = false
+  const promise = new Promise((resolve, reject) => {
     method = method.toUpperCase()
 
-    xhr.addEventListener('readystatechange', async function() {
+    xhr.addEventListener('readystatechange', function() {
       if (xhr.readyState !== xhr.DONE)
         return
 
       try {
-        xhr.body = await parse(xhr.response, xhr)
+        xhr.status && Object.defineProperty(xhr, 'body', {
+          value: accept === json ? JSON.parse(xhr.response) : xhr.response
+        })
         xhr.status === 304 || (xhr.status >= 200 && xhr.status < 300)
-          ? resolve(xhr)
+          ? resolve(full ? xhr : xhr.body)
           : reject(statusError(xhr))
       } catch (e) {
         reject(e)
@@ -50,7 +50,6 @@ export default function http(url, {
 
       redraw && http.redraw && http.redraw()
     })
-
     xhr.addEventListener('error', () => reject(statusError(xhr)))
     xhr.addEventListener('abort', () => reject(statusError(xhr)))
     xhr.open(method, appendQuery(url, query), true, user, pass)
@@ -67,24 +66,35 @@ export default function http(url, {
     })
 
     !accept && !responseType && xhr.setRequestHeader('Accept', accept = json)
-    accept && accept.indexOf(json) === 0 && parse === identity && (parse = parseJSON)
-
     !contentType && body !== undefined && !rich.some(x => body instanceof x) && xhr.setRequestHeader('Content-Type', contentType = json)
-    contentType && body !== undefined && contentType.indexOf(json) === 0 && serialize === identity && (serialize = serializeJSON)
 
     config && config(xhr)
-
-    body === null
-      ? xhr.send()
-      : xhr.send(serialize(body, xhr))
+    xhr.send(contentType === json ? JSON.stringify(body) : body)
   }).catch(error => {
-    xhr.error = error
-    throw xhr
+    origin && !origin.message && Object.defineProperty(origin, 'message', { value: error.message })
+    throw Object.defineProperties(origin || new Error(error.message), {
+      ...error,
+      status: { value: xhr.status, enumerable: true },
+      body: { value: xhr.body || xhr.response, enumerable: true },
+      xhr: { value: xhr }
+    })
   })
+
+  Object.defineProperty(promise, 'xhr', {
+    get() {
+      full = true
+      return promise
+    }
+  })
+
+  return promise
 }
 
 function statusError(xhr) {
-  return new Error(xhr.status + (xhr.statusText ? ' ' + xhr.statusText : ''))
+  return new Error(xhr.status
+    ? xhr.status + (xhr.statusText ? ' ' + xhr.statusText : '')
+    : 'Unknown'
+  )
 }
 
 function appendQuery(x, q) {

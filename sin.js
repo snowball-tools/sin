@@ -73,9 +73,6 @@ var window_default = isServer ? {} : window;
 http.redraw = () => {
 };
 var json = "application/json";
-var identity = (x2) => x2;
-var serializeJSON = (x2) => JSON.stringify(x2);
-var parseJSON = (x2) => JSON.parse(x2);
 var TypedArray = typeof Uint8Array === "undefined" ? [] : [Object.getPrototypeOf(Uint8Array)];
 var rich = "Blob ArrayBuffer DataView FormData URLSearchParams".split(" ").map((x2) => globalThis[x2]).filter((x2) => x2).concat(TypedArray);
 function http(url, {
@@ -88,19 +85,21 @@ function http(url, {
   pass,
   headers = {},
   config,
-  timeout = 0,
-  parse: parse2 = identity,
-  serialize = identity
+  timeout = 0
 } = {}) {
+  const origin = !window_default.chrome && new Error();
   const xhr = new window_default.XMLHttpRequest();
-  return new Promise((resolve2, reject) => {
+  let full = false;
+  const promise = new Promise((resolve2, reject) => {
     method = method.toUpperCase();
-    xhr.addEventListener("readystatechange", async function() {
+    xhr.addEventListener("readystatechange", function() {
       if (xhr.readyState !== xhr.DONE)
         return;
       try {
-        xhr.body = await parse2(xhr.response, xhr);
-        xhr.status === 304 || xhr.status >= 200 && xhr.status < 300 ? resolve2(xhr) : reject(statusError(xhr));
+        xhr.status && Object.defineProperty(xhr, "body", {
+          value: accept === json ? JSON.parse(xhr.response) : xhr.response
+        });
+        xhr.status === 304 || xhr.status >= 200 && xhr.status < 300 ? resolve2(full ? xhr : xhr.body) : reject(statusError(xhr));
       } catch (e) {
         reject(e);
       }
@@ -118,18 +117,30 @@ function http(url, {
       x2.toLowerCase() === "content-type" && (contentType = v);
     });
     !accept && !responseType && xhr.setRequestHeader("Accept", accept = json);
-    accept && accept.indexOf(json) === 0 && parse2 === identity && (parse2 = parseJSON);
     !contentType && body !== void 0 && !rich.some((x2) => body instanceof x2) && xhr.setRequestHeader("Content-Type", contentType = json);
-    contentType && body !== void 0 && contentType.indexOf(json) === 0 && serialize === identity && (serialize = serializeJSON);
     config && config(xhr);
-    body === null ? xhr.send() : xhr.send(serialize(body, xhr));
+    xhr.send(contentType === json ? JSON.stringify(body) : body);
   }).catch((error) => {
-    xhr.error = error;
-    throw xhr;
+    origin && !origin.message && Object.defineProperty(origin, "message", { value: error.message });
+    throw Object.defineProperties(origin || new Error(error.message), {
+      ...error,
+      status: { value: xhr.status, enumerable: true },
+      body: { value: xhr.body || xhr.response, enumerable: true },
+      xhr: { value: xhr }
+    });
   });
+  Object.defineProperty(promise, "xhr", {
+    get() {
+      full = true;
+      return promise;
+    }
+  });
+  return promise;
 }
 function statusError(xhr) {
-  return new Error(xhr.status + (xhr.statusText ? " " + xhr.statusText : ""));
+  return new Error(
+    xhr.status ? xhr.status + (xhr.statusText ? " " + xhr.statusText : "") : "Unknown"
+  );
 }
 function appendQuery(x2, q) {
   const u = new URL(x2, "http://x"), qs = new URLSearchParams(q || "").toString();
@@ -677,26 +688,26 @@ function resolve(view, attrs, context) {
   return isFunction(view) ? view(attrs, [], context) : view;
 }
 function router(s2, root, rootContext) {
-  const location = rootContext.location;
+  const location2 = rootContext.location;
   const routed = s2(({ route: route2, ...attrs }, [view], context) => {
     context.route = route2;
     return () => typeof view === "string" ? import((view[0] === "/" ? "" : route2) + view).then((x2) => resolve(x2.default, attrs, context)) : resolve(view, attrs, context);
   });
   route.query = Query(s2, rootContext.location);
   route.toString = route;
-  route.has = (x2) => x2 === "/" ? getPath2(location) === root || getPath2(location) === "/" && root === "" : getPath2(location).indexOf(cleanSlash(root + "/" + x2)) === 0;
+  route.has = (x2) => x2 === "/" ? getPath2(location2) === root || getPath2(location2) === "/" && root === "" : getPath2(location2).indexOf(cleanSlash(root + "/" + x2)) === 0;
   Object.defineProperty(route, "path", {
     get() {
-      const path2 = getPath2(location), idx = path2.indexOf("/", root.length + 1);
+      const path2 = getPath2(location2), idx = path2.indexOf("/", root.length + 1);
       return idx === -1 ? path2 : path2.slice(0, idx);
     }
   });
   return route;
-  function getPath2(location2, x2 = 0) {
-    return (s2.pathmode[0] === "#" ? location2.hash.slice(s2.pathmode.length + x2) : s2.pathmode[0] === "?" ? location2.search.slice(s2.pathmode.length + x2) : location2.pathname.slice(s2.pathmode + x2)).replace(/(.)\/$/, "$1");
+  function getPath2(location3, x2 = 0) {
+    return (s2.pathmode[0] === "#" ? location3.hash.slice(s2.pathmode.length + x2) : s2.pathmode[0] === "?" ? location3.search.slice(s2.pathmode.length + x2) : location3.pathname.slice(s2.pathmode + x2)).replace(/(.)\/$/, "$1");
   }
   function reroute(path2, { state, replace: replace2 = false, scroll = rootChange(path2) } = {}) {
-    if (path2 === getPath2(location))
+    if (path2 === getPath2(location2))
       return;
     s2.pathmode[0] === "#" ? window_default.location.hash = s2.pathmode + path2 : s2.pathmode[0] === "?" ? window_default.location.search = s2.pathmode + path2 : window_default.history[replace2 ? "replaceState" : "pushState"](state, null, s2.pathmode + path2);
     routeState[path2] = state;
@@ -715,7 +726,7 @@ function router(s2, root, rootContext) {
       routing = true;
       s2.pathmode[0] === "#" ? window_default.addEventListener("hashchange", s2.redraw, { passive: true }) : isFunction(window_default.history.pushState) && window_default.addEventListener("popstate", s2.redraw, { passive: true });
     }
-    const path2 = getPath2(location, root.length);
+    const path2 = getPath2(location2, root.length);
     const pathTokens = tokenizePath(path2);
     const [, match, view] = Object.entries(routes).reduce((acc, [match2, view2]) => {
       match2 = tokenizePath(cleanSlash(match2));
@@ -807,12 +818,33 @@ s.error = s((error) => {
   isServer ? console.error(error) : Promise.resolve().then(() => {
     throw error;
   });
-  return () => s`pre;all initial;d block;ws pre-wrap;m 0;c white;bc #ff0033;p 8 12;br 6;overflow auto`(
-    s`code`(
-      error && error.stack || error || new Error("Unknown Error").stack
-    )
-  );
+  const stack = parseStackTrace(error.stack);
+  return () => s`pre;all initial;d block;ws pre-wrap;m 0;c white;bc #ff0033;p 8 12;br 6;overflow auto`(s`code`(
+    "" + error,
+    stack.map(
+      ({ name: name2, file, line, col }) => s` o 0.75`(
+        "    at ",
+        name2 && name2 + " ",
+        s`a c white`(
+          {
+            href: file,
+            target: "_BLANK"
+          },
+          file + ":" + line + ":" + col
+        )
+      )
+    ),
+    typeof error === "object" && JSON.stringify(error, null, 2).replace(/"([a-z]\w+)":/ig, "$1:")
+  ));
 });
+function parseStackTrace(x2) {
+  return x2.split("\n").reduce((acc, x3) => (x3 = x3.match(/( +at )?(.*)[@\(](.+):([0-9]+):([0-9]+)/), x3 && acc.push({
+    name: x3[2].trim(),
+    file: x3[3].replace(location.origin, ""),
+    line: parseInt(x3[4]),
+    col: parseInt(x3[5])
+  }), acc), []);
+}
 function trust(strings, ...values) {
   return s(() => {
     const div2 = document.createElement("div");

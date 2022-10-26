@@ -281,6 +281,8 @@ function parseStyles(idx, end) {
         : char === 36 && (cssVar = i)
     } else if (valueStart !== -1) {
       handleValue(i)
+    } else if (char === 9 || char === 32) { // ws \n
+      lastSpace = i + 1
     }
   }
 }
@@ -362,8 +364,6 @@ function handleValue(i) {
     fn.push(x.slice(Math.max(lastSpace, valueStart), i))
   else if (char === 41) // )
     fn.pop()
-  else if (char === 9 || char === 32) // ws \n
-    lastSpace = i + 1
   else if (char === 36) // $
     cssVar = i
 }

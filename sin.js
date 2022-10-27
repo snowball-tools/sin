@@ -500,6 +500,8 @@ function parseStyles(idx, end) {
       isNumber(char) ? numberStart = i : char === 36 && (cssVar = i);
     } else if (valueStart !== -1) {
       handleValue(i);
+    } else if (char === 9 || char === 32) {
+      lastSpace = i + 1;
     }
   }
 }
@@ -564,8 +566,6 @@ function handleValue(i) {
     fn.push(x.slice(Math.max(lastSpace, valueStart), i));
   else if (char === 41)
     fn.pop();
-  else if (char === 9 || char === 32)
-    lastSpace = i + 1;
   else if (char === 36)
     cssVar = i;
 }
@@ -647,8 +647,12 @@ function Query(s2, l) {
   let last2 = l.search;
   let usp = new U(last2);
   const query = { replace: (x2) => (usp = new U(x2), update2()) };
-  for (let key in U.prototype)
-    query[key] = (...xs) => (key = USP()[key](...xs), update2(), key);
+  for (const key in U.prototype)
+    query[key] = (...xs) => {
+      const x2 = USP()[key](...xs);
+      update2();
+      return x2;
+    };
   return query;
   function USP() {
     return last2 === l.search ? usp : (last2 = l.search, usp = new U(last2));

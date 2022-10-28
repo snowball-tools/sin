@@ -566,6 +566,8 @@ function handleValue(i) {
     fn.push(x.slice(Math.max(lastSpace, valueStart), i));
   else if (char === 41)
     fn.pop();
+  else if (char === 9 || char === 32)
+    lastSpace = i + 1;
   else if (char === 36)
     cssVar = i;
 }

@@ -164,11 +164,12 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
         temp = prefix + Math.abs(hash).toString(31)
         vars[varName = '--' + temp + j] = { property: prop, unit: getUnit(prop, last(fn)), index: j }
         value += before + 'var(' + varName + ')'
+        valueStart = 0
       } else {
         args[j] && (x = args[j] + x)
         cacheable = false
+        valueStart = -1
       }
-      valueStart = 0
     }
   }
 
@@ -254,7 +255,7 @@ function parseStyles(idx, end) {
     char = x.charCodeAt(i)
     i < x.length && (hash = Math.imul(31, hash) + char | 0)
 
-    if (quote === -1 && valueStart >= 0 && ((colon ? strict(char) : valueEndChar(char) || (end && i === x.length))))
+    if (quote === -1 && valueStart !== -1 && ((colon ? strict(char) : valueEndChar(char) || (end && i === x.length))))
       addRule(i)
 
     if (quote !== -1) {

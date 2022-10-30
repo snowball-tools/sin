@@ -17,7 +17,7 @@ function tokenizePath(x) {
 function getScore(match, path) {
   return match.reduce((acc, x, i) =>
     acc + (
-      x === '404' ? 1
+      x === '/?' ? 1
       : x === path[i] ? 6
       : x && path[i] && x.toLowerCase() === path[i].toLowerCase() ? 5
       : x[1] === ':' && path[i] && path[i].length > 1 ? 4
@@ -124,7 +124,7 @@ export function router(s, root, rootContext) {
       ? match.map((x, i) => pathTokens[i]).join('')
       : path)
 
-    if (view === undefined || match === '404')
+    if (view === undefined || match === '/?')
       rootContext.status(404)
 
     const subRoute = router(s, current.replace(/\/$/, ''), rootContext)

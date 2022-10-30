@@ -121,7 +121,7 @@ export function router(s, root, rootContext) {
 
     const current = root + (match && match[0] !== '*'
       ? match.map((x, i) => pathTokens[i]).join('')
-      : '')
+      : path)
 
     if (view === undefined || match === '404')
       rootContext.status(404)

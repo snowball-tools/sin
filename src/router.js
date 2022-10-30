@@ -112,6 +112,7 @@ export function router(s, root, rootContext) {
     const [, match, view] = Object
       .entries(routes)
       .reduce((acc, [match, view]) => {
+        match.charCodeAt(0) === 47 || (match = '/' + match) // /
         match = tokenizePath(cleanSlash(match))
         const score = getScore(match, pathTokens)
         return score > acc[0]

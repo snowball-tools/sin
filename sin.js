@@ -955,7 +955,7 @@ function draw({ view, attrs, context }, dom) {
   afterUpdate = [];
 }
 function updates(parent, next, context, before, last2 = parent.lastChild) {
-  const keys = next[0] && next[0].key !== void 0 && new Array(next.length), ref = getNext(before, parent), tracked = ref && keysSymbol in ref, after = last2 ? last2.nextSibling : null;
+  const keys = next[0] && next[0].key !== void 0 && new Array(next.length), ref = getNext(before, parent), tracked = ref && ref.hasOwnProperty(keysSymbol), after = last2 ? last2.nextSibling : null;
   keys && (keys.rev = {}) && tracked ? keyed(parent, context, ref[keysSymbol], next, keys, after) : nonKeyed(parent, context, next, keys, ref, after);
   const first = getNext(before, parent);
   keys && (first[keysSymbol] = keys);
@@ -1055,7 +1055,7 @@ function updateView(dom, view, context, parent, stack, create) {
   return view.component ? updateComponent(dom, view, context, parent, stack, create) : updateElement(dom, view, context, parent, create);
 }
 function updateLive(dom, view, context, parent) {
-  if (dom && liveSymbol in dom && dom[liveSymbol] === view)
+  if (dom && dom.hasOwnProperty(liveSymbol) && dom[liveSymbol] === view)
     return dom[liveSymbol];
   let result;
   run(view.value);
@@ -1083,7 +1083,7 @@ function fromComment(dom) {
   return last2;
 }
 function getArray(dom) {
-  return dom && arraySymbol in dom ? dom[arraySymbol] : fromComment(dom);
+  return dom && dom.hasOwnProperty(arraySymbol) ? dom[arraySymbol] : fromComment(dom);
 }
 function updateArray(dom, view, context, parent, create) {
   create && dom && parent && (dom = updateArray(dom, [], context, parent).first);
@@ -1238,7 +1238,7 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
     instance.hydrating && (instance.hydrating = false);
     instance.recreate && (instance.recreate = false);
   }
-  create && instance.promise && instance.promise.then((view) => instance.view = "default" in view ? view.default : view).catch((error) => {
+  create && instance.promise && instance.promise.then((view) => instance.view = view && "default" in view ? view.default : view).catch((error) => {
     instance.caught = error;
     instance.view = instance.error.bind(instance.error, error);
   }).then(() => instance.next.first[componentSymbol] && (hydratingAsync && dehydrate(instance.next, stack), instance.recreate = true, instance.promise = false, redraw()));
@@ -1341,7 +1341,7 @@ function updateStyle(dom, style2, old) {
 function observe(dom, x2, fn2) {
   if (!isObservable(x2))
     return;
-  const has = observableSymbol in dom;
+  const has = dom.hasOwnProperty(observableSymbol);
   const xs = has ? dom[observableSymbol] : /* @__PURE__ */ new Set();
   has || (dom[observableSymbol] = xs);
   xs.add(x2.observe(fn2));
@@ -1438,7 +1438,7 @@ function removeArray(dom, parent, root, promises, deferrable) {
   return after;
 }
 function removeChild(parent, dom) {
-  observableSymbol in dom && dom[observableSymbol].forEach((x2) => x2());
+  dom.hasOwnProperty(observableSymbol) && dom[observableSymbol].forEach((x2) => x2());
   parent.removeChild(dom);
 }
 function remove(dom, parent, root = true, promises = [], deferrable = false) {
@@ -1461,7 +1461,7 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
     root && removeChild(parent, dom);
     return after;
   }
-  if (lifeSymbol in dom) {
+  if (dom.hasOwnProperty(lifeSymbol)) {
     for (const life of dom[lifeSymbol]) {
       try {
         const promise = life(deferrable || root);

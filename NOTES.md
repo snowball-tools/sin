@@ -2,6 +2,7 @@
 Cleanup of life if component changes but dom node stays the same (only issue w non keyed)
 
 ## Todo
+- async component returning array loop reload (see ticket assigned in beat manager @ commit df1fd93133da7ff3d81546c5e34e86606e28bbad)
 - Perhaps use top level await for server window polyfill
 - scroll restoration for async loaded content?
 - Check anchor handling (#wee scroll etc)

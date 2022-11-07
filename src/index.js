@@ -118,16 +118,21 @@ s.error = s((error) => {
 })
 
 function parseStackTrace(x) {
-  return x.split('\n').reduce((acc, x) => (
-    x = x.match(/( +at )?(.*)[@\(](.+):([0-9]+):([0-9]+)/),
-    x && acc.push({
-      name: x[2].trim(),
-      file: x[3].replace(location.origin, ''),
-      line: parseInt(x[4]),
-      col: parseInt(x[5])
-    }),
-    acc
-  ), [])
+  try {
+    return x.split('\n').reduce((acc, x) => (
+      x = x.match(/( +at )?(.*)[@\(](.+):([0-9]+):([0-9]+)/), // check if really unnecessary escape char
+      x && acc.push({
+        name: x[2].trim(),
+        file: x[3].replace(window.location.origin, ''),
+        line: parseInt(x[4]),
+        col: parseInt(x[5])
+      }),
+      acc
+    ), [])
+  } catch (e) {
+    console.error('Could not parse stack trace', e)
+    return []
+  }
 }
 
 function trust(strings, ...values) {

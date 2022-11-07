@@ -120,11 +120,11 @@ export function router(s, root, rootContext) {
           : acc
       }, [0])
 
-    const current = root + (match && match[0] !== '*'
+    const current = root + (match && match[0] !== '/*'
       ? match.map((x, i) => pathTokens[i]).join('')
-      : path)
+      : '')
 
-    if (view === undefined || match === '/?')
+    if (view === undefined || match[0] === '/?')
       rootContext.status(404)
 
     const subRoute = router(s, current.replace(/\/$/, ''), rootContext)
@@ -132,7 +132,7 @@ export function router(s, root, rootContext) {
     subRoute.root = route.parent ? route.parent.root : route
 
     return routed({
-      key: current || '/',
+      key: current || '?',
       route: subRoute,
       ...(root + path === current && routeState[root + path] || {}),
       ...params(match || [], pathTokens)

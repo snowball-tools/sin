@@ -666,7 +666,7 @@ function updateComponent(
   }
 
   create && instance.promise && instance.promise
-    .then(view => instance.view = 'default' in view ? view.default : view)
+    .then(view => instance.view = view && 'default' in view ? view.default : view)
     .catch(error => {
       instance.caught = error
       instance.view = instance.error.bind(instance.error, error)

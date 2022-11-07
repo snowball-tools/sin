@@ -264,7 +264,7 @@ function draw({ view, attrs, context }, dom) {
 function updates(parent, next, context, before, last = parent.lastChild) {
   const keys = next[0] && next[0].key !== undefined && new Array(next.length)
       , ref = getNext(before, parent)
-      , tracked = ref && keysSymbol in ref
+      , tracked = ref && ref.hasOwnProperty(keysSymbol)
       , after = last ? last.nextSibling : null
 
   keys && (keys.rev = {}) && tracked
@@ -411,7 +411,7 @@ function updateView(dom, view, context, parent, stack, create) {
 }
 
 function updateLive(dom, view, context, parent) {
-  if (dom && liveSymbol in dom && dom[liveSymbol] === view)
+  if (dom && dom.hasOwnProperty(liveSymbol) && dom[liveSymbol] === view)
     return dom[liveSymbol]
 
   let result
@@ -448,7 +448,7 @@ function fromComment(dom) {
 }
 
 function getArray(dom) {
-  return dom && arraySymbol in dom ? dom[arraySymbol] : fromComment(dom)
+  return dom && dom.hasOwnProperty(arraySymbol) ? dom[arraySymbol] : fromComment(dom)
 }
 
 function updateArray(dom, view, context, parent, create) {
@@ -821,7 +821,7 @@ function observe(dom, x, fn) {
   if (!(isObservable(x)))
     return
 
-  const has = observableSymbol in dom
+  const has = dom.hasOwnProperty(observableSymbol)
   const xs = has
     ? dom[observableSymbol]
     : new Set()
@@ -962,7 +962,7 @@ function removeArray(dom, parent, root, promises, deferrable) {
 }
 
 function removeChild(parent, dom) {
-  observableSymbol in dom && dom[observableSymbol].forEach(x => x())
+  dom.hasOwnProperty(observableSymbol) && dom[observableSymbol].forEach(x => x())
   parent.removeChild(dom)
 }
 
@@ -989,7 +989,7 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
     return after
   }
 
-  if (lifeSymbol in dom) {
+  if (dom.hasOwnProperty(lifeSymbol)) {
     for (const life of dom[lifeSymbol]) {
       try {
         const promise = life(deferrable || root)

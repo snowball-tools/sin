@@ -14,6 +14,7 @@ var View = class {
 
 // src/shared.js
 var isServer = typeof window === "undefined" || typeof window.document === "undefined";
+var hasOwn = {}.hasOwnProperty;
 function notValue(x2) {
   return !x2 && x2 !== 0 && x2 !== "";
 }
@@ -285,7 +286,7 @@ var pxCache = {
   "@media": "px"
 };
 var properties = Array.from(
-  Object.keys(div.style.hasOwnProperty("width") ? div.style : Object.getPrototypeOf(div.style)).reduce((acc, x2) => (acc.add(x2.match(vendorRegex) ? "-" + snake(x2) : snake(x2)), acc), /* @__PURE__ */ new Set(["float"]))
+  Object.keys(hasOwn.call(div.style, "width") ? div.style : Object.getPrototypeOf(div.style)).reduce((acc, x2) => (acc.add(x2.match(vendorRegex) ? "-" + snake(x2) : snake(x2)), acc), /* @__PURE__ */ new Set(["float"]))
 );
 var shorthands = Object.assign(properties.reduce(initials, {}), popular.reduce(initials, {}));
 var vendorMap = properties.reduce((acc, x2) => {
@@ -589,7 +590,7 @@ function addUnit(i) {
 function getUnit(prop2, fn2 = "") {
   prop2 = shorthand(prop2);
   const id2 = prop2 + "," + fn2;
-  if (id2 in unitCache)
+  if (hasOwn.call(unitCache, id2))
     return unitCache[id2];
   return unitCache[id2] = fn2 && isPxFunction(fn2) ? "px" : isDegFunction(fn2) ? "deg" : fn2 ? "" : px(prop2);
 }
@@ -623,7 +624,7 @@ function getPath(selectors2) {
 }
 function px(x2) {
   x2 = shorthand(x2);
-  if (asCssVar(x2) || x2 in pxCache)
+  if (asCssVar(x2) || hasOwn.call(pxCache, x2))
     return pxCache[x2];
   try {
     div.style[x2] = "1px";
@@ -741,15 +742,15 @@ function router(s2, root, rootContext) {
       const score = getScore(match2, pathTokens);
       return score > acc[0] ? [score, match2, view2] : acc;
     }, [0]);
-    const current = root + (match && match[0] !== "*" ? match.map((x2, i) => pathTokens[i]).join("") : path2);
-    if (view === void 0 || match === "/?")
+    const current = root + (match && match[0] !== "/*" ? match.map((x2, i) => pathTokens[i]).join("") : "");
+    if (view === void 0 || match[0] === "/?")
       rootContext.status(404);
     const subRoute = router(s2, current.replace(/\/$/, ""), rootContext);
     subRoute.parent = route;
     subRoute.root = route.parent ? route.parent.root : route;
     return routed(
       {
-        key: current || "/",
+        key: current || "?",
         route: subRoute,
         ...root + path2 === current && routeState[root + path2] || {},
         ...params(match || [], pathTokens)
@@ -920,8 +921,8 @@ function mount(dom, view, attrs = {}, context = {}) {
     dom = document.body;
   }
   view instanceof View === false && (view = s(view));
-  "location" in context || (context.location = window_default.location);
-  "error" in context || (context.error = s.error);
+  hasOwn.call(context, "location") || (context.location = window_default.location);
+  hasOwn.call(context, "error") || (context.error = s.error);
   if (isServer)
     return { view, attrs, context };
   context.title = s.live(document.title, (x2) => document.title = x2);
@@ -955,7 +956,7 @@ function draw({ view, attrs, context }, dom) {
   afterUpdate = [];
 }
 function updates(parent, next, context, before, last2 = parent.lastChild) {
-  const keys = next[0] && next[0].key !== void 0 && new Array(next.length), ref = getNext(before, parent), tracked = ref && ref.hasOwnProperty(keysSymbol), after = last2 ? last2.nextSibling : null;
+  const keys = next[0] && next[0].key !== void 0 && new Array(next.length), ref = getNext(before, parent), tracked = ref && hasOwn.call(ref, keysSymbol), after = last2 ? last2.nextSibling : null;
   keys && (keys.rev = {}) && tracked ? keyed(parent, context, ref[keysSymbol], next, keys, after) : nonKeyed(parent, context, next, keys, ref, after);
   const first = getNext(before, parent);
   keys && (first[keysSymbol] = keys);
@@ -1008,7 +1009,7 @@ function keyed(parent, context, as, bs, keys, after) {
         a = as[--ai];
         b = bs[--bi];
       }
-      if (b.key in map) {
+      if (hasOwn.call(map, b.key)) {
         temp2 = map[b.key];
         if (temp2 > bi) {
           temp2 = updateView(as[temp2].dom, b, context, parent);
@@ -1055,7 +1056,7 @@ function updateView(dom, view, context, parent, stack, create) {
   return view.component ? updateComponent(dom, view, context, parent, stack, create) : updateElement(dom, view, context, parent, create);
 }
 function updateLive(dom, view, context, parent) {
-  if (dom && dom.hasOwnProperty(liveSymbol) && dom[liveSymbol] === view)
+  if (dom && hasOwn.call(dom, liveSymbol) && dom[liveSymbol] === view)
     return dom[liveSymbol];
   let result;
   run(view.value);
@@ -1083,7 +1084,7 @@ function fromComment(dom) {
   return last2;
 }
 function getArray(dom) {
-  return dom && dom.hasOwnProperty(arraySymbol) ? dom[arraySymbol] : fromComment(dom);
+  return dom && hasOwn.call(dom, arraySymbol) ? dom[arraySymbol] : fromComment(dom);
 }
 function updateArray(dom, view, context, parent, create) {
   create && dom && parent && (dom = updateArray(dom, [], context, parent).first);
@@ -1126,7 +1127,7 @@ function updateElement(dom, view, context, parent, create = dom === null || tagC
   size ? updates(dom, view.children, context) : dom[sizeSymbol] && removeChildren(dom.firstChild, dom);
   dom[sizeSymbol] = size;
   context.NS = previousNS;
-  "key" in view && (dom[keySymbol] = view.key);
+  hasOwn.call(view, "key") && (dom[keySymbol] = view.key);
   return Ret(dom);
 }
 function removeChildren(dom, parent) {
@@ -1238,7 +1239,7 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
     instance.hydrating && (instance.hydrating = false);
     instance.recreate && (instance.recreate = false);
   }
-  create && instance.promise && instance.promise.then((view) => instance.view = view && "default" in view ? view.default : view).catch((error) => {
+  create && instance.promise && instance.promise.then((view) => instance.view = view && hasOwn.call(view, "default") ? view.default : view).catch((error) => {
     instance.caught = error;
     instance.view = instance.error.bind(instance.error, error);
   }).then(() => instance.next.first[componentSymbol] && (hydratingAsync && dehydrate(instance.next, stack), instance.recreate = true, instance.promise = false, redraw()));
@@ -1281,7 +1282,7 @@ function mergeTag(a, b) {
 function attributes(dom, view, context) {
   let tag = view.tag;
   const prev = dom[attrSymbol], create = !prev;
-  "id" in view.attrs === false && view.tag.id && (view.attrs.id = view.tag.id);
+  hasOwn.call(view.attrs, "id") === false && view.tag.id && (view.attrs.id = view.tag.id);
   if (create && view.tag.classes || view.attrs.class !== (prev && prev.class) || view.attrs.className !== (prev && prev.className) || dom.className !== view.tag.classes)
     setClass(dom, view, context);
   create && observe(dom, view.attrs.class, () => setClass(dom, view, context));
@@ -1298,7 +1299,7 @@ function attributes(dom, view, context) {
   }
   if (prev) {
     for (const attr in prev) {
-      if (attr in view.attrs === false) {
+      if (hasOwn.call(view.attrs, attr) === false) {
         isEvent(attr) ? removeEvent(dom, attr) : ignoredAttr(attr) ? attr === "deferrable" && (dom[deferrableSymbol] = false) : dom.removeAttribute(attr);
       }
     }
@@ -1341,7 +1342,7 @@ function updateStyle(dom, style2, old) {
 function observe(dom, x2, fn2) {
   if (!isObservable(x2))
     return;
-  const has = dom.hasOwnProperty(observableSymbol);
+  const has = hasOwn.call(dom, observableSymbol);
   const xs = has ? dom[observableSymbol] : /* @__PURE__ */ new Set();
   has || (dom[observableSymbol] = xs);
   xs.add(x2.observe(fn2));
@@ -1392,7 +1393,7 @@ function updateAttribute(dom, context, attrs, attr, old, value2) {
 function setAttribute(dom, attr, value2, context) {
   if (isFunction(value2))
     return setAttribute(dom, attr, value2(), context);
-  !context.NS && attr in dom ? dom[attr] = value2 : notValue(value2) ? dom.removeAttribute(attr) : dom.setAttribute(attr, value2 === true ? "" : value2);
+  !context.NS && hasOwn.call(dom, attr) ? dom[attr] = value2 : notValue(value2) ? dom.removeAttribute(attr) : dom.setAttribute(attr, value2 === true ? "" : value2);
 }
 function removeEvent(dom, name2) {
   dom.removeEventListener(name2.slice(2), dom[eventSymbol]);
@@ -1438,7 +1439,7 @@ function removeArray(dom, parent, root, promises, deferrable) {
   return after;
 }
 function removeChild(parent, dom) {
-  dom.hasOwnProperty(observableSymbol) && dom[observableSymbol].forEach((x2) => x2());
+  hasOwn.call(dom, observableSymbol) && dom[observableSymbol].forEach((x2) => x2());
   parent.removeChild(dom);
 }
 function remove(dom, parent, root = true, promises = [], deferrable = false) {
@@ -1461,7 +1462,7 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
     root && removeChild(parent, dom);
     return after;
   }
-  if (dom.hasOwnProperty(lifeSymbol)) {
+  if (hasOwn.call(dom, lifeSymbol)) {
     for (const life of dom[lifeSymbol]) {
       try {
         const promise = life(deferrable || root);

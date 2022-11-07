@@ -681,7 +681,7 @@ function tokenizePath(x2) {
 }
 function getScore(match, path2) {
   return match.reduce(
-    (acc, x2, i) => acc + (x2 === "404" ? 1 : x2 === path2[i] ? 6 : x2 && path2[i] && x2.toLowerCase() === path2[i].toLowerCase() ? 5 : x2[1] === ":" && path2[i] && path2[i].length > 1 ? 4 : x2 === "/" && !path2[i] ? 3 : x2 === "*" || x2 === "/*" ? 2 : -Infinity),
+    (acc, x2, i) => acc + (x2 === "/?" ? 1 : x2 === path2[i] ? 6 : x2 && path2[i] && x2.toLowerCase() === path2[i].toLowerCase() ? 5 : x2[1] === ":" && path2[i] && path2[i].length > 1 ? 4 : x2 === "/" && !path2[i] ? 3 : x2 === "*" || x2 === "/*" ? 2 : -Infinity),
     0
   );
 }
@@ -695,26 +695,26 @@ function resolve(view, attrs, context) {
   return isFunction(view) ? view(attrs, [], context) : view;
 }
 function router(s2, root, rootContext) {
-  const location2 = rootContext.location;
+  const location = rootContext.location;
   const routed = s2(({ route: route2, ...attrs }, [view], context) => {
     context.route = route2;
     return () => typeof view === "string" ? import((view[0] === "/" ? "" : route2) + view).then((x2) => resolve(x2.default, attrs, context)) : resolve(view, attrs, context);
   });
   route.query = Query(s2, rootContext.location);
   route.toString = route;
-  route.has = (x2) => x2 === "/" ? getPath2(location2) === root || getPath2(location2) === "/" && root === "" : getPath2(location2).indexOf(cleanSlash(root + "/" + x2)) === 0;
+  route.has = (x2) => x2 === "/" ? getPath2(location) === root || getPath2(location) === "/" && root === "" : getPath2(location).indexOf(cleanSlash(root + "/" + x2)) === 0;
   Object.defineProperty(route, "path", {
     get() {
-      const path2 = getPath2(location2), idx = path2.indexOf("/", root.length + 1);
+      const path2 = getPath2(location), idx = path2.indexOf("/", root.length + 1);
       return idx === -1 ? path2 : path2.slice(0, idx);
     }
   });
   return route;
-  function getPath2(location3, x2 = 0) {
-    return (s2.pathmode[0] === "#" ? location3.hash.slice(s2.pathmode.length + x2) : s2.pathmode[0] === "?" ? location3.search.slice(s2.pathmode.length + x2) : location3.pathname.slice(s2.pathmode + x2)).replace(/(.)\/$/, "$1");
+  function getPath2(location2, x2 = 0) {
+    return (s2.pathmode[0] === "#" ? location2.hash.slice(s2.pathmode.length + x2) : s2.pathmode[0] === "?" ? location2.search.slice(s2.pathmode.length + x2) : location2.pathname.slice(s2.pathmode + x2)).replace(/(.)\/$/, "$1");
   }
   function reroute(path2, { state, replace: replace2 = false, scroll = rootChange(path2) } = {}) {
-    if (path2 === getPath2(location2))
+    if (path2 === getPath2(location))
       return;
     s2.pathmode[0] === "#" ? window_default.location.hash = s2.pathmode + path2 : s2.pathmode[0] === "?" ? window_default.location.search = s2.pathmode + path2 : window_default.history[replace2 ? "replaceState" : "pushState"](state, null, s2.pathmode + path2);
     routeState[path2] = state;
@@ -733,15 +733,16 @@ function router(s2, root, rootContext) {
       routing = true;
       s2.pathmode[0] === "#" ? window_default.addEventListener("hashchange", s2.redraw, { passive: true }) : isFunction(window_default.history.pushState) && window_default.addEventListener("popstate", s2.redraw, { passive: true });
     }
-    const path2 = getPath2(location2, root.length);
+    const path2 = getPath2(location, root.length);
     const pathTokens = tokenizePath(path2);
     const [, match, view] = Object.entries(routes).reduce((acc, [match2, view2]) => {
+      match2.charCodeAt(0) === 47 || (match2 = "/" + match2);
       match2 = tokenizePath(cleanSlash(match2));
       const score = getScore(match2, pathTokens);
       return score > acc[0] ? [score, match2, view2] : acc;
     }, [0]);
-    const current = root + (match && match[0] !== "*" ? match.map((x2, i) => pathTokens[i]).join("") : "");
-    if (view === void 0 || match === "404")
+    const current = root + (match && match[0] !== "*" ? match.map((x2, i) => pathTokens[i]).join("") : path2);
+    if (view === void 0 || match === "/?")
       rootContext.status(404);
     const subRoute = router(s2, current.replace(/\/$/, ""), rootContext);
     subRoute.parent = route;
@@ -845,12 +846,17 @@ s.error = s((error) => {
   ));
 });
 function parseStackTrace(x2) {
-  return x2.split("\n").reduce((acc, x3) => (x3 = x3.match(/( +at )?(.*)[@\(](.+):([0-9]+):([0-9]+)/), x3 && acc.push({
-    name: x3[2].trim(),
-    file: x3[3].replace(location.origin, ""),
-    line: parseInt(x3[4]),
-    col: parseInt(x3[5])
-  }), acc), []);
+  try {
+    return x2.split("\n").reduce((acc, x3) => (x3 = x3.match(/( +at )?(.*)[@\(](.+):([0-9]+):([0-9]+)/), x3 && acc.push({
+      name: x3[2].trim(),
+      file: x3[3].replace(window_default.location.origin, ""),
+      line: parseInt(x3[4]),
+      col: parseInt(x3[5])
+    }), acc), []);
+  } catch (e) {
+    console.error("Could not parse stack trace", e);
+    return [];
+  }
 }
 function trust(strings, ...values) {
   return s(() => {

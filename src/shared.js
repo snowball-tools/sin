@@ -1,5 +1,7 @@
 export const isServer = typeof window === 'undefined' || typeof window.document === 'undefined'
 
+export const hasOwn = {}.hasOwnProperty
+
 export function notValue(x) {
   return !x && x !== 0 && x !== ''
 }

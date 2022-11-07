@@ -15,6 +15,7 @@ import {
   isServer,
   isEvent,
   asArray,
+  hasOwn,
   noop
 } from './shared.js'
 
@@ -264,7 +265,7 @@ function draw({ view, attrs, context }, dom) {
 function updates(parent, next, context, before, last = parent.lastChild) {
   const keys = next[0] && next[0].key !== undefined && new Array(next.length)
       , ref = getNext(before, parent)
-      , tracked = ref && ref.hasOwnProperty(keysSymbol)
+      , tracked = ref && hasOwn.call(ref, keysSymbol)
       , after = last ? last.nextSibling : null
 
   keys && (keys.rev = {}) && tracked
@@ -411,7 +412,7 @@ function updateView(dom, view, context, parent, stack, create) {
 }
 
 function updateLive(dom, view, context, parent) {
-  if (dom && dom.hasOwnProperty(liveSymbol) && dom[liveSymbol] === view)
+  if (dom && hasOwn.call(dom, liveSymbol) && dom[liveSymbol] === view)
     return dom[liveSymbol]
 
   let result
@@ -448,7 +449,7 @@ function fromComment(dom) {
 }
 
 function getArray(dom) {
-  return dom && dom.hasOwnProperty(arraySymbol) ? dom[arraySymbol] : fromComment(dom)
+  return dom && hasOwn.call(dom, arraySymbol) ? dom[arraySymbol] : fromComment(dom)
 }
 
 function updateArray(dom, view, context, parent, create) {
@@ -821,7 +822,7 @@ function observe(dom, x, fn) {
   if (!(isObservable(x)))
     return
 
-  const has = dom.hasOwnProperty(observableSymbol)
+  const has = hasOwn.call(dom, observableSymbol)
   const xs = has
     ? dom[observableSymbol]
     : new Set()
@@ -962,7 +963,7 @@ function removeArray(dom, parent, root, promises, deferrable) {
 }
 
 function removeChild(parent, dom) {
-  dom.hasOwnProperty(observableSymbol) && dom[observableSymbol].forEach(x => x())
+  hasOwn.call(dom, observableSymbol) && dom[observableSymbol].forEach(x => x())
   parent.removeChild(dom)
 }
 
@@ -989,7 +990,7 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
     return after
   }
 
-  if (dom.hasOwnProperty(lifeSymbol)) {
+  if (hasOwn.call(dom, lifeSymbol)) {
     for (const life of dom[lifeSymbol]) {
       try {
         const promise = life(deferrable || root)

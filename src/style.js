@@ -1,5 +1,5 @@
 import window from './window.js'
-import { isFunction, snake, asCssVar, isServer } from './shared.js'
+import { isFunction, snake, asCssVar, isServer, hasOwn } from './shared.js'
 import { popular, initials } from './shorthands.js'
 
 const doc = window.document
@@ -28,7 +28,7 @@ const pxCache = {
 }
 
 const properties = Array.from(
-  Object.keys(div.style.hasOwnProperty('width') ? div.style : Object.getPrototypeOf(div.style))
+  Object.keys(hasOwn.call(div.style, 'width') ? div.style : Object.getPrototypeOf(div.style))
   .reduce((acc, x) => (acc.add(x.match(vendorRegex) ? '-' + snake(x) : snake(x)), acc), new Set(['float']))
 )
 

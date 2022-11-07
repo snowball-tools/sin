@@ -220,8 +220,8 @@ function mount(dom, view, attrs = {}, context = {}) {
 
   view instanceof View === false && (view = s(view))
 
-  'location' in context || (context.location = window.location)
-  'error' in context || (context.error = s.error)
+  hasOwn.call(context, 'location') || (context.location = window.location)
+  hasOwn.call(context, 'error') || (context.error = s.error)
 
   if (isServer)
     return { view, attrs, context }
@@ -344,7 +344,7 @@ function keyed(parent, context, as, bs, keys, after) {
       b = bs[--bi]
     }
 
-    if (b.key in map) {
+    if (hasOwn.call(map, b.key)) {
       temp = map[b.key]
       if (temp > bi) {
         temp = updateView(as[temp].dom, b, context, parent)
@@ -521,7 +521,7 @@ function updateElement(
   dom[sizeSymbol] = size
 
   context.NS = previousNS
-  'key' in view && (dom[keySymbol] = view.key)
+  hasOwn.call(view, 'key') && (dom[keySymbol] = view.key)
 
   return Ret(dom)
 }
@@ -667,7 +667,7 @@ function updateComponent(
   }
 
   create && instance.promise && instance.promise
-    .then(view => instance.view = view && 'default' in view ? view.default : view)
+    .then(view => instance.view = view && hasOwn.call(view, 'default') ? view.default : view)
     .catch(error => {
       instance.caught = error
       instance.view = instance.error.bind(instance.error, error)
@@ -734,7 +734,7 @@ function attributes(dom, view, context) {
   const prev = dom[attrSymbol]
       , create = !prev
 
-  'id' in view.attrs === false
+  hasOwn.call(view.attrs, 'id') === false
     && view.tag.id
     && (view.attrs.id = view.tag.id)
 
@@ -762,7 +762,7 @@ function attributes(dom, view, context) {
 
   if (prev) {
     for (const attr in prev) {
-      if (attr in view.attrs === false) {
+      if (hasOwn.call(view.attrs, attr) === false) {
         isEvent(attr)
           ? removeEvent(dom, attr)
           : ignoredAttr(attr)
@@ -897,7 +897,7 @@ function setAttribute(dom, attr, value, context) {
   if (isFunction(value))
     return setAttribute(dom, attr, value(), context)
 
-  !context.NS && attr in dom
+  !context.NS && hasOwn.call(dom, attr)
     ? dom[attr] = value
     : notValue(value)
       ? dom.removeAttribute(attr)

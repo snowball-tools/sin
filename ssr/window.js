@@ -1,4 +1,5 @@
 import window from '../src/window.js'
+import { hasOwn } from '../src/shared.js'
 import px from './px.js'
 
 const noop = () => { /* noop */ }
@@ -195,7 +196,7 @@ function XMLHttpRequest() {
   }
 
   function emit(name, x) {
-    'on' + name in xhr && xhr['on' + name](x)
+    hasOwn.call(xhr, 'on' + name) && xhr['on' + name](x)
     events.has(name) && events.get(name).forEach(fn => fn(x))
   }
 }

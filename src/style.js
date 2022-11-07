@@ -390,7 +390,7 @@ function addUnit(i) {
 function getUnit(prop, fn = '') {
   prop = shorthand(prop)
   const id = prop + ',' + fn
-  if (id in unitCache)
+  if (hasOwn.call(unitCache, id))
     return unitCache[id]
 
   return unitCache[id] = (
@@ -443,7 +443,7 @@ function getPath(selectors) {
 
 function px(x) {
   x = shorthand(x)
-  if (asCssVar(x) || x in pxCache)
+  if (asCssVar(x) || hasOwn.call(pxCache, x))
     return pxCache[x]
 
   try {

@@ -1,4 +1,5 @@
 import { wrap, parseAcceptEncoding } from './shared.js'
+import { hasOwn } from '../src/shared.js'
 import ssr from './index.js'
 import zlib from 'zlib'
 
@@ -36,7 +37,7 @@ function compressEnd(req, res, out, next) {
 
   let encoding
   for (const x of accepted) {
-    if (x.type in encoders) {
+    if (hasOwn.call(encoders, x.type)) {
       encoding = x.type
       break
     }
@@ -47,7 +48,7 @@ function compressEnd(req, res, out, next) {
 
   res.setHeader('Content-Encoding', encoding)
 
-  if (out in cache[encoding])
+  if (hasOwn.call(cache[encoding], out))
     return res.end(cache[encoding][out])
 
   encoders[encoding](out, (error, buffer) => {

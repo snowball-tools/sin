@@ -1,6 +1,6 @@
 import window from './window.js'
 import View from '../src/view.js'
-import { className, ignoredAttr, isEvent, isFunction, asArray, notValue } from '../src/shared.js'
+import { className, ignoredAttr, isEvent, isFunction, asArray, notValue, hasOwn } from '../src/shared.js'
 import { formatValue, cssRules } from '../src/style.js'
 import { router } from '../src/router.js'
 import s from '../src/index.js'
@@ -102,7 +102,7 @@ function tagName(view) {
 async function updateElement(view, context) {
   lastWasText = false
   const tag = tagName(view)
-  'id' in view.attrs === false && view.tag.id && (view.attrs.id = view.tag.id)
+  hasOwn.call(view.attrs, 'id') === false && view.tag.id && (view.attrs.id = view.tag.id)
   return openingTag(view, tag)
     + (voidTags.has(tag)
       ? ''
@@ -191,7 +191,7 @@ async function updateComponent(view, context) {
   let x = view.component[0](view.attrs, view.children, context)
   const isAsync = x && isFunction(x.then) && ('<!--a' + context.uid++ + '-->') || ''
   isAsync && (x = await x)
-  'default' in x && (x = x.default)
+  hasOwn.call(x, 'default') && (x = x.default)
   isFunction(x) && (x = x())
   return isAsync + (await update(x, context)) + isAsync
 }

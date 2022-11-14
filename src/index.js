@@ -455,8 +455,7 @@ function getArray(dom) {
 function updateArray(dom, view, context, parent, create) {
   create && dom && parent && (dom = updateArray(dom, [], context, parent).first)
   const last = getArray(dom) || dom
-  const comment = updateValue(dom, '[' + view.length, parent, false, 8)
-
+  const comment = updateValue(dom, '[' + view.length, parent, dom === last, 8)
   if (parent) {
     const after = last ? last.nextSibling : null
     updates(parent, view, context, comment.first, last)

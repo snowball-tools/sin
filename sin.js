@@ -73,13 +73,13 @@ var window_default = isServer ? {} : window;
 );
 http.redraw = () => {
 };
-var json = "application/json";
 var TypedArray = typeof Uint8Array === "undefined" ? [] : [Object.getPrototypeOf(Uint8Array)];
 var rich = "Blob ArrayBuffer DataView FormData URLSearchParams".split(" ").map((x2) => globalThis[x2]).filter((x2) => x2).concat(TypedArray);
 function http(url, {
   method = "GET",
   redraw: redraw2 = true,
   responseType,
+  json = "application/json",
   query,
   body,
   user,
@@ -88,7 +88,7 @@ function http(url, {
   config,
   timeout = 0
 } = {}) {
-  const origin = !window_default.chrome && new Error();
+  const origin = false;
   const xhr = new window_default.XMLHttpRequest();
   let full = false;
   const promise = new Promise((resolve2, reject) => {
@@ -106,29 +106,31 @@ function http(url, {
       }
       redraw2 && http.redraw && http.redraw();
     });
-    xhr.addEventListener("error", () => reject(statusError(xhr)));
-    xhr.addEventListener("abort", () => reject(statusError(xhr)));
+    xhr.addEventListener("error", reject);
+    xhr.addEventListener("abort", () => reject(new Error("ABORTED")));
     xhr.open(method, appendQuery(url, query), true, user, pass);
     xhr.timeout = timeout;
     responseType && (xhr.responseType = responseType);
-    let accept = false, contentType = false;
+    let accept, contentType;
     Object.entries(headers).forEach(([x2, v]) => {
       xhr.setRequestHeader(x2, v);
       x2.toLowerCase() === "accept" && (accept = v);
       x2.toLowerCase() === "content-type" && (contentType = v);
     });
-    !accept && !responseType && xhr.setRequestHeader("Accept", accept = json);
-    !contentType && body !== void 0 && !rich.some((x2) => body instanceof x2) && xhr.setRequestHeader("Content-Type", contentType = json);
+    !accept && !responseType && json && xhr.setRequestHeader("Accept", accept = json);
+    !contentType && body !== void 0 && !rich.some((x2) => body instanceof x2) && json && xhr.setRequestHeader("Content-Type", contentType = json);
     config && config(xhr);
     xhr.send(contentType === json ? JSON.stringify(body) : body);
   }).catch((error) => {
     origin && !origin.message && Object.defineProperty(origin, "message", { value: error.message });
-    throw Object.defineProperties(origin || new Error(error.message), {
+    const x2 = Object.assign(origin || new Error(error.message), {
       ...error,
-      status: { value: xhr.status, enumerable: true },
-      body: { value: xhr.body || xhr.response, enumerable: true },
-      xhr: { value: xhr }
+      url,
+      status: xhr.status,
+      body: xhr.body || xhr.response
     });
+    Object.defineProperty(x2, "xhr", { value: xhr });
+    throw x2;
   });
   Object.defineProperty(promise, "xhr", {
     get() {
@@ -1089,7 +1091,7 @@ function getArray(dom) {
 function updateArray(dom, view, context, parent, create) {
   create && dom && parent && (dom = updateArray(dom, [], context, parent).first);
   const last2 = getArray(dom) || dom;
-  const comment = updateValue(dom, "[" + view.length, parent, false, 8);
+  const comment = updateValue(dom, "[" + view.length, parent, dom === last2, 8);
   if (parent) {
     const after = last2 ? last2.nextSibling : null;
     updates(parent, view, context, comment.first, last2);

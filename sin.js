@@ -74,7 +74,7 @@ var window_default = isServer ? {} : window;
 http.redraw = () => {
 };
 var TypedArray = typeof Uint8Array === "undefined" ? [] : [Object.getPrototypeOf(Uint8Array)];
-var rich = "Blob ArrayBuffer DataView FormData URLSearchParams".split(" ").map((x2) => globalThis[x2]).filter((x2) => x2).concat(TypedArray);
+var rich = "Blob ArrayBuffer DataView FormData URLSearchParams File".split(" ").map((x2) => globalThis[x2]).filter((x2) => x2).concat(TypedArray);
 function http(url, {
   method = "GET",
   redraw: redraw2 = true,

@@ -11,7 +11,7 @@ import window from './window.js'
 http.redraw = () => { /* noop */ }
 
 const TypedArray = typeof Uint8Array === 'undefined' ? [] : [Object.getPrototypeOf(Uint8Array)]
-    , rich = 'Blob ArrayBuffer DataView FormData URLSearchParams'.split(' ').map(x => globalThis[x]).filter(x => x).concat(TypedArray)
+    , rich = 'Blob ArrayBuffer DataView FormData URLSearchParams File'.split(' ').map(x => globalThis[x]).filter(x => x).concat(TypedArray)
 
 export default function http(url, {
   method = 'GET',

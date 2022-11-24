@@ -48,6 +48,7 @@ const vendorMap = properties.reduce((acc, x) => {
 }, {})
 
 const cache = new Map()
+    , hashed = new Set()
     , cssVars = isServer || (typeof window !== 'undefined' && window.CSS && CSS.supports('color', 'var(--support-test)'))
     , pxFunctions = ['perspective', 'blur', 'drop-shadow', 'inset', 'polygon']
     , isPxFunction = x => (x.indexOf('translate') === 0 || pxFunctions.indexOf(x) > -1)
@@ -128,7 +129,7 @@ function insert(rule, index) {
         index != null ? index : style.sheet.cssRules.length
       )
     } catch (e) {
-      console.error('Insert rule error:', e, rule)
+      console.error('Insert rule error:', e, rule) // eslint-disable-line
     }
   }
 }
@@ -185,7 +186,7 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
       for (let i = 0; i < nesting; i++)
         specificity += '.' + temp
 
-      Object.entries(rules).forEach(([k, v]) => {
+      hashed.has(temp) || Object.entries(rules).forEach(([k, v]) => {
         insert(
           k.replace(
             /&/g,
@@ -205,7 +206,9 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
     parent
   }
 
-  cacheable && cache.set(xs, result)
+  cacheable
+    ? cache.set(xs, result)
+    : hashed.add(temp)
 
   return result
 }
@@ -408,7 +411,7 @@ export function formatValue(v, { property, unit }) {
   if (!v && v !== 0)
     return ''
 
-  isFunction(v) && (v = v())
+  isFunction(v) && (v = isServer ? '' : v())
   if (typeof v === 'number')
     return v + unit
 

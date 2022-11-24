@@ -16,6 +16,7 @@ export const popular = [
   'font-size',
   'font-weight',
   'gap',
+  'grid-area',
   'grid-gap',
   'grid-template-area',
   'grid-template-columns',

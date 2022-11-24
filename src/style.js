@@ -80,7 +80,7 @@ let start = -1
   , temp = ''
   , specificity = ''
   , prop = ''
-  , path = '&'
+  , path = '&&'
   , selector = ''
   , animation = ''
   , keyframe = ''
@@ -146,6 +146,7 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
   const vars = {}
   name = id = classes = rule = value = prop = ''
   selectors.length = fn.length = hash = 0
+  path = '&&'
   lastSpace = valueStart = fontFaces = startChar = cssVar = -1
   rules = root ? {} : null
   hasRules = false
@@ -190,7 +191,7 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
         insert(
           k.replace(
             /&/g,
-            (noSpace(k.charCodeAt(0)) ? '.' + temp : '') + '.' + temp + specificity
+            '.' + temp + specificity
           ) + '{' + v + '}'
         )
       })
@@ -350,7 +351,7 @@ function endBlock() {
       ? rules[selectors[0]] = (rules[selectors[0]] || '') + selector + '{' + rule + '}'
       : (rule && (rules[path || '&'] = rule + selectors.map(x => x.charCodeAt(0) === 64 ? '}' : '').join('')))
     path = getPath(selectors)
-    rule = rules[path || '&'] || ''
+    rule = rules[path || '&&'] || ''
   }
   start = valueStart = -1
   prop = ''
@@ -439,9 +440,10 @@ function getPath(selectors) {
   selectors.forEach(x =>
     x.charCodeAt(0) === 64 && x !== '@font-face'
       ? (a += x + '{')
-      : (b += x)
+      : (b += x.charCodeAt(0) !== 32 ? '&' + x : x)
   )
-  return a + (b === '@font-face' || b === ':root' ? '' : '&') + b
+
+  return a + (b === '@font-face' || b === ':root' ? '' : '&') + (b || '&')
 }
 
 function px(x) {

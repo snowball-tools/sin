@@ -30,6 +30,9 @@ export default function http(url, {
   const xhr = new window.XMLHttpRequest()
   let full = false
   const promise = new Promise((resolve, reject) => {
+    let accept
+      , contentType
+
     method = method.toUpperCase()
 
     xhr.addEventListener('readystatechange', function() {
@@ -54,9 +57,6 @@ export default function http(url, {
     xhr.open(method, appendQuery(url, query), true, user, pass)
     xhr.timeout = timeout
     responseType && (xhr.responseType = responseType)
-
-    let accept
-      , contentType
 
     Object.entries(headers).forEach(([x, v]) => {
       xhr.setRequestHeader(x, v)

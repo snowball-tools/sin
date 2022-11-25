@@ -4,10 +4,11 @@ export default function Query(s, l) {
   const U = URLSearchParams
   let last = l.search
   let usp = new U(last)
+  let temp
 
   const query = { replace: x => (usp = new U(x), update()) }
   for (const key in U.prototype)
-    query[key] = (...xs) => { const x = USP()[key](...xs); update(); return x }
+    query[key] = (...xs) => (temp = USP()[key](...xs), update(), temp)
 
   return query
 

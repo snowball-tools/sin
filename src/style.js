@@ -51,6 +51,8 @@ const cache = new Map()
     , hashed = new Set()
     , cssVars = isServer || (typeof window !== 'undefined' && window.CSS && CSS.supports('color', 'var(--support-test)'))
     , pxFunctions = ['perspective', 'blur', 'drop-shadow', 'inset', 'polygon']
+    , nested = ['@media', '@supports', '@document', '@layer']
+    , isNested = x => nested.some(n => x.indexOf(n) === 0)
     , isPxFunction = x => (x.indexOf('translate') === 0 || pxFunctions.indexOf(x) > -1)
     , isDegFunction = x => x.indexOf('rotate') === 0 || x.indexOf('skew') === 0
     , isStartChar = x => x !== 32 && x !== 9 && x !== 10 && x !== 13 && x !== 59 // ws \t \n \r ;
@@ -80,7 +82,7 @@ let start = -1
   , temp = ''
   , specificity = ''
   , prop = ''
-  , path = '&&'
+  , path = '&'
   , selector = ''
   , animation = ''
   , keyframe = ''
@@ -99,6 +101,7 @@ let start = -1
   , cacheable = true
   , hasRules = false
   , hash = 0
+  , raw = false
 
 function shorthand(x) {
   return shorthands[x] || x
@@ -134,7 +137,7 @@ function insert(rule, index) {
   }
 }
 
-export function parse([xs, ...args], parent, nesting = 0, root) {
+export function parse([xs, ...args], parent, nesting = 0, root = false) {
   if (cache.has(xs)) {
     const prev = cache.get(xs)
     return {
@@ -143,12 +146,12 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
     }
   }
 
+  raw = root
   const vars = {}
   name = id = classes = rule = value = prop = ''
   selectors.length = fn.length = hash = 0
-  path = '&&'
   lastSpace = valueStart = fontFaces = startChar = cssVar = -1
-  rules = root ? {} : null
+  rules = raw ? {} : null
   hasRules = false
   styles = false
   cacheable = true
@@ -176,7 +179,7 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
   }
 
   if (hasRules) {
-    if (root) {
+    if (raw) {
       Object.entries(rules).forEach(([k, v]) => {
         insert(k.replace(/&\s+/g, '').replace(/{&$/, '') + '{' + v + '}')
       })
@@ -189,11 +192,7 @@ export function parse([xs, ...args], parent, nesting = 0, root) {
 
       hashed.has(temp) || Object.entries(rules).forEach(([k, v]) => {
         insert(
-          k.replace(
-            /&/g,
-            '.' + temp + specificity
-          ) + '{' + v + '}'
-        )
+          k.replace(/&/g, '.' + temp + specificity) + '{' + v + '}')
       })
     }
   }
@@ -308,7 +307,7 @@ function addRule(i) {
 
 function startBlock(i) {
   if (prop === 'animation') {
-    rule && (rules[path || '&'] = rule)
+    rule && (rules[path] = rule)
     animation = value + x.slice(valueStart, i).trim()
     keyframes = value = ''
     rule = ''
@@ -316,7 +315,7 @@ function startBlock(i) {
     keyframe = x.slice(start, i).trim()
     rule = ''
   } else {
-    rule && (rules[path || '&'] = rule)
+    rule && (rules[path] = rule)
     selector = (startChar === 64 // @
       ? atHelper(prop) + (value || '') + x.slice(valueStart - 1, i)
       : x.slice(start, i)
@@ -329,7 +328,7 @@ function startBlock(i) {
       + selector
     )
     path = getPath(selectors)
-    rule = rules[path || '&'] || ''
+    rule = rules[path] || ''
   }
   start = valueStart = -1
   prop = ''
@@ -340,7 +339,7 @@ function endBlock() {
     keyframes += keyframe + '{' + rule + '}'
     keyframe = rule = ''
   } else if (animation) {
-    rule = rules[path || '&'] || ''
+    rule = rules[path] || ''
     temp = prefix + Math.abs(hash).toString(31)
     insert('@keyframes ' + temp + '{' + keyframes + '}')
     rule += propValue(rule, 'animation', animation + ' ' + temp)
@@ -349,9 +348,9 @@ function endBlock() {
     selectors.pop()
     selectors.length && selectors[0].indexOf('@keyframes') === 0
       ? rules[selectors[0]] = (rules[selectors[0]] || '') + selector + '{' + rule + '}'
-      : (rule && (rules[path || '&'] = rule + selectors.map(x => x.charCodeAt(0) === 64 ? '}' : '').join('')))
+      : (rule && (rules[path] = rule.trim() + selectors.map(x => x.charCodeAt(0) === 64 ? '}' : '').join('')))
     path = getPath(selectors)
-    rule = rules[path || '&&'] || ''
+    rule = rules[path] || ''
   }
   start = valueStart = -1
   prop = ''
@@ -434,16 +433,15 @@ export function formatValue(v, { property, unit }) {
 }
 
 function getPath(selectors) {
-  let a = ''
-    , b = ''
+  if (selectors.length === 0)
+    return '&&'
 
-  selectors.forEach(x =>
-    x.charCodeAt(0) === 64 && x !== '@font-face'
-      ? (a += x + '{')
-      : (b += x.charCodeAt(0) !== 32 ? '&' + x : x)
-  )
-
-  return a + (b === '@font-face' || b === ':root' ? '' : '&') + (b || '&')
+  return selectors.reduce((acc, x, i, xs) => {
+    const char = x.charCodeAt(0)
+    return char === 64 && isNested(x)
+      ? x + '{' + (i === xs.length - 1 ? '&&' : '') + acc
+      : acc + (raw ? '' : char === 32 ? '&' : '&&') + x
+  }, '')
 }
 
 function px(x) {

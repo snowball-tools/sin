@@ -1,18 +1,52 @@
 {
   "name": "sin",
-  "version": "1.0.0-rc.21",
+  "version": "1.0.0",
   "description": "sin",
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "lint": "eslint */**/*.js",
-    "build": "pnpm run build:min && pnpm run build:bundle && pnpm run build:gzip",
+    "dev": "sin",
+    "lint": "eslint . --ignore-pattern sin.js --ignore-pattern sin.min.js --ignore-pattern play.js",
+    "build": "pnpm build:min && pnpm build:bundle && pnpm build:gzip",
     "build:min": "esbuild src/index.js --minify --format=esm --bundle --outfile=sin.min.js",
     "build:bundle": "esbuild src/index.js --format=esm --bundle --outfile=sin.js",
     "build:gzip": "gzip -c sin.min.js > sin.min.js.gz && ls -l sin.min.js.gz && rm sin.min.js.gz"
   },
-  "author": "Rasmus Porsager <rasmus@porsager.com>",
-  "devDependencies": {
-    "esbuild": "0.14.51"
+  "bin": {
+    "sin": "./bin/sin.sh"
+  },
+  "files": [
+    "/src",
+    "/ssr",
+    "/bin",
+    "/sin.js",
+    "/sin.min.js",
+    "/sin.svg"
+  ],
+  "author": "Rasmus Porsager <rasmus@porsager.com> (https://www.porsager.com)",
+  "funding": {
+    "type": "individual",
+    "url": "https://github.com/sponsors/porsager"
+  },
+  "repository": "porsager/sin",
+  "homepage": "https://github.com/porsager/sin",
+  "bugs": "https://github.com/porsager/sin/issues",
+  "keywords": [
+    "view",
+    "framework",
+    "sin.js",
+    "sin",
+    "simple",
+    "css",
+    "html",
+    "javascript"
+  ],
+  "dependencies": {
+    "chokidar": "3.5.3",
+    "esbuild": "0.15.16",
+    "eslint": "8.28.0",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.15.0",
+    "ustatic": "0.0.10",
+    "ws": "8.11.0"
   }
 }

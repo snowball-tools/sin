@@ -7,24 +7,24 @@ export function parseAcceptEncoding(x, preferred = []) {
       : b.q - a.q)
 }
 
-export function wrap({ html, css, title, head }, body = '') {
+export function wrap({
+  html = '',
+  css = '',
+  title = '',
+  head = '',
+  lang = ''
+}, {
+  body = '',
+  head: serverHead = ''
+} = {}) {
   return html.slice(0, 15).toLowerCase() === '<!doctype html>'
       ? html.replace('</head>', head + css + '</head>').replace('</body>', body + '</body>')
-      : `<!doctype html>
-<html><head>
-<meta charset="utf8">
-<title>${ title }</title>
-<link rel="icon" href="data:;base64,iVBORw0KGgo=">
-<meta name="viewport" content="width=device-width, initial-scale=1">${
-  head
-}${
-  css
-}</head>
-<body>${
-  html
-}
-${
-  body
-}</body>
-</html>`
+      :
+`<!doctype html><html${ lang ? ' lang="' + lang + '"' : '' }><head><meta charset="utf8"><title>${
+  title
+}</title><meta name="viewport" content="width=device-width, initial-scale=1">${
+  serverHead + head + css
+}</head><body>${
+  html + body
+}</body></html>`
 }

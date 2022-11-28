@@ -1,16 +1,18 @@
 import View from './view.js'
 import http from './http.js'
-import live from './live.js'
+import live, { signal } from './live.js'
 import window from './window.js'
+import router from './router.js'
 import { parse, medias, formatValue } from './style.js'
-import { router, cleanSlash } from './router.js'
 import {
-  className,
-  ignoredAttr,
   isObservable,
+  ignoredAttr,
+  stackTrace,
+  cleanSlash,
   isFunction,
-  isTagged,
+  className,
   styleProp,
+  isTagged,
   notValue,
   isServer,
   isEvent,
@@ -24,6 +26,25 @@ const document = window.document
       svg: 'http://www.w3.org/2000/svg',
       math: 'http://www.w3.org/1998/Math/MathML'
     }
+
+const removing = new WeakSet()
+    , mounts = new Map()
+    , deferrableSymbol = Symbol('deferrable')
+    , observableSymbol = Symbol('observable')
+    , componentSymbol = Symbol('component')
+    , eventSymbol = Symbol('event')
+    , arraySymbol = Symbol('array')
+    , liveSymbol = Symbol('live')
+    , sizeSymbol = Symbol('size')
+    , lifeSymbol = Symbol('life')
+    , attrSymbol = Symbol('attr')
+    , keysSymbol = Symbol('keys')
+    , keySymbol = Symbol('key')
+    , sSymbol = Symbol('s')
+
+let idle = true
+  , afterUpdate = []
+  , redrawing = false
 
 export default function s(...x) {
   const type = typeof x[0]
@@ -59,25 +80,6 @@ function bind(x, that) {
   return fn
 }
 
-const removing = new WeakSet()
-    , mounts = new Map()
-    , deferrableSymbol = Symbol('deferrable')
-    , observableSymbol = Symbol('observable')
-    , componentSymbol = Symbol('component')
-    , eventSymbol = Symbol('event')
-    , arraySymbol = Symbol('array')
-    , liveSymbol = Symbol('live')
-    , sizeSymbol = Symbol('size')
-    , lifeSymbol = Symbol('life')
-    , attrSymbol = Symbol('attr')
-    , keysSymbol = Symbol('keys')
-    , keySymbol = Symbol('key')
-    , sSymbol = Symbol('s')
-
-let idle = true
-  , afterUpdate = []
-  , redrawing = false
-
 s.sleep = (x, ...xs) => new Promise(r => setTimeout(r, x, ...xs))
 s.with = (x, fn) => fn(x)
 s.isServer = isServer
@@ -90,51 +92,17 @@ s.http = http
 s.http.redraw = !s.isServer && redraw
 s.medias = medias
 s.live = live
+s.signal = signal
 s.on = on
 s.trust = trust
 s.route = router(s, '', { location: window.location })
 s.window = window
 s.error = s((error) => {
-  isServer
-    ? console.error(error) // eslint-disable-line
-    : Promise.resolve().then(() => { throw error })
-
-  const stack = parseStackTrace(error.stack)
-  return () => s`pre;all initial;d block;ws pre-wrap;m 0;c white;bc #ff0033;p 8 12;br 6;overflow auto`(s`code`(
-    '' + error,
-    stack.map(({ name, file, line, col }) =>
-      s` o 0.75`(
-        '    at ',
-        name && (name + ' '),
-        s`a c white`({
-          href: file,
-          target: '_BLANK'
-        },
-          file + ':' + line + ':' + col
-        )
-      )
-    ),
-    typeof error === 'object' && JSON.stringify(error, null, 2).replace(/"([a-z]\w+)":/ig, '$1:')
+  console.error(error) // eslint-disable-line
+  return () => s`pre;all initial;d block;c white;bc #ff0033;p 8 12;br 6;overflow auto;fs 12`(s`code`(
+    'Unexpected Error: ' + (error.message || error)
   ))
 })
-
-function parseStackTrace(x) {
-  try {
-    return x.split('\n').reduce((acc, x) => (
-      x = x.match(/( +at )?(.*)[@\(](.+):([0-9]+):([0-9]+)/), // check if really unnecessary escape char
-      x && acc.push({
-        name: x[2].trim(),
-        file: x[3].replace(window.location.origin, ''),
-        line: parseInt(x[4]),
-        col: parseInt(x[5])
-      }),
-      acc
-    ), [])
-  } catch (e) {
-    console.error('Could not parse stack trace', e)
-    return []
-  }
-}
 
 function trust(strings, ...values) {
   return s(() => {
@@ -226,13 +194,30 @@ function mount(dom, view, attrs = {}, context = {}) {
   if (isServer)
     return { view, attrs, context }
 
-  context.title = s.live(document.title, x => document.title = x)
-  context.status = context.head = context.headers = noop
   context.hydrating = shouldHydrate(dom.firstChild)
+  const doc = {
+    head: context.hydrating ? noop : head,
+    lang: s.live(document.documentElement.lang, x => document.documentElement.lang = x),
+    title: s.live(document.title, x => document.title = x),
+    status: noop,
+    headers: noop
+  }
 
+  context.doc = doc
+  Object.assign(context, doc)
   context.route = router(s, '', context)
   mounts.set(dom, { view, attrs, context })
   draw({ view, attrs, context }, dom)
+}
+
+function head(x) {
+  if (Array.isArray(x))
+    return x.forEach(head)
+  const dom = document.createElement(x.tag.name)
+  for (const attr in x.attrs)
+    dom.setAttribute(attr, x.attrs[attr])
+  x.children.length && (dom.innerHTML = dom.children[0])
+  document.head.appendChild(dom)
 }
 
 function shouldHydrate(dom) {
@@ -240,7 +225,7 @@ function shouldHydrate(dom) {
 }
 
 function redraw() {
-  idle && (requestAnimationFrame(globalRedraw), idle = false)
+  idle && (Promise.resolve().then(globalRedraw), idle = false)
 }
 
 function globalRedraw() {
@@ -255,7 +240,7 @@ function draw({ view, attrs, context }, dom) {
     updates(dom, asArray(x), context)
   } catch (error) {
     attrs.error = error
-    updates(dom, asArray(context.error(attrs, [], context)), context)
+    updates(dom, asArray(context.error(error, attrs, [], context)), context)
   }
   redrawing = false
   afterUpdate.forEach(fn => fn())
@@ -333,7 +318,7 @@ function keyed(parent, context, as, bs, keys, after) {
       delete map[b.key]
 
       if (bi === 0)
-        break outer
+        break outer // eslint-disable-line
 
       if (ai === 0) {
         b = bs[--bi]
@@ -547,15 +532,15 @@ function createElement(view, context) {
 }
 
 class Instance {
-  constructor(init, id, view, error, loading, hydrating) {
+  constructor(init, view, error, loading, hydrating) {
     this.init = init
-    this.id = id
     this.key = undefined
     this.view = view
     this.error = error
     this.caught = undefined
     this.loading = loading
     this.hydrating = hydrating
+    this.onremoves = undefined
   }
 }
 
@@ -572,33 +557,52 @@ class Stack {
       return true
 
     const instance = this.xs[this.i]
-    return instance.key !== view.key || (instance.init && instance.init !== view.component[0])
+    const x = instance.key !== view.key || (instance.init && instance.init !== view.component[0])
+    return x
   }
-  add(view, context, parent) {
+  add(view, context, optimistic) {
     const [init, options] = view.component
     const instance = new Instance(
       view.inline ? false : init,
-      window.count = (window.count || 0) + 1,
       init,
       options && options.error || context.error,
       options && options.loading || context.loading,
       context.hydrating
     )
+
+    const redraw =  e => {
+      e instanceof Event && (e.redraw = false)
+      updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, false)
+    }
+    const reload = e => {
+      instance.onremoves && (instance.onremoves.forEach(x => x()), instance.onremoves = undefined)
+      e instanceof Event && (e.redraw = false)
+      updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, true)
+    }
+    const refresh = e => {
+      instance.onremoves && (instance.onremoves.forEach(x => x()), instance.onremoves = undefined)
+      e instanceof Event && (e.redraw = false)
+      updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, true, true)
+    }
     instance.context = Object.create(context, {
-      onremove: { value: fn => this.life.push(() => fn) },
-      redraw: { value: () => { updateComponent(this.dom.first, view, context, parent, this, false, true) } },
-      reload: { value: () => { updateComponent(this.dom.first, view, context, parent, this, true) } },
-      ignore: { value: x => instance.ignore = x }
+      onremove: { value: fn => { onremoves(this, instance, fn) } },
+      ignore: { value: x => { instance.ignore = x } },
+      refresh: { value: refresh },
+      redraw: { value: redraw },
+      reload: { value: reload }
     })
 
-    const next = catchInstance(true, instance, view, instance.context, this)
+    const next = catchInstance(true, instance, view)
+
+    isObservable(view.attrs.reload) && onremoves(this, instance, view.attrs.reload.observe(reload))
+    isObservable(view.attrs.redraw) && onremoves(this, instance, view.attrs.redraw.observe(redraw))
+    isObservable(view.attrs.refresh) && onremoves(this, instance, view.attrs.refresh.observe(refresh))
 
     instance.promise = next && isFunction(next.then) && next
     instance.stateful = instance.promise || (isFunction(next) && !next[sSymbol])
-    instance.view = instance.promise ? instance.loading : next
-    this.xs.length = this.i
-    this.xs[this.i] = instance
-    return this.xs[this.top = this.i++]
+    instance.view = optimistic ? this.xs[this.i].view : instance.promise ? instance.loading : next
+    this.xs.length = this.top = this.i
+    return this.xs[this.i++] = instance
   }
   next() {
     return this.i < this.xs.length && this.xs[this.top = this.i++]
@@ -606,9 +610,13 @@ class Stack {
   pop() {
     return --this.i === 0 && !(this.xs.length = this.top + 1, this.top = 0)
   }
-  cut() {
-    return this.xs.length = this.top = this.i
-  }
+}
+
+function onremoves(stack, instance, x) {
+  instance.onremoves
+    ? stack.life.push(() => () => instance.onremoves.forEach(x => x()))
+    : instance.onremoves = new Set()
+  instance.onremoves.add(x)
 }
 
 function hydrate(dom) {
@@ -631,13 +639,13 @@ function updateComponent(
   parent,
   stack = dom && dom[componentSymbol] || new Stack(),
   create = stack.changed(component),
-  force = false
+  optimistic = false
 ) {
   const instance = create
-    ? stack.add(component, context, parent)
+    ? stack.add(component, context, optimistic)
     : stack.next()
 
-  if (!create && !force && instance.ignore) {
+  if (!create && instance.ignore) {
     stack.pop()
     return stack.dom
   }
@@ -649,8 +657,8 @@ function updateComponent(
   if (hydratingAsync) {
     instance.next = hydrate(dom)
   } else {
-    let view = catchInstance(create, instance, component, instance.context, stack)
-    view && view[sSymbol] && (view = view())
+    let view = catchInstance(create, instance, component)
+    view && hasOwn.call(view, sSymbol) && (view = view())
     instance.next = update(
       dom,
       !instance.caught && !instance.promise && view instanceof View
@@ -661,7 +669,7 @@ function updateComponent(
       stack,
       (create || instance.recreate) && !instance.hydrating ? true : undefined
     )
-    instance.hydrating && (instance.hydrating = false)
+    instance.hydrating && (instance.hydrating = context.hydrating = false)
     instance.recreate && (instance.recreate = false)
   }
 
@@ -669,9 +677,9 @@ function updateComponent(
     .then(view => instance.view = view && hasOwn.call(view, 'default') ? view.default : view)
     .catch(error => {
       instance.caught = error
-      instance.view = instance.error.bind(instance.error, error)
+      instance.view = resolveError(instance, component, error)
     })
-    .then(() => instance.next.first[componentSymbol] && (
+    .then(() => hasOwn.call(instance.next.first, componentSymbol) && (
       hydratingAsync && dehydrate(instance.next, stack),
       instance.recreate = true,
       instance.promise = false,
@@ -689,23 +697,22 @@ function updateComponent(
   return instance.next
 }
 
-function catchInstance(create, instance, view, context, stack) {
+function catchInstance(create, instance, view) {
   try {
-    return resolveInstance(create, instance, view, context)
+    return instance.stateful || create
+      ? isFunction(instance.view) && !instance.view[sSymbol]
+        ? instance.view(view.attrs, view.children, instance.context)
+        : instance.view
+      : view.component[0](view.attrs, view.children, instance.context)
   } catch (error) {
-    instance.caught = error
-    instance.view = instance.error.bind(instance.error, error)
-    stack.cut()
-    return resolveInstance(create, instance, view, context)
+    return resolveError(instance, view, error)
   }
 }
 
-function resolveInstance(create, instance, view, context) {
-  return instance.stateful || create
-    ? isFunction(instance.view) && !instance.view[sSymbol]
-      ? instance.view(view.attrs, view.children, context)
-      : instance.view
-    : view.component[0](view.attrs, view.children, context)
+function resolveError(instance, view, error) {
+  return hasOwn.call(instance.error, sSymbol)
+    ? instance.error().component[0](error, view.attrs, view.children, instance.context)
+    : instance.error(error, view.attrs, view.children, instance.context)
 }
 
 function mergeTag(a, b) {
@@ -729,6 +736,7 @@ function mergeTag(a, b) {
 
 function attributes(dom, view, context) {
   let tag = view.tag
+    , value
 
   const prev = dom[attrSymbol]
       , create = !prev
@@ -753,9 +761,17 @@ function attributes(dom, view, context) {
     if (ignoredAttr(attr)) {
       attr === 'deferrable' && (dom[deferrableSymbol] = view.attrs[attr])
     } else if (!prev || prev[attr] !== view.attrs[attr]) {
-      const value = view.attrs[attr]
-      create && observe(dom, value, x => setAttribute(dom, attr, x, context))
-      updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value)
+      value = view.attrs[attr]
+      updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value, create)
+    }
+  }
+
+  if (hasOwn.call(view.attrs, 'href')) {
+    value = view.attrs.href
+    updateAttribute(dom, context, view.attrs, 'href', prev && prev.href, value, create)
+    if (value && !String(value).match(/^[a-z]+:|\/\//)) {
+      view.attrs.href = s.pathmode + cleanSlash(value)
+      link(dom, context.route)
     }
   }
 
@@ -780,6 +796,7 @@ function attributes(dom, view, context) {
   }
 
   create && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom)
+  create && view.stack && (dom[stackTrace] = view.stack)
 
   dom[attrSymbol] = view.attrs
 }
@@ -864,22 +881,20 @@ function setVar(dom, id, value, cssVar, init, reapply, after) {
 
 function giveLife(dom, attrs, children, context, life) {
   afterUpdate.push(() => {
-    life = [].concat(life)
-      .map(x => isFunction(x) && x(dom, attrs, children, context))
-      .filter(x => isFunction(x))
-
-    life.length && (dom[lifeSymbol] = (dom[lifeSymbol] || []).concat(life))
+    asArray(life).forEach(async l => {
+      let x = isFunction(l) && l(dom, attrs, children, context)
+      x && isFunction(x.then) && (x = await x, redraw())
+      isFunction(x) && (hasOwn.call(dom, lifeSymbol)
+        ? dom[lifeSymbol].push(x)
+        : dom[lifeSymbol] = [x]
+      )
+    }, [])
   })
 }
 
-function updateAttribute(dom, context, attrs, attr, old, value) { // eslint-disable-line
+function updateAttribute(dom, context, attrs, attr, old, value, create) { // eslint-disable-line
   if (old === value)
     return
-
-  if (attr === 'href' && value && !String(value).match(/^([a-z]+:|\/\/)/)) {
-    value = s.pathmode + cleanSlash(value)
-    link(dom, context.route)
-  }
 
   const on = isEvent(attr)
   if (on && typeof old === typeof value)
@@ -889,14 +904,17 @@ function updateAttribute(dom, context, attrs, attr, old, value) { // eslint-disa
     ? value
       ? addEvent(dom, attrs, attr)
       : removeEvent(dom, attr)
-    : setAttribute(dom, attr, value, context)
+    : (
+      setAttribute(dom, attr, value, context),
+      create && observe(dom, value, x => setAttribute(dom, attr, x, context))
+    )
 }
 
 function setAttribute(dom, attr, value, context) {
   if (isFunction(value))
     return setAttribute(dom, attr, value(), context)
 
-  !context.NS && hasOwn.call(dom, attr)
+  !context.NS && attr in dom
     ? dom[attr] = value
     : notValue(value)
       ? dom.removeAttribute(attr)
@@ -925,7 +943,10 @@ function callHandler(handler, e) {
     ? handler.call(e.currentTarget, e)
     : isFunction(handler.handleEvent) && handler.handleEvent(e)
 
-  e.redraw !== false && !isObservable(result) && !isObservable(handler) && redraw()
+  if (e.redraw === false)
+    return
+
+  !isObservable(result) && !isObservable(handler) && redraw()
   result && isFunction(result.then) && result.then(redraw)
 }
 

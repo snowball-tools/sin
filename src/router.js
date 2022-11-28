@@ -1,14 +1,10 @@
 import window from './window.js'
-import { isFunction } from './shared.js'
+import { isFunction, cleanSlash } from './shared.js'
 import query from './query.js'
 
 let routing = false
 
 const routeState = {}
-
-export function cleanSlash(x) {
-  return String(x).replace(/\/+/g, '/').replace(/(.)\/$/, '$1')
-}
 
 function tokenizePath(x) {
   return x.split(/(?=\/)/)
@@ -39,7 +35,7 @@ function resolve(view, attrs, context) {
   return isFunction(view) ? view(attrs, [], context) : view
 }
 
-export function router(s, root, rootContext) {
+export default function router(s, root, rootContext) {
   const location = rootContext.location
   const routed = s(({ route, ...attrs }, [view], context) => { // eslint-disable-line
     context.route = route
@@ -125,7 +121,7 @@ export function router(s, root, rootContext) {
       : '')
 
     if (view === undefined || match[0] === '/?')
-      rootContext.status(404)
+      rootContext.doc.status(404)
 
     const subRoute = router(s, current.replace(/\/$/, ''), rootContext)
     subRoute.parent = route

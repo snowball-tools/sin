@@ -18,15 +18,15 @@ s`[tagName][#id][...classNames]
 )
 ```
 
-Sin relies heavily on tagged templates to strip aways as much visual clutter as possible while still being basic Javascript needing no compilation to run. HTML is stripped of `> / <` and css is relieved from its colons and semicolons (if you want to). The most used css properties are even available by their initials as shorthands. If you feel like skipping units, like px, Sin will also happily add these for you.
+Sin relies heavily on tagged templates to strip aways as much visual clutter as possible while still being basic Javascript needing no compilation to run. No more XMLy syntax and css is relieved from its colons and semicolons (if you want to). The most used css properties are even available by their initials as shorthands. If you feel like skipping units, like px or deg Sin will also happily add these for you.
 
 ## The Components
 
-All components in Sin are made to allow overriding styles anywhere they're used. The beauty of the Sin component model is that you will never have to change your callsite usage if you need to advance your component complexity.
+All components in Sin are made to allow overriding styles anywhere they're used. The beauty of the Sin component model is that you will never have to change your callsite usage, even if you need to advance the complexity of your component.
 
 ## The Styled Component ```s`` ```
 
-The styled component is the most basic form of component in Sin. It has no logic, but only defines a tagName and styles for an element.
+The styled component is the most basic form of component in Sin. It has no logic, but only defines the tag name and styles.
 ```js
 // Definition
 const wonderButton = s`button
@@ -79,19 +79,17 @@ Sin includes the most `get out of your way` router possible. There is always a s
 Ok, enough talk - here's an example
 
 ```js
-const a = s((attrs, [path, title], { route }) => s`a
-  bc ${ route.has(path) && 'blue' }
-`({
-  ...attrs,
-  href: path
-}, title))
-
 s.mount(({ route }) => [
   s`nav`(
-    a('/', 'Home'),
-    a('/murray', 'Murray'),
-    a('/lysander', 'Lysander'),
-    a('/profile', 'Profile'),
+    ['/', '/murray', '/lysander', '/profile'].map(x => 
+      s`a 
+        background ${ route.has(path) && 'lightblue' }
+      `({
+        href: '/' + x
+      }, 
+        x.slice(1) || 'Home'
+      )
+    )
   ),
   s`main`(
     route({

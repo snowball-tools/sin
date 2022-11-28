@@ -1,38 +1,209 @@
-import s from './src/index.js'
+/* eslint no-unused-vars: 0 */
 
-window.run = s.redraw
+import s from './'
 
-const comp = s(() => {
-  p('init')
-  return () => s`h1`('Yas')
-})
+liveOptimizationSample()
 
-let show = true
+function liveOptimizationSample() {
+  const xs = [...Array(200).keys()]
+  const selected = s.live(2)
+  const value = s.live()
 
-s.mount(() =>
-  s`div`(
-    s`button`({
-      onclick: () => show = !show
-    }, 'init'),
-    s`button`({
-      onclick: () => p('redraw')
-    }, 'render'),
-    show && comp()
+  s.mount(() => [
+    s`h1
+      margin-top 200
+    `('Yo'),
+    s``('Redrew at: ', Date.now()),
+    xs.map(id =>
+      s`div
+        :active { bc red }
+        [selected] { bc lightblue }
+      `({
+        selected: selected.if(id),
+        onclick: selected.set(id)
+      },
+        id
+      ),
+      s`input`({
+        value,
+        oninput: value.set(e => e.target.value)
+      })
+    )
+  ])
+}
+
+function imbaFunSample() {
+  const xs = [...Array(50000).keys()]
+  s.css`
+    body {
+      ff sans-serif
+    }
+  `
+
+  const mark = s`mark
+    position absolute
+    t 0
+    l 0
+    border-radius: 2px;
+    p 8
+    zi 1
+    bc yellow
+    c teal
+  `
+
+  const li = s`div
+    d inline-block
+    m 2
+    p 4 2
+    bc #eee
+    br 6
+    :hover { bc lightblue }
+  `
+
+  s.mount(s(({ x = 20, y = 20, title = 'hey' }) => () =>
+    s`main
+      min-height 100vh
+    `({ onmousemove: e => (x = e.pageX, y = e.pageY) },
+      s`input`({ value: title, oninput: e => title = e.target.value }),
+      s`label`(`Mouse is at ${ x } ${ y }`),
+      mark` transform translate(${ x }, ${ y }) rotate(${ x + y })`('Item'),
+      s`div`(xs.slice(0, y).map(x =>
+        li(x % 12 ? x : title)
+      ))
+    )
+  ))
+}
+
+function testSpecificity() {
+  s.css`
+    :root {
+      bc #ddd
+    }
+
+    body {
+      bc #eee
+    }
+  `
+
+  s.mount(() => [
+    s`div
+      animation 1s {
+        from { o 0 }
+      }
+
+      p {
+        bc blue
+      }
+
+      p:hover {
+        bc yellow
+      }
+
+      @media (max-width: 800px) {
+        p {
+          bc hotpink
+        }
+
+        p:hover {
+          bc tomato
+        }
+      }
+    `(
+      'yo',
+      s`p
+        bc red
+
+        :hover {
+          bc teal
+        }
+
+        @media (max-width: 800px) {
+          bc gray
+
+          :hover {
+            bc black
+          }
+        }`(
+        'hello'
+      )
+    )
+  ])
+}
+
+function asyncComponentArraysErrorFixed() {
+  s.mount(() => s`div`(
+    s(async() => {
+      await s.sleep(1000)
+      return () => [
+        2,
+        3,
+        4,
+        5,
+        s(async() => {
+          await s.sleep(1000)
+          return () => [1, 2, 3]
+        })
+      ]
+    }),
+    s`h1`('nice'),
+    s`button`({ onclick: console.log }, 'hej')
+  ))
+}
+
+function routingIssue() {
+  const x = s(async({}, [], { route }) => () => route({
+    '/': () => [
+      s`a`({ href: route + 'some_id' }, 'some_id'),
+      'main'
+    ],
+    '/:id': ({ id }) => s`a`({ href: route }, 'yo', id)
+  }))
+
+  s.mount(({}, [], { route }) => [
+    s`a`({ href: '/' }, 'home'),
+    s`a`({ href: '/test' }, 'test'),
+    s``(
+      route({
+        '/': s(async() => () => 'home'),
+        '/test': x
+      })
+    )
+  ])
+}
+
+function reloadAsync() {
+  let show = true
+  s.mount(() =>
+    s`main
+       d grid
+    `(
+      s`button`({
+        onclick: show = !show
+      }, 'hej'),
+      s(async({}, [], { reload }) => {
+        await s.sleep(2000)
+
+        return () => s``(
+          'Yas',
+          Date.now(),
+          s``({
+            onclick: () => reload(true)
+          }, 'reload')
+        )
+      })
+    )
   )
-)
-
-
-
+}
 
 function testCSSParsing() {
   s.css`
     @import 'custom.css'
 
     @counter-style thumbs {
-      system: cyclic;
-      symbols: "\\1F44D";
-      suffix: " ";
-    }
+      system: cyclic
+      symbols: "\\1F44D"
+      suffix: " "
+              }
 
     @keyframes fade {
       from { o 0 }
@@ -41,10 +212,10 @@ function testCSSParsing() {
 
     @supports (display: grid) {
       div {
-        display: grid;
+        display: grid
       }
       span {
-        display: grid;
+        display: grid
       }
     }
 
@@ -58,7 +229,7 @@ function testCSSParsing() {
       animation fade 1s
     }
     ul {
-      list-style: thumbs;
+      list-style: thumbs
     }
 
     @font-face {
@@ -68,7 +239,7 @@ function testCSSParsing() {
       src: url("/fonts/e9167238-3b3f-4813-a04a-a384394eed42.eot?#iefix") format("eot"),
           url("/fonts/2cd55546-ec00-4af9-aeca-4a3cd186da53.woff2") format("woff2"),
           url("/fonts/1e9892c0-6927-4412-9874-1b82801ba47a.woff") format("woff"),
-          url("/fonts/46cf1067-688d-4aab-b0f7-bd942af6efd8.ttf") format("truetype");
+          url("/fonts/46cf1067-688d-4aab-b0f7-bd942af6efd8.ttf") format("truetype")
     }
 
     @font-face {
@@ -78,7 +249,7 @@ function testCSSParsing() {
       src: url("/fonts/1a7c9181-cd24-4943-a9d9-d033189524e0.eot?#iefix") format("eot"),
           url("/fonts/627fbb5a-3bae-4cd9-b617-2f923e29d55e.woff2") format("woff2"),
           url("/fonts/f26faddb-86cc-4477-a253-1e1287684336.woff") format("woff"),
-          url("/fonts/63a74598-733c-4d0c-bd91-b01bffcd6e69.ttf") format("truetype");
+          url("/fonts/63a74598-733c-4d0c-bd91-b01bffcd6e69.ttf") format("truetype")
     }
   `
 
@@ -146,7 +317,7 @@ function dndLists() {
       overflow-y hidden
       transition all 0.3s
       animation 0.3s {
-        from { o 0; max-height 0 }
+        from { o 0 max-height 0 }
       }
       [animate] {
         max-height 0
@@ -195,10 +366,11 @@ function dndLists() {
 }
 
 function keyIssue() {
-  const x = s(() => (a, c) => [s`h1`({ dom: () => wats.push(c[0]) }, c[0])])
-
   let wat = false
   const wats = []
+
+  const x = s(() => (a, c) => [s`h1`({ dom: () => wats.push(c[0]) }, c[0])])
+
   s.mount(() => s`main`(
     s`button`({ onclick: () => wat = !wat }, 'toggle'),
     wat
@@ -372,7 +544,7 @@ function liveTest() {
     s`button
       background ${ counter.if(5, 'blue', 'red') }
     `({
-      onclick: counter.set(x => x + 1)
+      onclick: counter.set(e => counter + 1)
     },
       'Increment', Date.now()
     ),
@@ -425,7 +597,7 @@ function nestedRouting() {
         d block
         p 8
       `({
-        href: '/4/1//2/3/0/4/2'
+        href: '/4/1/2/3/0/4/2'
       }, 'long test'),
       s`
         p 6 16
@@ -633,7 +805,7 @@ function udomdiffTest() {
     current = 0
     console.time('udomdiff')
     s.redraw()
-    requestAnimationFrame(run)
+    Promise.resolve().then(run)
   }
 
   function run() {
@@ -651,6 +823,6 @@ function udomdiffTest() {
 
     current++
     s.redraw()
-    requestAnimationFrame(run)
+    Promise.resolve().then(run)
   }
 }

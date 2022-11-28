@@ -1,6 +1,12 @@
 export const isServer = typeof window === 'undefined' || typeof window.document === 'undefined'
 
+export const stackTrace = Symbol('stackTrace')
+
 export const hasOwn = {}.hasOwnProperty
+
+export function cleanSlash(x) {
+  return String(x).replace(/\/+/g, '/').replace(/(.)\/$/, '$1')
+}
 
 export function notValue(x) {
   return !x && x !== 0 && x !== ''
@@ -36,7 +42,7 @@ export function asCssVar(x) {
 
 export function ignoredAttr(x) {
   return x === 'dom' || x === 'is' || x === 'key' || x === 'handleEvent' || x === 'type'
-      || x === 'class' || x === 'className' || x === 'style' || x === 'deferrable'
+  || x === 'class' || x === 'className' || x === 'style' || x === 'deferrable' || x === 'href'
 }
 
 export function className(view) {

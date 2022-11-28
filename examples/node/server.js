@@ -10,8 +10,8 @@ esbuild.build({
   write: false
 }).then(({ outputFiles: [{ text }] }) => {
   http.createServer(
-  	ssr(app, {
-  		body: '<script type="module">' + text + '</script>'
-  	})
+    ssr(app, {
+      body: '<script type="module">' + text + '</script>'
+    })
   ).listen(3100)
 })

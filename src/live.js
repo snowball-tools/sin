@@ -1,54 +1,51 @@
 import { noop, isFunction } from './shared.js'
 
-export class Observable {
-  constructor(live, transform) {
-    this.live = live
-    this.transform = transform
-  }
+export function signal() {
+  const observers = new Set()
+  signal.observe = fn => (observers.add(fn), () => observers.delete(fn))
+  return signal
 
-  get value() { return this.transform(this.live.value) }
-  toString() { return this.value || '' }
-  valueOf() { return this.value || '' }
-  toJSON() { return this.value || '' }
-
-  observe(fn) {
-    return this.live.observe(x => fn(this.transform(x)))
+  function signal(...xs) {
+    [...observers].forEach(fn => fn(...xs))
   }
 }
 
-export default function Live(value, fn) {
+export default function Live(value, ...fn) {
   const observers = new Set()
   isFunction(fn) && observers.add(fn)
+  live.value = value
   live.observe = fn => (observers.add(fn), () => observers.delete(fn))
   live.valueOf = live.toString = live.toJSON = () => value
   live.detach = noop
   live.reduce = reduce
   live.set = x => (...args) => (live(isFunction(x) ? x(...args) : x), live)
-  live.get = prop => new Observable(live, x => isFunction(prop) ? prop(x) : x[prop])
-  live.if = (equals, a = true, b = false) => new Observable(live, x => x === equals ? a : b)
+  live.get = x => Object.assign(getter.bind(null, x), { observe: fn => live.observe(() => fn(getter(x))) })
+  live.if = (...xs) => Object.assign(ternary.bind(null, ...xs), { observe: fn => live.observe(x => fn(ternary(...xs))) })
 
-  return Object.defineProperty(live, 'value', {
-    get: () => value,
-    set
-  })
+  return live
 
-  function live(x) {
-    arguments.length && set(x)
-    return value
+  function getter(x) {
+    return isFunction(x) ? x(live.value) : live.value[x]
   }
 
-  function set(x) {
-    if (x === value)
-      return
+  function ternary(equals, a = true, b = false) {
+    return live.value === equals ? a : b
+  }
 
-    value = x
-    observers.forEach(async fn => fn(x))
+  function live(x) {
+    if (!arguments.length)
+      return live.value
+
+    live.value = x
+    ;[...observers].forEach(fn => live.value !== value && fn(live.value, value))
+    value = live.value
+    return live.value
   }
 
   function reduce(fn, initial) {
     let i = 1
-    const result = Live(arguments.length > 1 ? fn(initial, value, i++) : value)
-    live.observe(x => result.value = fn(result.value, x, i++))
+    const result = Live(arguments.length > 1 ? fn(initial, live.value, i++) : live.value)
+    live.observe(x => result(fn(result.value, x, i++)))
     return result
   }
 }

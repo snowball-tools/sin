@@ -4,7 +4,11 @@ import px from './px.js'
 
 const noop = () => { /* noop */ }
 
-class Node { constructor(x) { this.trusted = x }}
+class Node {
+  constructor(x) {
+    this.trusted = x
+  }
+}
 
 export default window
 
@@ -169,6 +173,7 @@ function XMLHttpRequest() {
           })
           res.on('error', e => emit('error', e))
         })
+        req.on('error', error)
         xhr.timeout && req.setTimeout(xhr.timeout)
         data && req.write(data)
         req.end()
@@ -189,7 +194,7 @@ function XMLHttpRequest() {
   }
 
   function error(error) {
-    xhr.response = null
+    // xhr.response = null
     xhr.status = 0
     emit('error', error)
     emit('loadend', { loaded, total, lengthComputable: total === 0 || total > 0 })

@@ -1,20 +1,10 @@
-// src/view.js
-var View = class {
-  constructor(inline, component, tag = null, level = 0, attrs = null, children = null) {
-    this.level = level;
-    this.component = component;
-    this.inline = inline;
-    this.tag = tag;
-    this.attrs = attrs;
-    this.key = attrs ? attrs.key : void 0;
-    this.dom = null;
-    this.children = children;
-  }
-};
-
 // src/shared.js
 var isServer = typeof window === "undefined" || typeof window.document === "undefined";
+var stackTrace = Symbol("stackTrace");
 var hasOwn = {}.hasOwnProperty;
+function cleanSlash(x2) {
+  return String(x2).replace(/\/+/g, "/").replace(/(.)\/$/, "$1");
+}
 function notValue(x2) {
   return !x2 && x2 !== 0 && x2 !== "";
 }
@@ -64,6 +54,21 @@ function classObject(x2) {
 typeof globalThis === "undefined" && (window.globalThis = window);
 var window_default = isServer ? {} : window;
 
+// src/view.js
+var View = class {
+  constructor(inline, component, tag = null, level = 0, attrs = null, children = null) {
+    this.level = level;
+    this.component = component;
+    this.inline = inline;
+    this.tag = tag;
+    this.attrs = attrs;
+    this.key = attrs ? attrs.key : void 0;
+    this.dom = null;
+    this.children = children;
+    this.stack = hasOwn.call(window_default, stackTrace) ? new Error().stack : null;
+  }
+};
+
 // src/http.js
 ["head", "get", "put", "post", "delete", "patch"].forEach(
   (x2) => http[x2] = function(url, object = {}) {
@@ -92,6 +97,7 @@ function http(url, {
   const xhr = new window_default.XMLHttpRequest();
   let full = false;
   const promise = new Promise((resolve2, reject) => {
+    let accept, contentType;
     method = method.toUpperCase();
     xhr.addEventListener("readystatechange", function() {
       if (xhr.readyState !== xhr.DONE)
@@ -111,7 +117,6 @@ function http(url, {
     xhr.open(method, appendQuery(url, query), true, user, pass);
     xhr.timeout = timeout;
     responseType && (xhr.responseType = responseType);
-    let accept, contentType;
     Object.entries(headers).forEach(([x2, v]) => {
       xhr.setRequestHeader(x2, v);
       x2.toLowerCase() === "accept" && (accept = v);
@@ -151,55 +156,44 @@ function appendQuery(x2, q) {
 }
 
 // src/live.js
-var Observable = class {
-  constructor(live, transform) {
-    this.live = live;
-    this.transform = transform;
+function signal() {
+  const observers = /* @__PURE__ */ new Set();
+  signal2.observe = (fn2) => (observers.add(fn2), () => observers.delete(fn2));
+  return signal2;
+  function signal2(...xs) {
+    [...observers].forEach((fn2) => fn2(...xs));
   }
-  get value() {
-    return this.transform(this.live.value);
-  }
-  toString() {
-    return this.value || "";
-  }
-  valueOf() {
-    return this.value || "";
-  }
-  toJSON() {
-    return this.value || "";
-  }
-  observe(fn2) {
-    return this.live.observe((x2) => fn2(this.transform(x2)));
-  }
-};
-function Live(value2, fn2) {
+}
+function Live(value2, ...fn2) {
   const observers = /* @__PURE__ */ new Set();
   isFunction(fn2) && observers.add(fn2);
+  live.value = value2;
   live.observe = (fn3) => (observers.add(fn3), () => observers.delete(fn3));
   live.valueOf = live.toString = live.toJSON = () => value2;
   live.detach = noop;
   live.reduce = reduce;
   live.set = (x2) => (...args) => (live(isFunction(x2) ? x2(...args) : x2), live);
-  live.get = (prop2) => new Observable(live, (x2) => isFunction(prop2) ? prop2(x2) : x2[prop2]);
-  live.if = (equals, a = true, b = false) => new Observable(live, (x2) => x2 === equals ? a : b);
-  return Object.defineProperty(live, "value", {
-    get: () => value2,
-    set
-  });
-  function live(x2) {
-    arguments.length && set(x2);
-    return value2;
+  live.get = (x2) => Object.assign(getter.bind(null, x2), { observe: (fn3) => live.observe(() => fn3(getter(x2))) });
+  live.if = (...xs) => Object.assign(ternary.bind(null, ...xs), { observe: (fn3) => live.observe((x2) => fn3(ternary(...xs))) });
+  return live;
+  function getter(x2) {
+    return isFunction(x2) ? x2(live.value) : live.value[x2];
   }
-  function set(x2) {
-    if (x2 === value2)
-      return;
-    value2 = x2;
-    observers.forEach(async (fn3) => fn3(x2));
+  function ternary(equals, a = true, b = false) {
+    return live.value === equals ? a : b;
+  }
+  function live(x2) {
+    if (!arguments.length)
+      return live.value;
+    live.value = x2;
+    [...observers].forEach((fn3) => live.value !== value2 && fn3(live.value, value2));
+    value2 = live.value;
+    return live.value;
   }
   function reduce(fn3, initial) {
     let i = 1;
-    const result = Live(arguments.length > 1 ? fn3(initial, value2, i++) : value2);
-    live.observe((x2) => result.value = fn3(result.value, x2, i++));
+    const result = Live(arguments.length > 1 ? fn3(initial, live.value, i++) : live.value);
+    live.observe((x2) => result(fn3(result.value, x2, i++)));
     return result;
   }
 }
@@ -210,6 +204,115 @@ Live.from = function(...xs) {
 };
 function call(fn2) {
   return fn2();
+}
+
+// src/query.js
+function Query(s2, l) {
+  const U = URLSearchParams;
+  let last2 = l.search;
+  let usp = new U(last2);
+  let temp2;
+  const query = { replace: (x2) => (usp = new U(x2), update2()) };
+  for (const key in U.prototype)
+    query[key] = (...xs) => (temp2 = USP()[key](...xs), update2(), temp2);
+  return query;
+  function USP() {
+    return last2 === l.search ? usp : (last2 = l.search, usp = new U(last2));
+  }
+  function update2() {
+    window_default.history.pushState(
+      window_default.history.state,
+      null,
+      l.pathname + (usp + "" ? "?" + (usp + "").replace(/=$/g, "") : "") + l.hash
+    );
+    s2.redraw();
+  }
+}
+
+// src/router.js
+var routing = false;
+var routeState = {};
+function tokenizePath(x2) {
+  return x2.split(/(?=\/)/);
+}
+function getScore(match, path2) {
+  return match.reduce(
+    (acc, x2, i) => acc + (x2 === "/?" ? 1 : x2 === path2[i] ? 6 : x2 && path2[i] && x2.toLowerCase() === path2[i].toLowerCase() ? 5 : x2[1] === ":" && path2[i] && path2[i].length > 1 ? 4 : x2 === "/" && !path2[i] ? 3 : x2 === "*" || x2 === "/*" ? 2 : -Infinity),
+    0
+  );
+}
+function params(path2, xs) {
+  return path2.reduce((acc, x2, i) => {
+    x2[1] === ":" && (acc[x2.slice(2)] = decodeURIComponent(xs[i].slice(1)));
+    return acc;
+  }, {});
+}
+function resolve(view, attrs, context) {
+  return isFunction(view) ? view(attrs, [], context) : view;
+}
+function router(s2, root, rootContext) {
+  const location = rootContext.location;
+  const routed = s2(({ route: route2, ...attrs }, [view], context) => {
+    context.route = route2;
+    return () => typeof view === "string" ? import((view[0] === "/" ? "" : route2) + view).then((x2) => resolve(x2.default, attrs, context)) : resolve(view, attrs, context);
+  });
+  route.query = Query(s2, rootContext.location);
+  route.toString = route;
+  route.has = (x2) => x2 === "/" ? getPath2(location) === root || getPath2(location) === "/" && root === "" : getPath2(location).indexOf(cleanSlash(root + "/" + x2)) === 0;
+  Object.defineProperty(route, "path", {
+    get() {
+      const path2 = getPath2(location), idx = path2.indexOf("/", root.length + 1);
+      return idx === -1 ? path2 : path2.slice(0, idx);
+    }
+  });
+  return route;
+  function getPath2(location2, x2 = 0) {
+    return (s2.pathmode[0] === "#" ? location2.hash.slice(s2.pathmode.length + x2) : s2.pathmode[0] === "?" ? location2.search.slice(s2.pathmode.length + x2) : location2.pathname.slice(s2.pathmode + x2)).replace(/(.)\/$/, "$1");
+  }
+  function reroute(path2, { state, replace: replace2 = false, scroll = rootChange(path2) } = {}) {
+    if (path2 === getPath2(location))
+      return;
+    s2.pathmode[0] === "#" ? window_default.location.hash = s2.pathmode + path2 : s2.pathmode[0] === "?" ? window_default.location.search = s2.pathmode + path2 : window_default.history[replace2 ? "replaceState" : "pushState"](state, null, s2.pathmode + path2);
+    routeState[path2] = state;
+    s2.redraw();
+    scroll && scrollTo(0, 0);
+  }
+  function rootChange(path2) {
+    return path2.split("/")[1] !== route.path.split("/")[1];
+  }
+  function route(routes, options = {}) {
+    if (typeof routes === "undefined")
+      return root + "/";
+    if (typeof routes === "string")
+      return reroute(cleanSlash(routes[0] === "/" ? routes : "/" + routes), options);
+    if (!routing) {
+      routing = true;
+      s2.pathmode[0] === "#" ? window_default.addEventListener("hashchange", s2.redraw, { passive: true }) : isFunction(window_default.history.pushState) && window_default.addEventListener("popstate", s2.redraw, { passive: true });
+    }
+    const path2 = getPath2(location, root.length);
+    const pathTokens = tokenizePath(path2);
+    const [, match, view] = Object.entries(routes).reduce((acc, [match2, view2]) => {
+      match2.charCodeAt(0) === 47 || (match2 = "/" + match2);
+      match2 = tokenizePath(cleanSlash(match2));
+      const score = getScore(match2, pathTokens);
+      return score > acc[0] ? [score, match2, view2] : acc;
+    }, [0]);
+    const current = root + (match && match[0] !== "/*" ? match.map((x2, i) => pathTokens[i]).join("") : "");
+    if (view === void 0 || match[0] === "/?")
+      rootContext.doc.status(404);
+    const subRoute = router(s2, current.replace(/\/$/, ""), rootContext);
+    subRoute.parent = route;
+    subRoute.root = route.parent ? route.parent.root : route;
+    return routed(
+      {
+        key: current || "?",
+        route: subRoute,
+        ...root + path2 === current && routeState[root + path2] || {},
+        ...params(match || [], pathTokens)
+      },
+      view
+    );
+  }
 }
 
 // src/shorthands.js
@@ -231,6 +334,7 @@ var popular = [
   "font-size",
   "font-weight",
   "gap",
+  "grid-area",
   "grid-gap",
   "grid-template-area",
   "grid-template-columns",
@@ -304,8 +408,11 @@ var vendorMap = properties.reduce((acc, x2) => {
   return acc;
 }, {});
 var cache = /* @__PURE__ */ new Map();
+var hashed = /* @__PURE__ */ new Set();
 var cssVars = isServer || typeof window_default !== "undefined" && window_default.CSS && CSS.supports("color", "var(--support-test)");
 var pxFunctions = ["perspective", "blur", "drop-shadow", "inset", "polygon"];
+var nested = ["@media", "@supports", "@document", "@layer"];
+var isNested = (x2) => nested.some((n) => x2.indexOf(n) === 0);
 var isPxFunction = (x2) => x2.indexOf("translate") === 0 || pxFunctions.indexOf(x2) > -1;
 var isDegFunction = (x2) => x2.indexOf("rotate") === 0 || x2.indexOf("skew") === 0;
 var isStartChar = (x2) => x2 !== 32 && x2 !== 9 && x2 !== 10 && x2 !== 13 && x2 !== 59;
@@ -353,6 +460,7 @@ var styles = false;
 var cacheable = true;
 var hasRules = false;
 var hash = 0;
+var raw = false;
 function shorthand(x2) {
   return shorthands[x2] || x2;
 }
@@ -381,7 +489,7 @@ function insert(rule2, index) {
     }
   }
 }
-function parse([xs, ...args], parent, nesting = 0, root) {
+function parse([xs, ...args], parent, nesting = 0, root = false) {
   if (cache.has(xs)) {
     const prev = cache.get(xs);
     return {
@@ -389,11 +497,12 @@ function parse([xs, ...args], parent, nesting = 0, root) {
       args
     };
   }
+  raw = root;
   const vars = {};
   name = id = classes2 = rule = value = prop = "";
   selectors.length = fn.length = hash = 0;
   lastSpace = valueStart = fontFaces = startChar = cssVar = -1;
-  rules = root ? {} : null;
+  rules = raw ? {} : null;
   hasRules = false;
   styles = false;
   cacheable = true;
@@ -416,7 +525,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
     }
   }
   if (hasRules) {
-    if (root) {
+    if (raw) {
       Object.entries(rules).forEach(([k, v]) => {
         insert(k.replace(/&\s+/g, "").replace(/{&$/, "") + "{" + v + "}");
       });
@@ -426,12 +535,9 @@ function parse([xs, ...args], parent, nesting = 0, root) {
       specificity = "";
       for (let i = 0; i < nesting; i++)
         specificity += "." + temp;
-      Object.entries(rules).forEach(([k, v]) => {
+      hashed.has(temp) || Object.entries(rules).forEach(([k, v]) => {
         insert(
-          k.replace(
-            /&/g,
-            (noSpace(k.charCodeAt(0)) ? "." + temp : "") + "." + temp + specificity
-          ) + "{" + v + "}"
+          k.replace(/&/g, "." + temp + specificity) + "{" + v + "}"
         );
       });
     }
@@ -444,7 +550,7 @@ function parse([xs, ...args], parent, nesting = 0, root) {
     vars,
     parent
   };
-  cacheable && cache.set(xs, result);
+  cacheable ? cache.set(xs, result) : hashed.add(temp);
   return result;
 }
 function parseSelector(xs, j, args, parent) {
@@ -519,7 +625,7 @@ function addRule(i) {
 }
 function startBlock(i) {
   if (prop === "animation") {
-    rule && (rules[path || "&"] = rule);
+    rule && (rules[path] = rule);
     animation = value + x.slice(valueStart, i).trim();
     keyframes = value = "";
     rule = "";
@@ -527,7 +633,7 @@ function startBlock(i) {
     keyframe = x.slice(start, i).trim();
     rule = "";
   } else {
-    rule && (rules[path || "&"] = rule);
+    rule && (rules[path] = rule);
     selector = (startChar === 64 ? atHelper(prop) + (value || "") + x.slice(valueStart - 1, i) : x.slice(start, i)).trim();
     selector.indexOf(",") !== -1 && (selector = splitSelector(selector));
     value = prop = "";
@@ -535,7 +641,7 @@ function startBlock(i) {
       (noSpace(startChar) ? "" : " ") + (selector === "@font-face" ? Array(++fontFaces + 1).join(" ") : "") + selector
     );
     path = getPath(selectors);
-    rule = rules[path || "&"] || "";
+    rule = rules[path] || "";
   }
   start = valueStart = -1;
   prop = "";
@@ -545,16 +651,16 @@ function endBlock() {
     keyframes += keyframe + "{" + rule + "}";
     keyframe = rule = "";
   } else if (animation) {
-    rule = rules[path || "&"] || "";
+    rule = rules[path] || "";
     temp = prefix + Math.abs(hash).toString(31);
     insert("@keyframes " + temp + "{" + keyframes + "}");
     rule += propValue(rule, "animation", animation + " " + temp);
     animation = "";
   } else {
     selectors.pop();
-    selectors.length && selectors[0].indexOf("@keyframes") === 0 ? rules[selectors[0]] = (rules[selectors[0]] || "") + selector + "{" + rule + "}" : rule && (rules[path || "&"] = rule + selectors.map((x2) => x2.charCodeAt(0) === 64 ? "}" : "").join(""));
+    selectors.length && selectors[0].indexOf("@keyframes") === 0 ? rules[selectors[0]] = (rules[selectors[0]] || "") + selector + "{" + rule + "}" : rule && (rules[path] = rule.trim() + selectors.map((x2) => x2.charCodeAt(0) === 64 ? "}" : "").join(""));
     path = getPath(selectors);
-    rule = rules[path || "&"] || "";
+    rule = rules[path] || "";
   }
   start = valueStart = -1;
   prop = "";
@@ -599,7 +705,7 @@ function getUnit(prop2, fn2 = "") {
 function formatValue(v, { property, unit }) {
   if (!v && v !== 0)
     return "";
-  isFunction(v) && (v = v());
+  isFunction(v) && (v = isServer ? "" : v());
   if (typeof v === "number")
     return v + unit;
   typeof v !== "string" && (v = "" + v);
@@ -618,11 +724,12 @@ function formatValue(v, { property, unit }) {
   return value + v.slice(valueStart);
 }
 function getPath(selectors2) {
-  let a = "", b = "";
-  selectors2.forEach(
-    (x2) => x2.charCodeAt(0) === 64 && x2 !== "@font-face" ? a += x2 + "{" : b += x2
-  );
-  return a + (b === "@font-face" || b === ":root" ? "" : "&") + b;
+  if (selectors2.length === 0)
+    return "&&";
+  return selectors2.reduce((acc, x2, i, xs) => {
+    const char2 = x2.charCodeAt(0);
+    return char2 === 64 && isNested(x2) ? x2 + "{" + (i === xs.length - 1 ? "&&" : "") + acc : acc + (raw ? "" : char2 === 32 ? "&" : "&&") + x2;
+  }, "");
 }
 function px(x2) {
   x2 = shorthand(x2);
@@ -647,127 +754,29 @@ function vendor(x2) {
   return x2;
 }
 
-// src/query.js
-function Query(s2, l) {
-  const U = URLSearchParams;
-  let last2 = l.search;
-  let usp = new U(last2);
-  const query = { replace: (x2) => (usp = new U(x2), update2()) };
-  for (const key in U.prototype)
-    query[key] = (...xs) => {
-      const x2 = USP()[key](...xs);
-      update2();
-      return x2;
-    };
-  return query;
-  function USP() {
-    return last2 === l.search ? usp : (last2 = l.search, usp = new U(last2));
-  }
-  function update2() {
-    window_default.history.pushState(
-      window_default.history.state,
-      null,
-      l.pathname + (usp + "" ? "?" + (usp + "").replace(/=$/g, "") : "") + l.hash
-    );
-    s2.redraw();
-  }
-}
-
-// src/router.js
-var routing = false;
-var routeState = {};
-function cleanSlash(x2) {
-  return String(x2).replace(/\/+/g, "/").replace(/(.)\/$/, "$1");
-}
-function tokenizePath(x2) {
-  return x2.split(/(?=\/)/);
-}
-function getScore(match, path2) {
-  return match.reduce(
-    (acc, x2, i) => acc + (x2 === "/?" ? 1 : x2 === path2[i] ? 6 : x2 && path2[i] && x2.toLowerCase() === path2[i].toLowerCase() ? 5 : x2[1] === ":" && path2[i] && path2[i].length > 1 ? 4 : x2 === "/" && !path2[i] ? 3 : x2 === "*" || x2 === "/*" ? 2 : -Infinity),
-    0
-  );
-}
-function params(path2, xs) {
-  return path2.reduce((acc, x2, i) => {
-    x2[1] === ":" && (acc[x2.slice(2)] = decodeURIComponent(xs[i].slice(1)));
-    return acc;
-  }, {});
-}
-function resolve(view, attrs, context) {
-  return isFunction(view) ? view(attrs, [], context) : view;
-}
-function router(s2, root, rootContext) {
-  const location = rootContext.location;
-  const routed = s2(({ route: route2, ...attrs }, [view], context) => {
-    context.route = route2;
-    return () => typeof view === "string" ? import((view[0] === "/" ? "" : route2) + view).then((x2) => resolve(x2.default, attrs, context)) : resolve(view, attrs, context);
-  });
-  route.query = Query(s2, rootContext.location);
-  route.toString = route;
-  route.has = (x2) => x2 === "/" ? getPath2(location) === root || getPath2(location) === "/" && root === "" : getPath2(location).indexOf(cleanSlash(root + "/" + x2)) === 0;
-  Object.defineProperty(route, "path", {
-    get() {
-      const path2 = getPath2(location), idx = path2.indexOf("/", root.length + 1);
-      return idx === -1 ? path2 : path2.slice(0, idx);
-    }
-  });
-  return route;
-  function getPath2(location2, x2 = 0) {
-    return (s2.pathmode[0] === "#" ? location2.hash.slice(s2.pathmode.length + x2) : s2.pathmode[0] === "?" ? location2.search.slice(s2.pathmode.length + x2) : location2.pathname.slice(s2.pathmode + x2)).replace(/(.)\/$/, "$1");
-  }
-  function reroute(path2, { state, replace: replace2 = false, scroll = rootChange(path2) } = {}) {
-    if (path2 === getPath2(location))
-      return;
-    s2.pathmode[0] === "#" ? window_default.location.hash = s2.pathmode + path2 : s2.pathmode[0] === "?" ? window_default.location.search = s2.pathmode + path2 : window_default.history[replace2 ? "replaceState" : "pushState"](state, null, s2.pathmode + path2);
-    routeState[path2] = state;
-    s2.redraw();
-    scroll && scrollTo(0, 0);
-  }
-  function rootChange(path2) {
-    return path2.split("/")[1] !== route.path.split("/")[1];
-  }
-  function route(routes, options = {}) {
-    if (typeof routes === "undefined")
-      return root + "/";
-    if (typeof routes === "string")
-      return reroute(cleanSlash(routes[0] === "/" ? routes : "/" + routes), options);
-    if (!routing) {
-      routing = true;
-      s2.pathmode[0] === "#" ? window_default.addEventListener("hashchange", s2.redraw, { passive: true }) : isFunction(window_default.history.pushState) && window_default.addEventListener("popstate", s2.redraw, { passive: true });
-    }
-    const path2 = getPath2(location, root.length);
-    const pathTokens = tokenizePath(path2);
-    const [, match, view] = Object.entries(routes).reduce((acc, [match2, view2]) => {
-      match2.charCodeAt(0) === 47 || (match2 = "/" + match2);
-      match2 = tokenizePath(cleanSlash(match2));
-      const score = getScore(match2, pathTokens);
-      return score > acc[0] ? [score, match2, view2] : acc;
-    }, [0]);
-    const current = root + (match && match[0] !== "/*" ? match.map((x2, i) => pathTokens[i]).join("") : "");
-    if (view === void 0 || match[0] === "/?")
-      rootContext.status(404);
-    const subRoute = router(s2, current.replace(/\/$/, ""), rootContext);
-    subRoute.parent = route;
-    subRoute.root = route.parent ? route.parent.root : route;
-    return routed(
-      {
-        key: current || "?",
-        route: subRoute,
-        ...root + path2 === current && routeState[root + path2] || {},
-        ...params(match || [], pathTokens)
-      },
-      view
-    );
-  }
-}
-
 // src/index.js
 var document = window_default.document;
 var NS = {
   svg: "http://www.w3.org/2000/svg",
   math: "http://www.w3.org/1998/Math/MathML"
 };
+var removing = /* @__PURE__ */ new WeakSet();
+var mounts = /* @__PURE__ */ new Map();
+var deferrableSymbol = Symbol("deferrable");
+var observableSymbol = Symbol("observable");
+var componentSymbol = Symbol("component");
+var eventSymbol = Symbol("event");
+var arraySymbol = Symbol("array");
+var liveSymbol = Symbol("live");
+var sizeSymbol = Symbol("size");
+var lifeSymbol = Symbol("life");
+var attrSymbol = Symbol("attr");
+var keysSymbol = Symbol("keys");
+var keySymbol = Symbol("key");
+var sSymbol = Symbol("s");
+var idle = true;
+var afterUpdate = [];
+var redrawing = false;
 function s(...x2) {
   const type = typeof x2[0];
   return type === "string" ? S(Object.assign([x2[0]], { raw: [] }))(...x2.slice(1)) : bind(
@@ -792,23 +801,6 @@ function bind(x2, that) {
   fn2[sSymbol] = true;
   return fn2;
 }
-var removing = /* @__PURE__ */ new WeakSet();
-var mounts = /* @__PURE__ */ new Map();
-var deferrableSymbol = Symbol("deferrable");
-var observableSymbol = Symbol("observable");
-var componentSymbol = Symbol("component");
-var eventSymbol = Symbol("event");
-var arraySymbol = Symbol("array");
-var liveSymbol = Symbol("live");
-var sizeSymbol = Symbol("size");
-var lifeSymbol = Symbol("life");
-var attrSymbol = Symbol("attr");
-var keysSymbol = Symbol("keys");
-var keySymbol = Symbol("key");
-var sSymbol = Symbol("s");
-var idle = true;
-var afterUpdate = [];
-var redrawing = false;
 s.sleep = (x2, ...xs) => new Promise((r) => setTimeout(r, x2, ...xs));
 s.with = (x2, fn2) => fn2(x2);
 s.isServer = isServer;
@@ -821,46 +813,17 @@ s.http = http;
 s.http.redraw = !s.isServer && redraw;
 s.medias = medias;
 s.live = Live;
+s.signal = signal;
 s.on = on;
 s.trust = trust;
 s.route = router(s, "", { location: window_default.location });
 s.window = window_default;
 s.error = s((error) => {
-  isServer ? console.error(error) : Promise.resolve().then(() => {
-    throw error;
-  });
-  const stack = parseStackTrace(error.stack);
-  return () => s`pre;all initial;d block;ws pre-wrap;m 0;c white;bc #ff0033;p 8 12;br 6;overflow auto`(s`code`(
-    "" + error,
-    stack.map(
-      ({ name: name2, file, line, col }) => s` o 0.75`(
-        "    at ",
-        name2 && name2 + " ",
-        s`a c white`(
-          {
-            href: file,
-            target: "_BLANK"
-          },
-          file + ":" + line + ":" + col
-        )
-      )
-    ),
-    typeof error === "object" && JSON.stringify(error, null, 2).replace(/"([a-z]\w+)":/ig, "$1:")
+  console.error(error);
+  return () => s`pre;all initial;d block;c white;bc #ff0033;p 8 12;br 6;overflow auto;fs 12`(s`code`(
+    "Unexpected Error: " + (error.message || error)
   ));
 });
-function parseStackTrace(x2) {
-  try {
-    return x2.split("\n").reduce((acc, x3) => (x3 = x3.match(/( +at )?(.*)[@\(](.+):([0-9]+):([0-9]+)/), x3 && acc.push({
-      name: x3[2].trim(),
-      file: x3[3].replace(window_default.location.origin, ""),
-      line: parseInt(x3[4]),
-      col: parseInt(x3[5])
-    }), acc), []);
-  } catch (e) {
-    console.error("Could not parse stack trace", e);
-    return [];
-  }
-}
 function trust(strings, ...values) {
   return s(() => {
     const div2 = document.createElement("div");
@@ -927,18 +890,34 @@ function mount(dom, view, attrs = {}, context = {}) {
   hasOwn.call(context, "error") || (context.error = s.error);
   if (isServer)
     return { view, attrs, context };
-  context.title = s.live(document.title, (x2) => document.title = x2);
-  context.status = context.head = context.headers = noop;
   context.hydrating = shouldHydrate(dom.firstChild);
+  const doc2 = {
+    head: context.hydrating ? noop : head,
+    lang: s.live(document.documentElement.lang, (x2) => document.documentElement.lang = x2),
+    title: s.live(document.title, (x2) => document.title = x2),
+    status: noop,
+    headers: noop
+  };
+  context.doc = doc2;
+  Object.assign(context, doc2);
   context.route = router(s, "", context);
   mounts.set(dom, { view, attrs, context });
   draw({ view, attrs, context }, dom);
+}
+function head(x2) {
+  if (Array.isArray(x2))
+    return x2.forEach(head);
+  const dom = document.createElement(x2.tag.name);
+  for (const attr in x2.attrs)
+    dom.setAttribute(attr, x2.attrs[attr]);
+  x2.children.length && (dom.innerHTML = dom.children[0]);
+  document.head.appendChild(dom);
 }
 function shouldHydrate(dom) {
   return dom && dom.nodeType === 8 && dom.nodeValue === "h" && (dom.remove(), true);
 }
 function redraw() {
-  idle && (requestAnimationFrame(globalRedraw), idle = false);
+  idle && (Promise.resolve().then(globalRedraw), idle = false);
 }
 function globalRedraw() {
   mounts.forEach(draw);
@@ -951,7 +930,7 @@ function draw({ view, attrs, context }, dom) {
     updates(dom, asArray(x2), context);
   } catch (error) {
     attrs.error = error;
-    updates(dom, asArray(context.error(attrs, [], context)), context);
+    updates(dom, asArray(context.error(error, attrs, [], context)), context);
   }
   redrawing = false;
   afterUpdate.forEach((fn2) => fn2());
@@ -1144,15 +1123,15 @@ function createElement(view, context) {
   return context.NS ? is ? document.createElementNS(context.NS, view.tag.name, { is }) : document.createElementNS(context.NS, view.tag.name) : is ? document.createElement(view.tag.name || "DIV", { is }) : document.createElement(view.tag.name || "DIV");
 }
 var Instance = class {
-  constructor(init, id2, view, error, loading, hydrating) {
+  constructor(init, view, error, loading, hydrating) {
     this.init = init;
-    this.id = id2;
     this.key = void 0;
     this.view = view;
     this.error = error;
     this.caught = void 0;
     this.loading = loading;
     this.hydrating = hydrating;
+    this.onremoves = void 0;
   }
 };
 var Stack = class {
@@ -1166,35 +1145,52 @@ var Stack = class {
     if (this.i >= this.xs.length)
       return true;
     const instance = this.xs[this.i];
-    return instance.key !== view.key || instance.init && instance.init !== view.component[0];
+    const x2 = instance.key !== view.key || instance.init && instance.init !== view.component[0];
+    return x2;
   }
-  add(view, context, parent) {
+  add(view, context, optimistic) {
     const [init, options] = view.component;
     const instance = new Instance(
       view.inline ? false : init,
-      window_default.count = (window_default.count || 0) + 1,
       init,
       options && options.error || context.error,
       options && options.loading || context.loading,
       context.hydrating
     );
+    const redraw2 = (e) => {
+      e instanceof Event && (e.redraw = false);
+      updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, false);
+    };
+    const reload = (e) => {
+      instance.onremoves && (instance.onremoves.forEach((x2) => x2()), instance.onremoves = void 0);
+      e instanceof Event && (e.redraw = false);
+      updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, true);
+    };
+    const refresh = (e) => {
+      instance.onremoves && (instance.onremoves.forEach((x2) => x2()), instance.onremoves = void 0);
+      e instanceof Event && (e.redraw = false);
+      updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, true, true);
+    };
     instance.context = Object.create(context, {
-      onremove: { value: (fn2) => this.life.push(() => fn2) },
-      redraw: { value: () => {
-        updateComponent(this.dom.first, view, context, parent, this, false, true);
+      onremove: { value: (fn2) => {
+        onremoves(this, instance, fn2);
       } },
-      reload: { value: () => {
-        updateComponent(this.dom.first, view, context, parent, this, true);
+      ignore: { value: (x2) => {
+        instance.ignore = x2;
       } },
-      ignore: { value: (x2) => instance.ignore = x2 }
+      refresh: { value: refresh },
+      redraw: { value: redraw2 },
+      reload: { value: reload }
     });
-    const next = catchInstance(true, instance, view, instance.context, this);
+    const next = catchInstance(true, instance, view);
+    isObservable(view.attrs.reload) && onremoves(this, instance, view.attrs.reload.observe(reload));
+    isObservable(view.attrs.redraw) && onremoves(this, instance, view.attrs.redraw.observe(redraw2));
+    isObservable(view.attrs.refresh) && onremoves(this, instance, view.attrs.refresh.observe(refresh));
     instance.promise = next && isFunction(next.then) && next;
     instance.stateful = instance.promise || isFunction(next) && !next[sSymbol];
-    instance.view = instance.promise ? instance.loading : next;
-    this.xs.length = this.i;
-    this.xs[this.i] = instance;
-    return this.xs[this.top = this.i++];
+    instance.view = optimistic ? this.xs[this.i].view : instance.promise ? instance.loading : next;
+    this.xs.length = this.top = this.i;
+    return this.xs[this.i++] = instance;
   }
   next() {
     return this.i < this.xs.length && this.xs[this.top = this.i++];
@@ -1202,10 +1198,11 @@ var Stack = class {
   pop() {
     return --this.i === 0 && !(this.xs.length = this.top + 1, this.top = 0);
   }
-  cut() {
-    return this.xs.length = this.top = this.i;
-  }
 };
+function onremoves(stack, instance, x2) {
+  instance.onremoves ? stack.life.push(() => () => instance.onremoves.forEach((x3) => x3())) : instance.onremoves = /* @__PURE__ */ new Set();
+  instance.onremoves.add(x2);
+}
 function hydrate(dom) {
   let last2 = dom.nextSibling;
   while (last2 && (last2.nodeType !== 8 || last2.nodeValue !== dom.nodeValue))
@@ -1217,9 +1214,9 @@ function dehydrate(x2, stack) {
   x2.first.remove();
   x2.last && x2.last.remove();
 }
-function updateComponent(dom, component, context, parent, stack = dom && dom[componentSymbol] || new Stack(), create = stack.changed(component), force = false) {
-  const instance = create ? stack.add(component, context, parent) : stack.next();
-  if (!create && !force && instance.ignore) {
+function updateComponent(dom, component, context, parent, stack = dom && dom[componentSymbol] || new Stack(), create = stack.changed(component), optimistic = false) {
+  const instance = create ? stack.add(component, context, optimistic) : stack.next();
+  if (!create && instance.ignore) {
     stack.pop();
     return stack.dom;
   }
@@ -1228,8 +1225,8 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
   if (hydratingAsync) {
     instance.next = hydrate(dom);
   } else {
-    let view = catchInstance(create, instance, component, instance.context, stack);
-    view && view[sSymbol] && (view = view());
+    let view = catchInstance(create, instance, component);
+    view && hasOwn.call(view, sSymbol) && (view = view());
     instance.next = update(
       dom,
       !instance.caught && !instance.promise && view instanceof View ? mergeTag(view, component) : view,
@@ -1238,13 +1235,13 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
       stack,
       (create || instance.recreate) && !instance.hydrating ? true : void 0
     );
-    instance.hydrating && (instance.hydrating = false);
+    instance.hydrating && (instance.hydrating = context.hydrating = false);
     instance.recreate && (instance.recreate = false);
   }
   create && instance.promise && instance.promise.then((view) => instance.view = view && hasOwn.call(view, "default") ? view.default : view).catch((error) => {
     instance.caught = error;
-    instance.view = instance.error.bind(instance.error, error);
-  }).then(() => instance.next.first[componentSymbol] && (hydratingAsync && dehydrate(instance.next, stack), instance.recreate = true, instance.promise = false, redraw()));
+    instance.view = resolveError(instance, component, error);
+  }).then(() => hasOwn.call(instance.next.first, componentSymbol) && (hydratingAsync && dehydrate(instance.next, stack), instance.recreate = true, instance.promise = false, redraw()));
   const changed = dom !== instance.next.first;
   if (stack.pop() && (changed || create)) {
     stack.dom = instance.next;
@@ -1253,18 +1250,15 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
   }
   return instance.next;
 }
-function catchInstance(create, instance, view, context, stack) {
+function catchInstance(create, instance, view) {
   try {
-    return resolveInstance(create, instance, view, context);
+    return instance.stateful || create ? isFunction(instance.view) && !instance.view[sSymbol] ? instance.view(view.attrs, view.children, instance.context) : instance.view : view.component[0](view.attrs, view.children, instance.context);
   } catch (error) {
-    instance.caught = error;
-    instance.view = instance.error.bind(instance.error, error);
-    stack.cut();
-    return resolveInstance(create, instance, view, context);
+    return resolveError(instance, view, error);
   }
 }
-function resolveInstance(create, instance, view, context) {
-  return instance.stateful || create ? isFunction(instance.view) && !instance.view[sSymbol] ? instance.view(view.attrs, view.children, context) : instance.view : view.component[0](view.attrs, view.children, context);
+function resolveError(instance, view, error) {
+  return hasOwn.call(instance.error, sSymbol) ? instance.error().component[0](error, view.attrs, view.children, instance.context) : instance.error(error, view.attrs, view.children, instance.context);
 }
 function mergeTag(a, b) {
   if (!b || !b.tag)
@@ -1295,8 +1289,7 @@ function attributes(dom, view, context) {
       attr === "deferrable" && (dom[deferrableSymbol] = view.attrs[attr]);
     } else if (!prev || prev[attr] !== view.attrs[attr]) {
       const value2 = view.attrs[attr];
-      create && observe(dom, value2, (x2) => setAttribute(dom, attr, x2, context));
-      updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value2);
+      updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value2, create);
     }
   }
   if (prev) {
@@ -1313,6 +1306,7 @@ function attributes(dom, view, context) {
       setVars(dom, tag.vars, tag.args, create, reapply);
   }
   create && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom);
+  create && view.stack && (dom[stackTrace] = view.stack);
   dom[attrSymbol] = view.attrs;
 }
 function updateStyle(dom, style2, old) {
@@ -1376,26 +1370,29 @@ function setVar(dom, id2, value2, cssVar2, init, reapply, after) {
 }
 function giveLife(dom, attrs, children, context, life) {
   afterUpdate.push(() => {
-    life = [].concat(life).map((x2) => isFunction(x2) && x2(dom, attrs, children, context)).filter((x2) => isFunction(x2));
-    life.length && (dom[lifeSymbol] = (dom[lifeSymbol] || []).concat(life));
+    asArray(life).forEach(async (l) => {
+      let x2 = isFunction(l) && l(dom, attrs, children, context);
+      x2 && isFunction(x2.then) && (x2 = await x2, redraw());
+      isFunction(x2) && (hasOwn.call(dom, lifeSymbol) ? dom[lifeSymbol].push(x2) : dom[lifeSymbol] = [x2]);
+    }, []);
   });
 }
-function updateAttribute(dom, context, attrs, attr, old, value2) {
+function updateAttribute(dom, context, attrs, attr, old, value2, create) {
   if (old === value2)
     return;
-  if (attr === "href" && value2 && !String(value2).match(/^([a-z]+:|\/\/)/)) {
+  if (attr === "href" && value2 && !String(value2).match(/^[a-z]+:|\/\//)) {
     value2 = s.pathmode + cleanSlash(value2);
     link(dom, context.route);
   }
   const on2 = isEvent(attr);
   if (on2 && typeof old === typeof value2)
     return;
-  on2 ? value2 ? addEvent(dom, attrs, attr) : removeEvent(dom, attr) : setAttribute(dom, attr, value2, context);
+  on2 ? value2 ? addEvent(dom, attrs, attr) : removeEvent(dom, attr) : (setAttribute(dom, attr, value2, context), create && observe(dom, value2, (x2) => setAttribute(dom, attr, x2, context)));
 }
 function setAttribute(dom, attr, value2, context) {
   if (isFunction(value2))
     return setAttribute(dom, attr, value2(), context);
-  !context.NS && hasOwn.call(dom, attr) ? dom[attr] = value2 : notValue(value2) ? dom.removeAttribute(attr) : dom.setAttribute(attr, value2 === true ? "" : value2);
+  !context.NS && attr in dom ? dom[attr] = value2 : notValue(value2) ? dom.removeAttribute(attr) : dom.setAttribute(attr, value2 === true ? "" : value2);
 }
 function removeEvent(dom, name2) {
   dom.removeEventListener(name2.slice(2), dom[eventSymbol]);
@@ -1413,7 +1410,9 @@ function handleEvent(dom) {
 }
 function callHandler(handler, e) {
   const result = isFunction(handler) ? handler.call(e.currentTarget, e) : isFunction(handler.handleEvent) && handler.handleEvent(e);
-  e.redraw !== false && !isObservable(result) && !isObservable(handler) && redraw();
+  if (e.redraw === false)
+    return;
+  !isObservable(result) && !isObservable(handler) && redraw();
   result && isFunction(result.then) && result.then(redraw);
 }
 function replace(old, dom, parent) {

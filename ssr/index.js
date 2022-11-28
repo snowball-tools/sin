@@ -1,16 +1,18 @@
 import window from './window.js'
 import View from '../src/view.js'
-import { className, ignoredAttr, isEvent, isFunction, asArray, notValue, hasOwn } from '../src/shared.js'
+import { cleanSlash, className, ignoredAttr, isEvent, isFunction, asArray, notValue, hasOwn } from '../src/shared.js'
 import { formatValue, cssRules } from '../src/style.js'
-import { router } from '../src/router.js'
+import router from '../src/router.js'
 import s from '../src/index.js'
 
 class TimeoutError extends Error {}
 
-s.trust = (strings, ...values) => new window.Node(String.raw({ raw: strings }, ...values))
+s.trust = (strings, ...values) => new window.Node('<!--[1-->' + String.raw({ raw: strings }, ...values))
 
 let lastWasText = false
 
+const ignoredServerAttr = x => x !== 'href' && x !== 'type' && ignoredAttr(x)
+const uidSymbol = Symbol('uid')
 const defaultTimeout = 1000 * 60 * 2
 const voidTags = new Set([
   'area',
@@ -29,7 +31,8 @@ const voidTags = new Set([
   'wbr'
 ])
 
-export default async function({ view, attrs, context }, serverAttrs = {}, serverContext = {}) {
+export default async function({ view = () => '', attrs = {}, context = {} } = {}, serverAttrs = {}, serverContext = {}) {
+  serverContext.location = typeof serverContext.location === 'string' ? new URL(serverContext.location, 'http://x/') : serverContext.location
   const headers = {
     Server: 'Sin',
     'Content-Type': 'text/html; charset=UTF-8',
@@ -37,20 +40,26 @@ export default async function({ view, attrs, context }, serverAttrs = {}, server
   }
 
   let head = ''
+    , links = new Set()
+
+  const doc = {
+    lang: s.live(),
+    title: s.live(''),
+    status: s.live(200),
+    links: s.live('', x => links.add(x)),
+    head: s.live('', x => [].concat(x).forEach(x => head += x instanceof View ? headElement(x) : x)),
+    headers: s.live({}, x => Object.assign(headers, x))
+  }
 
   attrs = { ...attrs, ...serverAttrs }
   context = {
     ...context,
     ...serverContext,
-    title: s.live(''),
-    status: s.live(200),
-    head: s.live('', x => head += x instanceof View ? headElement(x) : x),
-    headers: s.live({}),
-    uid: 1
+    doc,
+    [uidSymbol]: 1
   }
 
   context.route = router(s, '', context)
-  context.headers.observe(x => Object.assign(headers, x))
 
   let x
   try {
@@ -61,16 +70,18 @@ export default async function({ view, attrs, context }, serverAttrs = {}, server
 
   const html = '<!--h-->' + await Promise.race([
     updateChildren(asArray(x), context),
-    new Promise((r, e) => setTimeout(e, 'timeout' in context ? context.timeout : defaultTimeout, new TimeoutError()))
+    new Promise((r, e) => setTimeout(e, 'timeout' in context ? context.timeout : defaultTimeout, new TimeoutError()).unref())
   ]).catch(async error => {
-    context.status(error instanceof TimeoutError ? 408 : 500)
+    context.doc.status(error instanceof TimeoutError ? 408 : 500)
     return await updateChildren([].concat(context.error(error, attrs, [], context)), context)
   })
 
   return {
-    status: context.status(),
     headers,
-    title: context.title(),
+    links,
+    status: context.doc.status(),
+    title: context.doc.title(),
+    lang: context.doc.lang(),
     css: '<style class="sin">' + cssRules().join('') + '</style>', // perhaps remove classes according to names in html
     html,
     head
@@ -103,6 +114,10 @@ async function updateElement(view, context) {
   lastWasText = false
   const tag = tagName(view)
   hasOwn.call(view.attrs, 'id') === false && view.tag.id && (view.attrs.id = view.tag.id)
+  if (hasOwn.call(view.attrs, 'href') && !String(view.attrs.href).match(/^[a-z]+:|\/\//)) {
+    view.attrs.href = cleanSlash(view.attrs.href)
+    context.doc.links(view.attrs.href)
+  }
   return openingTag(view, tag)
     + (voidTags.has(tag)
       ? ''
@@ -121,7 +136,11 @@ function headElement(view) {
         : (view.children
           ? view.children.join('')
           : ''
-        ) + '</' + tag + '>'
+        ) + (
+          voidTags.has(tag)
+            ? ''
+            : '</' + tag + '>'
+        )
       )
 }
 
@@ -149,7 +168,7 @@ function getCssVars(view) {
 }
 
 function renderAttr(k, v) {
-  return ignoredAttr(k) || isEvent(k) || notValue(v)
+  return ignoredServerAttr(k) || isEvent(k) || notValue(v)
     ? ''
     : (' ' + escapeAttr(k) + (
       v === true
@@ -189,9 +208,9 @@ function updateComment(view) {
 async function updateComponent(view, context) {
   lastWasText = false
   let x = view.component[0](view.attrs, view.children, context)
-  const isAsync = x && isFunction(x.then) && ('<!--a' + context.uid++ + '-->') || ''
+  const isAsync = x && isFunction(x.then) && ('<!--a' + context[uidSymbol]++ + '-->') || ''
   isAsync && (x = await x)
-  hasOwn.call(x, 'default') && (x = x.default)
+  x && hasOwn.call(x, 'default') && (x = x.default)
   isFunction(x) && (x = x())
   return isAsync + (await update(x, context)) + isAsync
 }
@@ -202,8 +221,8 @@ function escape(x = '') {
   let l = -1
   for (let i = 0; i < x.length; i++) {
     c = x.charCodeAt(i)
-    c === 60 ? s += x.slice(l + 1, l = i) + '&lt;' :   // <
-      c === 62 ? s += x.slice(l + 1, l = i) + '&gt;' :   // >
+    c === 60 ? s += x.slice(l + 1, l = i) + '&lt;' : // <
+      c === 62 ? s += x.slice(l + 1, l = i) + '&gt;' : // >
       c === 38 && (s += x.slice(l + 1, l = i) + '&amp;') // &
   }
   return s || x
@@ -215,7 +234,7 @@ function escapeAttr(x = '') {
   let l = -1
   for (let i = 0; i < x.length; i++) {
     c = x.charCodeAt(i)
-    c !== 45 && (c < 97 || c > 122) && (c < 65 || c > 90) && (s += x.slice(l + 1, l = i))  // -a-zA-Z
+    c !== 45 && (c < 97 || c > 122) && (c < 65 || c > 90) && (s += x.slice(l + 1, l = i)) // -a-zA-Z
   }
   return s || x
 }
@@ -226,9 +245,9 @@ function escapeAttrValue(x = '') {
   let l = -1
   for (let i = 0; i < x.length; i++) {
     c = x.charCodeAt(i)
-    c === 34 ? s += x.slice(l + 1, l = i) + '&quot;' :   // "
-      c === 60 ? s += x.slice(l + 1, l = i) + '&lt;' :   // <
-      c === 62 ? s += x.slice(l + 1, l = i) + '&gt;' :   // >
+    c === 34 ? s += x.slice(l + 1, l = i) + '&quot;' : // "
+      c === 60 ? s += x.slice(l + 1, l = i) + '&lt;' : // <
+      c === 62 ? s += x.slice(l + 1, l = i) + '&gt;' : // >
       c === 38 && (s += x.slice(l + 1, l = i) + '&amp;') // &
   }
   return s || x

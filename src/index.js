@@ -225,7 +225,7 @@ function shouldHydrate(dom) {
 }
 
 function redraw() {
-  idle && (Promise.resolve().then(globalRedraw), idle = false)
+  idle && (requestAnimationFrame(globalRedraw), idle = false)
 }
 
 function globalRedraw() {

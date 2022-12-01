@@ -2,13 +2,14 @@ import window from './window.js'
 
 export default function Query(s, l) {
   const U = URLSearchParams
+  const modifiers = ['append', 'delete', 'set', 'sort']
   let last = l.search
   let usp = new U(last)
   let temp
 
-  const query = { replace: x => (usp = new U(x), update()) }
+  const query = { replace: x => (usp = new U(x), update()), clear: () => query.replace('') }
   for (const key in U.prototype)
-    query[key] = (...xs) => (temp = USP()[key](...xs), update(), temp)
+    query[key] = (...xs) => (temp = USP()[key](...xs), modifiers.includes(key) && update(), temp)
 
   return query
 
@@ -17,10 +18,14 @@ export default function Query(s, l) {
   }
 
   function update() {
+    const target = l.pathname + (usp + '' ? '?' + (usp + '').replace(/=$/g, '') : '') + l.hash
+    if (location.href.endsWith(target))
+      return
+
     window.history.pushState(
       window.history.state,
       null,
-      l.pathname + (usp + '' ? '?' + (usp + '').replace(/=$/g, '') : '') + l.hash // eslint-disable-line
+      target
     )
     s.redraw()
   }

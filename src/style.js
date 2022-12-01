@@ -460,10 +460,9 @@ function px(x) {
 
 function vendor(x) {
   if (properties.indexOf(x) === -1) {
-    if (vendorMap[x]) {
-      console.log(x, 'prefixed to', vendorMap[x]) // eslint-disable-line
+    if (vendorMap[x])
       return vendorMap[x]
-    }
+
     x.indexOf('--') !== 0 && console.error(x, 'css property not found') // eslint-disable-line
   }
   return x

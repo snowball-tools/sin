@@ -1,3 +1,5 @@
+/* eslint no-console: 0 */
+
 // https://chromedevtools.github.io/devtools-protocol/
 
 import path from 'path'
@@ -16,55 +18,115 @@ const args = process.argv.slice(2).concat((process.env.SIN_DEV_ARGS || '').split
 
 let id = 1
 
-export default async function(home, port, scriptParsed) {
-  let open
-  const chromePort = await getPort()
-  const chromeUrl = `http://127.0.0.1:${ chromePort }/json/`
-  const url = 'http://localhost:' + port
-  const urlPath = path.join(home, '.url')
-  const lastUrl = await fsp.readFile(urlPath, 'utf8').catch(() => null)
+export default async function(home, url, scriptParsed) {
+  const urlPath = path.join(home, '.sin-url')
+      , wsUrlPath = path.join(home, '.sin-chrome-ws')
+      , scriptsPath = path.join(home, '.sin-scripts')
+      , chromePortPath = path.join(home, '.sin-chrome-port')
 
-  const chrome = cp.spawn(getPath(), [
-    args.includes('--fps') ? '--show-fps-counter' : '',
-    args.includes('--tools') ? '--auto-open-devtools-for-tabs' : '',
-    '--no-first-run',
-    '--no-default-browser-check',
-    '--disable-web-security',
-    '--disable-translate',
-    '--disable-features=TranslateUI',
-    '--disable-features=Translate',
-    '--disable-infobars',
-    '--test-type', // Remove warning banner from --disable-web-security usage
-    '--user-data-dir=' + home,
-    '--remote-debugging-port=' + chromePort,
-    lastUrl || url
-  ])
+      , chromePort = (await fsp.readFile(chromePortPath, 'utf8').catch(() => null)) || await getPort()
+      , lastUrl = await fsp.readFile(urlPath, 'utf8').catch(() => null)
+      , chromeUrl = `http://127.0.0.1:${ chromePort }/json/`
 
-  process.on('uncaughtExceptionMonitor', () => chrome.kill())
-  chrome.on('exit', () => process.exit(0))
+  let wsUrl = await fsp.readFile(wsUrlPath, 'utf8').catch(() => null)
+    , launched = false
+    , errored = null
+    , opened = false
+    , socket
+    , chrome
+    , open
 
-  const tabs = await getTabs(chromeUrl)
-  const tab = tabs.find(t => t.url.indexOf('http://localhost:' + port) === 0)
+  await (wsUrl
+    ? connect()
+    : spawn()
+  )
 
-  if (!tab)
-    return console.error('Could not find tab in chrome') // eslint-disable-line
-
-  let socket
-  connect()
+  process.on('SIGINT', async() => {
+    await send('Browser.close')
+    process.exit()
+  })
 
   return send
 
-  function connect() {
-    socket = new WS(tab.webSocketDebuggerUrl)
+  async function spawn() {
+    console.log('Launch Chrome')
+    chrome = cp.spawn(getPath(), [
+      args.includes('--fps') ? '--show-fps-counter' : '',
+      args.includes('--tools') ? '--auto-open-devtools-for-tabs' : '',
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--disable-web-security',
+      '--disable-translate',
+      '--disable-features=TranslateUI',
+      '--disable-features=Translate',
+      '--disable-infobars',
+      '--test-type', // Remove warning banner from --disable-web-security usage
+      '--user-data-dir=' + home,
+      '--remote-debugging-port=' + chromePort,
+      lastUrl || url
+    ], {
+      detached: true,
+      stdio: 'ignore'
+    })
+
+    chrome.unref()
+
+    const tabs = await getTabs(chromeUrl)
+    const tab = tabs.find(t => t.url.indexOf(url) === 0)
+
+    if (!tab)
+      return console.error('Could not find tab in chrome') // eslint-disable-line
+
+    wsUrl = tab.webSocketDebuggerUrl
+    fs.writeFileSync(chromePortPath, String(chromePort))
+    fs.writeFileSync(wsUrlPath, wsUrl)
+    await connect()
+  }
+
+  async function connect() {
+    errored = null
+    socket = new WS(wsUrl)
     socket.onopen = onopen
     socket.onmessage = onmessage
-    socket.onerror = x => open && x.message.trim().endsWith('500')
-      ? (console.log('Chrome closed'), chrome.kill(), process.exit(0)) // eslint-disable-line
-      : console.error('Unknown Chrome WS Error:', x.message) // eslint-disable-line
-    socket.onclose = () => setTimeout(connect, 100)
+    socket.onerror = onerror
+    socket.onclose = (x) => !errored && setTimeout(connect, 100)
+    return open || new Promise((resolve, reject) => open = { resolve, reject })
+  }
+
+
+  function onerror(x) {
+    errored = x
+    console.log(x.message)
+    if (opened) {
+      console.log('Chrome closed')
+      chrome && chrome.kill()
+      process.exit(0)
+    } else {
+      opened && console.error('Unknown Chrome WS Error:', x.message)
+      launched && open.reject(x)
+      fsp.unlink(wsUrlPath).catch(() => {})
+      fsp.unlink(scriptsPath).catch(() => {})
+      !chrome && spawn()
+    }
+  }
+
+  async function send(method, params) {
+    return socket.readyState === 1 && new Promise((resolve, reject) => {
+      const message = {
+        id: id++,
+        method,
+        params,
+        resolve,
+        reject
+      }
+      requests.set(message.id, message)
+      socket.send(JSON.stringify(message))
+    })
   }
 
   async function onopen() {
+    open.resolve()
+    launched = true
     console.log('Connected to Chrome') // eslint-disable-line
     await send('Runtime.enable')
     await send('Runtime.evaluate', { expression: hmr })
@@ -76,7 +138,7 @@ export default async function(home, port, scriptParsed) {
   }
 
   function onmessage({ data }) {
-    open = true
+    opened = true
     const { id, method, params, error, result } = JSON.parse(data)
     if (method === 'Debugger.scriptParsed' && params.url)
       return scriptParsed(params)
@@ -95,19 +157,6 @@ export default async function(home, port, scriptParsed) {
       : resolve(result)
   }
 
-  async function send(method, params) {
-    return socket.readyState === 1 && new Promise((resolve, reject) => {
-      const message = {
-        id: id++,
-        method,
-        params,
-        resolve,
-        reject
-      }
-      requests.set(message.id, message)
-      socket.send(JSON.stringify(message))
-    })
-  }
 }
 
 async function getTabs(url, retries = 0) {
@@ -125,8 +174,8 @@ async function getTabs(url, retries = 0) {
 async function getPort() {
   return new Promise(resolve => {
     const server = net.createServer().listen(0, () => {
-      const port = server.address().port
-      server.close(() => resolve(port))
+      const x = server.address().port
+      server.close(() => resolve(x))
     })
   })
 }

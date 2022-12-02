@@ -24,8 +24,8 @@ let listenerToken
 
 user.esbuild && (await import('../../build/index.js')).default()
 
-const assets = ustatic('', { index: ssr, notFound: ssr })
-const build = ustatic('.build')
+const build = ustatic('+build', { notFound: ssr })
+const assets = ustatic('+public', { index: ssr, notFound: build })
 
 listen()
 
@@ -52,15 +52,11 @@ async function listen() {
   app.get('/*', (res, req) => {
     const url = req.getUrl()
 
-    // Don't serve _ (server) folder or hidden paths
-    if (url.charCodeAt(1) === 46 || url.indexOf('/.') !== -1) // _
+    // Don't serve hidden paths
+    if (url.indexOf('/.') !== -1)
       return forbidden(res)
 
-    const ext = path.extname(url).slice(1)
-
-    ext === 'js'
-      ? build(res, req)
-      : assets(res, req)
+    assets(res, req)
   })
 
   app.listen(port, x => {
@@ -92,10 +88,10 @@ async function userServer() {
 }
 
 function ssr(res, req, next) {
-  if (res.accept.indexOf('text/html') !== 0)
+  if (res[ustatic.state].accept.indexOf('text/html') !== 0)
     return next(res, req)
 
-  sin(mount, {}, { location: res.url }, {
+  sin(mount, {}, { location: res[ustatic.state].url }, {
     body: '<script type=module async defer src="/index.js"></script>',
     res
   })

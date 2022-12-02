@@ -4,11 +4,12 @@ import path from 'path'
 import fs from 'fs'
 import fsp from 'fs/promises'
 
-import './log.js'
 import uWebSockets from 'uWebSockets.js'
 import chokidar from 'chokidar'
 import ustatic from 'ustatic'
+import uaParser from 'ua-parser-js'
 
+import './log.js'
 import sin from '../../ssr/uws.js'
 import editor from './editor.js'
 
@@ -21,6 +22,7 @@ const env = process.env
     , entry = process.argv[3] || 'index.js'
     , home = env.SIN_HOME || path.join(env.HOMEPATH || env.HOME || '', '.sin')
     , port = env.PORT || devPort()
+    , url = 'http://localhost:' + port
     , chromeHome = path.join(home, port + '-' + path.basename(cwd))
     , staticImportRegex = new RegExp('((?:^|[^@])(?:import|export)\\s*[{}0-9a-zA-Z*,\\s]*\\s*(?: from |)[\'"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)([\'"])', 'g') // eslint-disable-line
     , dynamicImportRegex = new RegExp('([^$.]import\\(\\s?[\'"])([a-zA-Z1-9@][a-zA-Z0-9@\\/._-]*)([\'"]\\s?\\))', 'g')
@@ -28,14 +30,18 @@ const env = process.env
     , absEntry = path.isAbsolute(entry) ? entry : path.join(cwd, entry)
     , hasEntry = fs.readFileSync(absEntry, 'utf8').indexOf('export default ') !== -1
     , mount = hasEntry ? (await import(absEntry)).default : {}
-    , watcher = chokidar.watch([], { persisten: true })
-    , files = new Map()
+    , watcher = chokidar.watch([], { persistent: true })
+    , scriptsPath = path.join(chromeHome, '.scripts')
+    , scripts = (await fsp.readFile(scriptsPath, 'utf8').then(x => JSON.parse(x)).catch(() => {}) || {})
+    , seen = {}
+
+Object.values(scripts).forEach(x => watcher.add(x.path))
 
 fs.mkdirSync(home, { recursive: true })
 
 const app = uWebSockets.App()
 
-const assets = ustatic('', {
+const src = ustatic('', {
   compressions: false,
   cache: false,
   index: ssr,
@@ -43,8 +49,32 @@ const assets = ustatic('', {
   transform
 })
 
+const assets = ustatic('+public', {
+  compressions: false,
+  cache: false,
+  index: ssr,
+  notFound: src
+})
+
 app.ws('/sindev', {
-  open: ws => ws.subscribe('update'),
+  upgrade: (res, req, context) => {
+    const ua = uaParser(req.getHeader('user-agent'))
+    res.upgrade(
+      {
+        name: ua.browser.name.replace(/^Mobile /, '') + ' v' + ua.browser.version.split('.')[0] + ' on ' +
+              ua.os.name.replace(/ +/g, '') + ' v' + ua.os.version.split('.').slice(0, 2).join('.') +
+              ' from ' + getIP(res)
+    },
+      req.getHeader('sec-websocket-key'),
+      req.getHeader('sec-websocket-protocol'),
+      req.getHeader('sec-websocket-extensions'),
+      context
+    )
+  },
+  open: ws => {
+    seen[ws.name] || console.log(seen[ws.name] = ws.name, 'connected')
+    ws.subscribe('update')
+  },
   message: (ws, x, binary) => {
     if (binary)
       return
@@ -76,9 +106,9 @@ app.get('/*', async(res, req) => {
 })
 
 watcher.on('change', async(x) => {
-  const file = files.get(x)
-      , bytes = await fsp.readFile(x)
-      , changed = Buffer.compare(bytes, file.original) !== 0
+  const file = scripts[x]
+      , bytes = await fsp.readFile(x, 'utf8')
+      , changed = bytes !== file.original
 
   app.publish('update', 'reload')
   file.original = bytes
@@ -87,18 +117,21 @@ watcher.on('change', async(x) => {
   changed && file.scriptId
     ? setSource(file).then(() => app.publish('update', 'redraw'), console.error)
     : app.publish('update', 'forceReload')
-
+  changed && saveScripts(x)
 })
 
-app.listen(port, async() => {
-  console.log('Listening on', port)
-  chrome = await (await import('./chrome.js')).default(chromeHome, port, async x => {
-    const filePath = extensionless(path.join(cwd, new URL(x.url).pathname))
+chrome = await (await import('./chrome.js')).default(chromeHome, url, async x => {
+  if (x.url.indexOf(url) !== 0)
+    return
 
-    if (files.has(filePath))
-      return files.get(filePath).scriptId = x.scriptId
+  const filePath = extensionless(path.join(cwd, new URL(x.url).pathname))
 
-    const original = await fsp.readFile(filePath)
+  if (scripts[filePath]) {
+    scripts[filePath].scriptId = x.scriptId
+  } else {
+    const original = await fsp.readFile(filePath, 'utf8').catch(() => null)
+    if (original === null)
+      return
     watch({
       path: filePath,
       original,
@@ -106,7 +139,14 @@ app.listen(port, async() => {
       scriptId: x.scriptId,
       type: 'text/javascript'
     })
-  })
+  }
+  saveScripts()
+})
+
+app.listen(port, async(x) => {
+  x
+    ? console.log('Listening on', port)
+    : console.log('Could not listen on', port)
 })
 
 function extensionless(x) {
@@ -140,22 +180,29 @@ function end(res, status, x) {
 }
 
 async function transform(x) {
-  x.original = Buffer.from(x.bytes)
+  x.original = Buffer.from(x.bytes).toString()
   x.type === 'text/javascript' && (x.bytes = modify(x.original))
   watch(x)
 }
 
 function watch(x) {
-  if (files.has(x.path))
+  if (scripts[x.path])
     return
 
-  files.set(x.path, x)
+  scripts[x.path] = x
   watcher.add(x.path)
 }
 
+function saveScripts() {
+  try {
+    fs.writeFileSync(scriptsPath, JSON.stringify(scripts))
+  } catch (x) {
+    return x
+  }
+}
 
 function modify(x) {
-  return x.toString()
+  return x
     .replace(staticImportRegex, (_, a, b, c) => a + '/' + resolve(b) + c)
     .replace(dynamicImportRegex, (_, a, b, c) => a + '/' + resolve(b) + c)
     .replace(/((function.*?\)|=>)\s*{)/g, '$1eval(0);') // jail
@@ -175,10 +222,10 @@ async function loadServer() {
 }
 
 function ssr(res, req, next) {
-  if (res.accept.indexOf('text/html') !== 0)
+  if (res[ustatic.state].accept.indexOf('text/html') !== 0)
     return next(res, req)
 
-  sin(mount, {}, { location: res.url }, {
+  sin(mount, {}, { location: res[ustatic.state].url }, {
     head: '<script type=module src="/node_modules/sin/bin/dev/browser.js"></script>',
     body: '<script type=module async defer src="/' + entry + '"></script>',
     res
@@ -223,4 +270,12 @@ function devPort() {
   ports[cwd] = port
   fs.writeFileSync(file, JSON.stringify(ports))
   return port
+}
+
+function getIP(res) {
+  const remoteIP = Buffer.from(res.getRemoteAddress())
+  return (Buffer.compare(Buffer.from('0'.repeat(20) + 'ffff', 'hex'), remoteIP.slice(0, 12)) === 0
+    ? [...remoteIP.slice(12)].join('.')
+    : Buffer.from(res.getRemoteAddressAsText()).toString()
+  ).replace(/(^|:)0+/g, '$1').replace(/::/g, '')
 }

@@ -1,6 +1,6 @@
 /* eslint no-unused-vars: 0 */
 
-import s from './'
+import s from 'sin'
 
 liveOptimizationSample()
 

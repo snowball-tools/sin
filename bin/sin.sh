@@ -1,1 +1,1 @@
-node --require "$(dirname $0)/silence.cjs" --experimental-loader "$(dirname $0)/loader.js" "$(dirname $0)/index.js" $@
+node --trace-uncaught --no-warnings --watch --experimental-loader "$(dirname $0)/loader.js" "$(dirname $0)/index.js" $@

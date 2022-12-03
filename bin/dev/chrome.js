@@ -19,7 +19,8 @@ const args = process.argv.slice(2).concat((process.env.SIN_DEV_ARGS || '').split
 let id = 1
 
 export default async function(home, url, scriptParsed) {
-  const urlPath = path.join(home, '.sin-url')
+  const chromePath = getPath()
+      , urlPath = path.join(home, '.sin-url')
       , wsUrlPath = path.join(home, '.sin-chrome-ws')
       , scriptsPath = path.join(home, '.sin-scripts')
       , chromePortPath = path.join(home, '.sin-chrome-port')
@@ -49,8 +50,8 @@ export default async function(home, url, scriptParsed) {
   return send
 
   async function spawn() {
-    console.log('Launch Chrome')
-    chrome = cp.spawn(getPath(), [
+    console.log('Launching Chrome')
+    chrome = cp.spawn(chromePath, [
       args.includes('--fps') ? '--show-fps-counter' : '',
       args.includes('--tools') ? '--auto-open-devtools-for-tabs' : '',
       '--no-first-run',

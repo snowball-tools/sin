@@ -13,9 +13,10 @@ const env = process.env
     , ssl = env.SSL_CERT && { key_file_name: env.SSL_KEY, cert_file_name: env.SSL_CERT }
     , port = env.PORT || (ssl ? 443 : 80)
     , cwd = process.cwd()
-    , entry = process.argv[3] || 'index.js'
+    , specifiesIndex = process.argv[3]
+    , entry = specifiesIndex || 'index.js'
     , absEntry = path.isAbsolute(entry) ? entry : path.join(process.cwd(), entry)
-    , hasEntry = fs.readFileSync(absEntry, 'utf8').indexOf('export default ') !== -1
+    , hasEntry = await fs.readFile(absEntry, 'utf8').catch(specifiesIndex ? undefined : (() => '')).indexOf('export default ') !== -1
     , mount = hasEntry ? (await import(absEntry)).default : {}
     , user = await userServer()
 

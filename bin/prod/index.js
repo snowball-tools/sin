@@ -12,7 +12,7 @@ import sin from '../../ssr/uws.js'
 const env = process.env
     , forbiddens = ['/node_modules/*', '/package.json', '/package-lock.json', '/pnpm-lock.yaml']
     , ssl = env.SSL_CERT && { key_file_name: env.SSL_KEY, cert_file_name: env.SSL_CERT }
-    , port = env.PORT || (ssl ? 443 : 80)
+    , port = env.PORT ? parseInt(env.PORT) : (ssl ? 443 : 80)
     , cwd = process.cwd()
     , specifiesIndex = process.argv[3]
     , entry = specifiesIndex || 'index.js'

@@ -17,7 +17,7 @@ const env = process.env
     , specifiesIndex = process.argv[3]
     , entry = specifiesIndex || 'index.js'
     , absEntry = path.isAbsolute(entry) ? entry : path.join(process.cwd(), entry)
-    , hasEntry = await fsp.readFile(absEntry, 'utf8').catch(specifiesIndex ? undefined : (() => '')).indexOf('export default ') !== -1
+    , hasEntry = (await fsp.readFile(absEntry, 'utf8').catch(specifiesIndex ? undefined : (() => ''))).indexOf('export default ') !== -1
     , mount = hasEntry ? (await import(absEntry)).default : {}
     , user = await userServer()
 

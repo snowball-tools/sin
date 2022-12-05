@@ -97,7 +97,6 @@ export default async function(home, url, scriptParsed) {
 
   function onerror(x) {
     errored = x
-    console.log(x.message)
     if (opened) {
       console.log('Chrome closed')
       chrome && chrome.kill()

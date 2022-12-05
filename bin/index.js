@@ -1,5 +1,8 @@
+#! /usr/bin/env node
+
 import fs from 'fs/promises'
 import path from 'path'
+import cp from 'child_process'
 
 const envPath = path.join(process.cwd(), '.env')
 
@@ -11,9 +14,12 @@ await fs.readFile(envPath, 'utf8').then(
   () => {}
 )
 
-;({
-  dev: () => import('./dev/index.js'),
-  prod: () => import('./prod/index.js'),
-  build: async() => (await import('../build/index.js')).default({}),
-  generate: () => import('./generate/index.js')
-})[process.argv[2]]()
+const here = (...xs) => path.join(path.dirname(process.argv[1]), ...xs)
+
+cp.fork(here(process.argv[2], 'index.js'), process.argv.slice(2), {
+  execArgv: [
+    process.argv[2] === 'dev' && '--watch',
+    '--no-warnings',
+    '--experimental-loader', here('/loader.js')
+  ].filter(x => x)
+})

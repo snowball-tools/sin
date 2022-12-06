@@ -72,6 +72,7 @@ export default async function(home, url, scriptParsed) {
 
     chrome.unref()
 
+    process.stdout.write('Connecting to Chrome')
     const tabs = await getTabs(chromeUrl)
     const tab = tabs.find(t => t.url.indexOf(url) === 0)
 
@@ -161,10 +162,13 @@ export default async function(home, url, scriptParsed) {
 
 async function getTabs(url, retries = 0) {
   try {
-    return await s.http(url + 'list/')
+    process.stdout.write('.')
+    return await s.http(url + 'list/').then(() => process.stdout.write('\n'))
   } catch (err) {
-    if (retries > 5)
-      throw err
+    if (retries > 20) {
+      process.stdout.write('\n')
+      throw new Error('Could not connect to Chrome dev tools')
+    }
 
     await new Promise(r => setTimeout(r, 500))
     return getTabs(url, ++retries)

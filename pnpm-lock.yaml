@@ -6,7 +6,7 @@ specifiers:
   eslint: 8.28.0
   uWebSockets.js: github:uNetworking/uWebSockets.js#v20.15.0
   ua-parser-js: 1.0.32
-  ustatic: 0.0.11
+  ustatic: 0.0.12
   ws: 8.11.0
 
 dependencies:
@@ -15,7 +15,7 @@ dependencies:
   eslint: 8.28.0
   uWebSockets.js: github.com/uNetworking/uWebSockets.js/77bc1fd5577ae42b56675912eb8481a31f3fefd2
   ua-parser-js: 1.0.32
-  ustatic: 0.0.11
+  ustatic: 0.0.12
   ws: 8.11.0
 
 packages:
@@ -961,8 +961,8 @@ packages:
       punycode: 2.1.1
     dev: false
 
-  /ustatic/0.0.11:
-    resolution: {integrity: sha512-hrEAPPPlqk/nlcnaNlT9e7WLW8sIOrbXA+9fZADHSVh03dcq1TRVXLkIVGs/63Dko/ZzhbxM6Kv0zCIlfGbnOQ==}
+  /ustatic/0.0.12:
+    resolution: {integrity: sha512-8zXWIQmk7p8ow4PFtqKmfLT05B5kSXgQyTREhgfie2TqI8SJY4t6U+/keP+XBAfNrmTnpJsVPGznofqET8g6aw==}
     hasBin: true
     dependencies:
       uWebSockets.js: github.com/uNetworking/uWebSockets.js/77bc1fd5577ae42b56675912eb8481a31f3fefd2

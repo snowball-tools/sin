@@ -254,7 +254,7 @@ function updates(parent, next, context, before, last = parent.lastChild) {
       , after = last ? last.nextSibling : null
 
   keys && (keys.rev = {}) && tracked
-    ? keyed(parent, context, ref[keysSymbol], next, keys, after)
+    ? keyed(parent, context, ref[keysSymbol], next, keys, after, ref)
     : nonKeyed(parent, context, next, keys, ref, after)
 
   const first = getNext(before, parent)
@@ -302,7 +302,7 @@ function nonKeyed(parent, context, next, keys, dom, after = null) {
     dom = remove(dom, parent)
 }
 
-function keyed(parent, context, as, bs, keys, after) {
+function keyed(parent, context, as, bs, keys, after, ref) {
   const map = as.rev
 
   let ai = as.length - 1
@@ -313,6 +313,9 @@ function keyed(parent, context, as, bs, keys, after) {
 
   outer: while (true) { // eslint-disable-line
     while (a.key === b.key) {
+      if (a.key === undefined || b.key === undefined)
+        return nonKeyed(parent, context, bs, keys, ref, after)
+
       after = updateView(a.dom, b, context, parent).first
       Ref(keys, after, b.key, bi)
       delete map[b.key]
@@ -328,6 +331,9 @@ function keyed(parent, context, as, bs, keys, after) {
       a = as[--ai]
       b = bs[--bi]
     }
+
+    if (a.key === undefined || b.key === undefined)
+      return nonKeyed(parent, context, bs, keys, ref, after)
 
     if (hasOwn.call(map, b.key)) {
       temp = map[b.key]

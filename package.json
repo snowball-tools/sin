@@ -43,11 +43,11 @@
   ],
   "dependencies": {
     "chokidar": "3.5.3",
-    "esbuild": "0.15.16",
-    "eslint": "8.28.0",
-    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.15.0",
+    "esbuild": "0.16.10",
+    "eslint": "8.30.0",
+    "ey": "1.0.0",
+    "prexit": "2.0.0",
     "ua-parser-js": "1.0.32",
-    "ustatic": "0.0.12",
     "ws": "8.11.0"
   }
 }

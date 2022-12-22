@@ -4,34 +4,47 @@ import path from 'path'
 import fs from 'fs'
 import fsp from 'fs/promises'
 
-import uws from 'uWebSockets.js'
-import ustatic from 'ustatic'
+import ey from 'ey'
 
-import sin from '../../ssr/uws.js'
+import ssr, { wrap } from '../../ssr/index.js'
 
-const env = process.env
-    , forbiddens = ['/node_modules/*', '/package.json', '/package-lock.json', '/pnpm-lock.yaml']
-    , ssl = env.SSL_CERT && { key_file_name: env.SSL_KEY, cert_file_name: env.SSL_CERT }
-    , port = env.PORT ? parseInt(env.PORT) : (ssl ? 443 : 80)
-    , cwd = process.cwd()
-    , specifiesIndex = process.argv[3]
-    , entry = specifiesIndex || 'index.js'
-    , absEntry = path.isAbsolute(entry) ? entry : path.join(process.cwd(), entry)
-    , hasEntry = (await fsp.readFile(absEntry, 'utf8').catch(specifiesIndex ? undefined : (() => ''))).indexOf('export default ') !== -1
-    , mount = hasEntry ? (await import(absEntry)).default : {}
-    , user = await userServer()
+const ssl = process.env.SSL_CERT && { cert: process.env.SSL_CERT, key: process.env.SSL_KEY }
+    , useJS = !process.argv.slice(3).find((x, i, xs) => x === '--no-js')
+    , protocol = ssl ? 'https://' : 'http://'
+    , port = process.env.PORT ? parseInt(process.env.PORT) : (ssl ? 443 : 80)
+    , { mount, entry } = await getMount()
+    , server = await getServer()
 
-let listenerToken
-  , certChangeThrottle
+let certChangeThrottle
 
-user.esbuild && (await import('../../build/index.js')).default()
+server.esbuild && (await import('../../build/index.js')).default()
 
-const build = ustatic('+build', { notFound: ssr })
-const assets = ustatic('+public', { index: ssr, notFound: build })
+const app = ey(ssl)
+
+app.get(ey.files('+public'))
+
+app.get(ey.files('+build'))
+
+app.get(r => {
+  if ((r.headers.accept || '').indexOf('text/html') !== 0)
+    return
+
+  return ssr(
+    mount,
+    {},
+    { location: protocol + (r.headers.host || ('localhost' + port)) + r.url }
+  ).then(x => {
+    r.end(wrap(x, {
+      body: useJS ? '<script type=module async defer src="/' + entry + '"></script>' : ''
+    }), x.status || 200, x.headers)
+  })
+})
+
+typeof server.default === 'function' && await server.default(app)
 
 listen()
 
-env.SSL_CERT && fs.watch(env.SSL_CERT, () => {
+ssl && fs.watch(ssl.cert, () => {
   console.log('SSL certificate changed - reload in 5 seconds')
   clearTimeout(certChangeThrottle)
   certChangeThrottle = setTimeout(() => {
@@ -41,61 +54,32 @@ env.SSL_CERT && fs.watch(env.SSL_CERT, () => {
 })
 
 async function listen() {
-  listenerToken && uws.us_listen_socket_close(listenerToken)
-
-  const app = ssl
-    ? uws.SSLApp(ssl)
-    : uws.App()
-
-  forbiddens.forEach(x => app.get(x, forbidden))
-
-  typeof user.default === 'function' && await user.default(app)
-
-  app.get('/*', (res, req) => {
-    const url = req.getUrl()
-
-    // Don't serve hidden paths
-    if (url.indexOf('/.') !== -1)
-      return forbidden(res)
-
-    assets(res, req)
-  })
-
   app.listen(port, x => {
     if (!x)
       throw new Error('Failed listening on ' + port)
 
     console.log('Listening on', port)
-    listenerToken = x
   })
 }
 
-function forbidden(res) {
-  return end(res, '403 Forbidden')
+async function getServer() {
+  const server = process.argv.find((x, i, xs) => xs[i + 1] === '-s' || xs[i + 1] === '--server')
+  const serverPath = server
+        ? path.join(process.cwd(), server)
+        : path.join(process.cwd(), '+', 'index.js')
+
+  return fs.existsSync(serverPath)
+    ? await import(serverPath)
+    : {}
 }
 
-function end(res, status, x) {
-  res.cork(() => {
-    res.writeStatus(status)
-    res.end(arguments.length === 1 ? status : x)
-  })
-}
+async function getMount() {
+  const specifiesIndex = process.argv.slice(3).find((x, i, xs) => x[0] !== '-' && (xs[i - 1] || '')[0] !== '-')
+      , entry = specifiesIndex || 'index.js'
+      , absEntry = path.isAbsolute(entry) ? entry : path.join(process.cwd(), entry)
+      , hasEntry = (await fsp.readFile(absEntry, 'utf8').catch(specifiesIndex ? undefined : (() => ''))).indexOf('export default ') !== -1
 
-async function userServer() {
-  const serverPath = path.join(cwd, '+', 'index.js')
-  if (!fs.existsSync(serverPath))
-    return {}
-
-  return await import(serverPath)
-}
-
-function ssr(res, req, next) {
-  if (res[ustatic.state].accept.indexOf('text/html') !== 0)
-    return next(res, req)
-
-  sin(mount, {}, { location: res[ustatic.state].url }, {
-    body: '<script type=module async defer src="/index.js"></script>',
-    res
-  })
-  return true
+  return hasEntry
+    ? { entry, mount: (await import(absEntry)).default }
+    : { entry }
 }

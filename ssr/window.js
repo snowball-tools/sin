@@ -1,4 +1,5 @@
 import window from '../src/window.js'
+import { asLocation } from './shared.js'
 import { hasOwn } from '../src/shared.js'
 import px from './px.js'
 
@@ -16,18 +17,11 @@ Object.assign(window, {
   Node,
   XMLHttpRequest,
   addEventListener: noop,
-  location: {
-    pathname: '',
-    hash: '',
-    search: ''
-  },
+  location: asLocation(new URL('', 'http://localhost')),
   history: {
     pushState(state, title, path) {
       window.history.state = state
-      const url = new URL(path, 'http://x')
-      window.location.pathname = url.pathname
-      window.location.hash = url.hash
-      window.location.search = url.search
+      window.location = asLocation(new URL(path, window.location.origin || 'http://localhost'))
     },
     state: null
   },
@@ -139,7 +133,7 @@ function XMLHttpRequest() {
 
       state(xhr.OPENED)
       method = m
-      url = u
+      url = (!u.match(/^[a-z]+:\//) && window.location.origin || '') + u
       user && (auth = user + ':' + pass)
     },
 

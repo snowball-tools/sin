@@ -1,25 +1,29 @@
 #! /usr/bin/env node
 
-import fs from 'fs/promises'
 import path from 'path'
 import cp from 'child_process'
 
-const envPath = path.join(process.cwd(), '.env')
-
-await fs.readFile(envPath, 'utf8').then(
-  x => x.split('\n').forEach((x, i) => (
-    x = x.trim(), i = x.indexOf('='), x && i > 0 && x[0] !== '#' &&
-    (process.env[x.slice(0, i)] = x.slice(i + 1))
-  )),
-  () => {}
-)
+import './env.js'
 
 const here = (...xs) => path.join(path.dirname(process.argv[1]), ...xs)
+    , command = process.argv[2]
 
-cp.fork(here(process.argv[2], 'index.js'), process.argv.slice(2), {
-  execArgv: [
-    process.argv[2] === 'dev' && '--watch',
-    '--no-warnings',
-    '--experimental-loader', here('/loader.js')
-  ].filter(x => x)
-})
+start()
+
+function start() {
+  const child = cp.fork(
+    command === 'watch' || command === 'run'
+      ? process.argv[3]
+      : here(command, 'index.js'),
+    process.argv.slice(2),
+    {
+      execArgv: [
+        '--no-warnings',
+        '--experimental-loader', here('/loader.js')
+      ].filter(x => x)
+    }
+  )
+
+  if (command === 'dev' || command === 'watch')
+    child.on('close', code => code === 123 && start())
+}

@@ -7,6 +7,20 @@ export function parseAcceptEncoding(x, preferred = []) {
       : b.q - a.q)
 }
 
+export function asLocation(x) {
+  return {
+    hash: x.hash,
+    host: x.host,
+    hostname: x.hostname,
+    href: x.href,
+    origin: x.origin,
+    pathname: x.pathname,
+    port: x.port,
+    protocol: x.protocol,
+    search: x.search
+  }
+}
+
 export function wrap({
   html = '',
   css = '',
@@ -19,12 +33,11 @@ export function wrap({
 } = {}) {
   return html.slice(0, 15).toLowerCase() === '<!doctype html>'
       ? html.replace('</head>', head + css + '</head>').replace('</body>', body + '</body>')
-      :
-`<!doctype html><html${ lang ? ' lang="' + lang + '"' : '' }><head><meta charset="utf8"><title>${
-  title
-}</title><meta name="viewport" content="width=device-width, initial-scale=1">${
-  serverHead + head + css
-}</head><body>${
-  html + body
-}</body></html>`
+      : `<!doctype html><html${ lang ? ' lang="' + lang + '"' : '' }><head><meta charset="utf8"><title>${
+          title
+        }</title><meta name="viewport" content="width=device-width, initial-scale=1">${
+          serverHead + head + css
+        }</head><body>${
+          html + body
+        }</body></html>`
 }

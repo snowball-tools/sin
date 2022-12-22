@@ -1,9 +1,12 @@
 import window from './window.js'
 import View from '../src/view.js'
 import { cleanSlash, className, ignoredAttr, isEvent, isFunction, asArray, notValue, hasOwn } from '../src/shared.js'
+import { asLocation, wrap } from './shared.js'
 import { formatValue, cssRules } from '../src/style.js'
 import router from '../src/router.js'
 import s from '../src/index.js'
+
+export { wrap }
 
 class TimeoutError extends Error {}
 
@@ -32,7 +35,12 @@ const voidTags = new Set([
 ])
 
 export default async function({ view = () => '', attrs = {}, context = {} } = {}, serverAttrs = {}, serverContext = {}) {
-  serverContext.location = typeof serverContext.location === 'string' ? new URL(serverContext.location, 'http://x/') : serverContext.location
+  serverContext.location = window.location = asLocation(
+    typeof serverContext.location === 'string'
+      ? new URL(serverContext.location, 'http://localhost/')
+      : serverContext.location
+  )
+
   const headers = {
     Server: 'Sin',
     'Content-Type': 'text/html; charset=UTF-8',

@@ -37,17 +37,14 @@ export default async function(home, url, scriptParsed) {
     , chrome
     , open
 
-  await (wsUrl
+  wsUrl
     ? connect()
     : spawn()
-  )
 
-  process.on('SIGINT', async() => {
-    await send('Browser.close')
-    process.exit()
-  })
+  // Delay return to prevent uws tying port to child https://github.com/uNetworking/uWebSockets.js/issues/840
+  await new Promise(r => setTimeout(r, 50))
 
-  return send
+  return { send, kill: () => chrome && chrome.kill() }
 
   async function spawn() {
     console.log('Launching Chrome')
@@ -72,8 +69,12 @@ export default async function(home, url, scriptParsed) {
 
     chrome.unref()
 
+    // Delay return to prevent uws tying port to child
+    await new Promise(r => setTimeout(r, 60))
+
     process.stdout.write('Connecting to Chrome')
     const tabs = await getTabs(chromeUrl)
+    process.stdout.write('\n')
     const tab = tabs.find(t => t.url.indexOf(url) === 0)
 
     if (!tab)
@@ -127,8 +128,6 @@ export default async function(home, url, scriptParsed) {
 
   async function onopen() {
     open.resolve()
-    launched = true
-    console.log('Connected to Chrome') // eslint-disable-line
     await send('Runtime.enable')
     await send('Runtime.evaluate', { expression: hmr })
     await send('Debugger.enable')
@@ -136,6 +135,10 @@ export default async function(home, url, scriptParsed) {
     await send('Network.setCacheDisabled', { cacheDisabled: true })
     await send('Page.enable')
     await send('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
+    console.log(launched
+      ? 'Reconnected to Chrome'
+      : 'Connected to Chrome') // eslint-disable-line
+    launched = true
   }
 
   function onmessage({ data }) {
@@ -163,7 +166,7 @@ export default async function(home, url, scriptParsed) {
 async function getTabs(url, retries = 0) {
   try {
     process.stdout.write('.')
-    return await s.http(url + 'list/').then(() => process.stdout.write('\n'))
+    return await s.http(url + 'list/')
   } catch (err) {
     if (retries > 20) {
       process.stdout.write('\n')

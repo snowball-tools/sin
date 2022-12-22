@@ -4,13 +4,12 @@ import path from 'path'
 import fs from 'fs'
 import fsp from 'fs/promises'
 
-import uWebSockets from 'uWebSockets.js'
+import ey from 'ey'
+import prexit from 'prexit'
 import chokidar from 'chokidar'
-import ustatic from 'ustatic'
 import uaParser from 'ua-parser-js'
 
-import './log.js'
-import sin from '../../ssr/uws.js'
+import ssr, { wrap } from '../../ssr/index.js'
 import editor from './editor.js'
 
 let chrome
@@ -19,7 +18,6 @@ process.env.NODE_ENV = 'development'
 
 const env = process.env
     , cwd = process.cwd()
-    , entry = process.argv[3] || 'index.js'
     , home = env.SIN_HOME || path.join(env.HOMEPATH || env.HOME || '', '.sin')
     , port = env.PORT ? parseInt(env.PORT) : devPort()
     , url = 'http://localhost:' + port
@@ -27,83 +25,81 @@ const env = process.env
     , staticImportRegex = new RegExp('((?:^|[^@])(?:import|export)\\s*[{}0-9a-zA-Z*,\\s]*\\s*(?: from |)[\'"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)([\'"])', 'g') // eslint-disable-line
     , dynamicImportRegex = new RegExp('([^$.]import\\(\\s?[\'"])([a-zA-Z1-9@][a-zA-Z0-9@\\/._-]*)([\'"]\\s?\\))', 'g')
     , resolveCache = Object.create(null)
-    , absEntry = path.isAbsolute(entry) ? entry : path.join(cwd, entry)
-    , hasEntry = fs.readFileSync(absEntry, 'utf8').indexOf('export default ') !== -1
-    , mount = hasEntry ? (await import(absEntry)).default : {}
+    , useJS = process.argv.includes('--no-js') ? undefined : true
+    , { mount, entry } = await getMount()
     , watcher = chokidar.watch([], { persistent: true })
     , scriptsPath = path.join(chromeHome, '.scripts')
     , scripts = (await fsp.readFile(scriptsPath, 'utf8').then(x => JSON.parse(x)).catch(() => {}) || {})
     , seen = {}
+    , originals = {}
+    , sockets = new Set()
 
 Object.values(scripts).forEach(x => watcher.add(x.path))
 
 fs.mkdirSync(home, { recursive: true })
 
-const app = uWebSockets.App()
-
-const src = ustatic('', {
-  compressions: false,
-  cache: false,
-  index: ssr,
-  notFound: ssr,
-  transform
-})
-
-const assets = ustatic('+public', {
-  compressions: false,
-  cache: false,
-  index: ssr,
-  notFound: src
-})
+const app = ey()
 
 app.ws('/sindev', {
-  upgrade: (res, req, context) => {
-    const ua = uaParser(req.getHeader('user-agent'))
-    res.upgrade(
-      {
-        name: ua.browser.name.replace(/^Mobile /, '') + ' v' + ua.browser.version.split('.')[0] + ' on ' +
-              ua.os.name.replace(/ +/g, '') + ' v' + ua.os.version.split('.').slice(0, 2).join('.') +
-              ' from ' + getIP(res)
-    },
-      req.getHeader('sec-websocket-key'),
-      req.getHeader('sec-websocket-protocol'),
-      req.getHeader('sec-websocket-extensions'),
-      context
-    )
-  },
-  open: ws => {
-    seen[ws.name] || console.log(seen[ws.name] = ws.name, 'connected')
-    ws.subscribe('update')
-  },
-  message: (ws, x, binary) => {
-    if (binary)
-      return
-
-    const buffer = Buffer.from(x).toString()
-    try {
-      const { file, line, column } = JSON.parse(buffer)
-      editor({
-        path: fs.existsSync(file) ? file : path.join(cwd, file),
-        line,
-        column
-      })
-    } catch (e) {
-      console.error('Not JSON', e, buffer)
+  upgrade: res => {
+    const ua = uaParser(res.headers['user-agent'])
+    return {
+      name: ua.browser.name.replace(/^Mobile /, '') + ' v' + ua.browser.version.split('.')[0] + ' on ' +
+            ua.os.name.replace(/ +/g, '') + ' v' + ua.os.version.split('.').slice(0, 2).join('.') +
+            ' from ' + res.ip
     }
   }
+}, async ws => {
+  sockets.add(ws)
+  ws.subscribe('update')
+
+  seen[ws.name] || setTimeout(() => console.log(seen[ws.name] = ws.name, 'connected'), 500)
+  for await (const { json } of ws) {
+    if (!json)
+      return
+    const { file, line, column } = json
+    editor({
+      path: fs.existsSync(file) ? file : path.join(cwd, file),
+      line,
+      column
+    })
+  }
+  sockets.delete(ws)
 })
 
 await loadServer()
 
-app.get('/*', async(res, req) => {
-  const url = req.getUrl()
+app.get(
+  r => {
+    // Don't serve _ (server) folder or hidden paths
+    if (r.url.charCodeAt(1) === 46 || r.url.indexOf('/.') !== -1) // _
+      return r.end(403)
+  },
+  ey.files({
+    compressions: false,
+    cache: false,
+    transform
+  }),
+  ey.files('+public', {
+    compressions: false,
+    cache: false
+  }),
+  async r => {
+    if ((r.headers.accept || '').indexOf('text/html') !== 0)
+      return
 
-  // Don't serve _ (server) folder or hidden paths
-  if (url.charCodeAt(1) === 46 || url.indexOf('/.') !== -1) // _
-    return end(res, '403 Forbidden')
+    const x = await ssr(
+      mount,
+      {},
+      { location: 'http://' + (r.headers.host || url) + r.url }
+    )
 
-  assets(res, req)
-})
+    r.end(wrap(x, {
+      head: '<script type=module src="/node_modules/sin/bin/dev/browser.js"></script>',
+      body: useJS && '<script type=module async defer src="/' + entry + '"></script>'
+    }), x.status || 200, x.headers)
+  }
+)
 
 watcher.on('change', async(x) => {
   const file = scripts[x]
@@ -143,10 +139,13 @@ chrome = await (await import('./chrome.js')).default(chromeHome, url, async x =>
   saveScripts()
 })
 
-app.listen(port, async(x) => {
-  x
-    ? console.log('Listening on', port)
-    : console.log('Could not listen on', port)
+await app.listen(port)
+console.log('Listening on', port)
+
+prexit(async(signal, code) => {
+  code !== 123 && await chrome.send('Browser.close')
+  app.unlisten()
+  sockets.forEach(x => x.close())
 })
 
 function extensionless(x) {
@@ -166,23 +165,19 @@ function canRead(x) {
 }
 
 async function setSource(x) {
-  await chrome('Debugger.setScriptSource', {
+  await chrome.send('Debugger.setScriptSource', {
     scriptId: x.scriptId,
     scriptSource: x.bytes
   }).catch(console.error)
 }
 
-function end(res, status, x) {
-  res.cork(() => {
-    res.writeStatus(status)
-    res.end(arguments.length === 1 ? status : x)
-  })
-}
-
-async function transform(x) {
-  x.original = Buffer.from(x.bytes).toString()
-  x.type === 'text/javascript' && (x.bytes = modify(x.original))
+function transform(x, r) {
   watch(x)
+  if (!r.url.endsWith('.js'))
+    return x
+
+  const string = originals[r.pathname] = Buffer.from(x).toString()
+  return modify(string)
 }
 
 function watch(x) {
@@ -219,18 +214,6 @@ async function loadServer() {
   } catch (e) {
     console.error(e)
   }
-}
-
-function ssr(res, req, next) {
-  if (res[ustatic.state].accept.indexOf('text/html') !== 0)
-    return next(res, req)
-
-  sin(mount, {}, { location: res[ustatic.state].url }, {
-    head: '<script type=module src="/node_modules/sin/bin/dev/browser.js"></script>',
-    body: '<script type=module async defer src="/' + entry + '"></script>',
-    res
-  })
-  return true
 }
 
 function resolve(n) {
@@ -272,10 +255,13 @@ function devPort() {
   return port
 }
 
-function getIP(res) {
-  const remoteIP = Buffer.from(res.getRemoteAddress())
-  return (Buffer.compare(Buffer.from('0'.repeat(20) + 'ffff', 'hex'), remoteIP.slice(0, 12)) === 0
-    ? [...remoteIP.slice(12)].join('.')
-    : Buffer.from(res.getRemoteAddressAsText()).toString()
-  ).replace(/(^|:)0+/g, '$1').replace(/::/g, '')
+async function getMount() {
+  const specifiesIndex = process.argv.slice(3).find((x, i, xs) => x[0] !== '-' && (xs[i - 1] || '')[0] !== '-')
+      , entry = specifiesIndex || 'index.js'
+      , absEntry = path.isAbsolute(entry) ? entry : path.join(cwd, entry)
+      , hasEntry = (await fsp.readFile(absEntry, 'utf8').catch(specifiesIndex ? undefined : (() => ''))).indexOf('export default ') !== -1
+
+  return hasEntry
+    ? { entry, mount: (await import(absEntry)).default }
+    : { entry }
 }

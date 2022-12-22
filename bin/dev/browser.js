@@ -12,7 +12,11 @@ function connect() {
   ws = new WebSocket(location.protocol.replace('http', 'ws') + location.host + '/sindev')
   ws.onmessage = onmessage
   ws.onclose = () => setTimeout(connect, 100)
-  ws.onerror = console.log // eslint-disable-line
+  ws.onerror = console.log
+}
+
+function send(x) {
+  ws && ws.readyState === 1 && ws.send(x)
 }
 
 function onmessage({ data }) {
@@ -23,7 +27,7 @@ function onmessage({ data }) {
     : data === 'redraw' && window.hmr && s.redraw()
 }
 
-goto.observe(x => ws && ws.send(JSON.stringify(parseStackTrace(x)[3])))
+goto.observe(x => send(JSON.stringify(parseStackTrace(x)[3])))
 
 s.error = s((error) => {
   console.error(error) // eslint-disable-line
@@ -41,7 +45,7 @@ s.error = s((error) => {
             s`span c white;td underline`({
               onclick: (e) => {
                 e.redraw = false
-                ws && ws.send(JSON.stringify({ file, line, column }))
+                send(JSON.stringify({ file, line, column }))
               }
             },
               file + ':' + line + ':' + column

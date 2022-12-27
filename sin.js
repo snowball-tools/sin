@@ -27,7 +27,7 @@ function asCssVar(x2) {
   return x2.charCodeAt(0) === 36 ? "--" + x2.slice(1) : x2.charCodeAt(0) === 45 && x2.charCodeAt(1) === 45 ? x2 : null;
 }
 function ignoredAttr(x2) {
-  return x2 === "dom" || x2 === "is" || x2 === "key" || x2 === "handleEvent" || x2 === "type" || x2 === "class" || x2 === "className" || x2 === "style" || x2 === "deferrable";
+  return x2 === "dom" || x2 === "is" || x2 === "key" || x2 === "handleEvent" || x2 === "type" || x2 === "class" || x2 === "className" || x2 === "style" || x2 === "deferrable" || x2 === "href";
 }
 function className(view) {
   return (classes(view.attrs.class) + classes(view.attrs.className) + view.tag.classes).trim();
@@ -209,21 +209,25 @@ function call(fn2) {
 // src/query.js
 function Query(s2, l) {
   const U = URLSearchParams;
+  const modifiers = ["append", "delete", "set", "sort"];
   let last2 = l.search;
   let usp = new U(last2);
   let temp2;
-  const query = { replace: (x2) => (usp = new U(x2), update2()) };
+  const query = { replace: (x2) => (usp = new U(x2), update2()), clear: () => query.replace("") };
   for (const key in U.prototype)
-    query[key] = (...xs) => (temp2 = USP()[key](...xs), update2(), temp2);
+    query[key] = (...xs) => (temp2 = USP()[key](...xs), modifiers.includes(key) && update2(), temp2);
   return query;
   function USP() {
     return last2 === l.search ? usp : (last2 = l.search, usp = new U(last2));
   }
   function update2() {
+    const target = l.pathname + (usp + "" ? "?" + (usp + "").replace(/=$/g, "") : "") + l.hash;
+    if (location.href.endsWith(target))
+      return;
     window_default.history.pushState(
       window_default.history.state,
       null,
-      l.pathname + (usp + "" ? "?" + (usp + "").replace(/=$/g, "") : "") + l.hash
+      target
     );
     s2.redraw();
   }
@@ -251,26 +255,26 @@ function resolve(view, attrs, context) {
   return isFunction(view) ? view(attrs, [], context) : view;
 }
 function router(s2, root, rootContext) {
-  const location = rootContext.location;
+  const location2 = rootContext.location;
   const routed = s2(({ route: route2, ...attrs }, [view], context) => {
     context.route = route2;
     return () => typeof view === "string" ? import((view[0] === "/" ? "" : route2) + view).then((x2) => resolve(x2.default, attrs, context)) : resolve(view, attrs, context);
   });
   route.query = Query(s2, rootContext.location);
   route.toString = route;
-  route.has = (x2) => x2 === "/" ? getPath2(location) === root || getPath2(location) === "/" && root === "" : getPath2(location).indexOf(cleanSlash(root + "/" + x2)) === 0;
+  route.has = (x2) => x2 === "/" ? getPath2(location2) === root || getPath2(location2) === "/" && root === "" : getPath2(location2).indexOf(cleanSlash(root + "/" + x2)) === 0;
   Object.defineProperty(route, "path", {
     get() {
-      const path2 = getPath2(location), idx = path2.indexOf("/", root.length + 1);
+      const path2 = getPath2(location2), idx = path2.indexOf("/", root.length + 1);
       return idx === -1 ? path2 : path2.slice(0, idx);
     }
   });
   return route;
-  function getPath2(location2, x2 = 0) {
-    return (s2.pathmode[0] === "#" ? location2.hash.slice(s2.pathmode.length + x2) : s2.pathmode[0] === "?" ? location2.search.slice(s2.pathmode.length + x2) : location2.pathname.slice(s2.pathmode + x2)).replace(/(.)\/$/, "$1");
+  function getPath2(location3, x2 = 0) {
+    return (s2.pathmode[0] === "#" ? location3.hash.slice(s2.pathmode.length + x2) : s2.pathmode[0] === "?" ? location3.search.slice(s2.pathmode.length + x2) : location3.pathname.slice(s2.pathmode + x2)).replace(/(.)\/$/, "$1");
   }
   function reroute(path2, { state, replace: replace2 = false, scroll = rootChange(path2) } = {}) {
-    if (path2 === getPath2(location))
+    if (path2 === getPath2(location2))
       return;
     s2.pathmode[0] === "#" ? window_default.location.hash = s2.pathmode + path2 : s2.pathmode[0] === "?" ? window_default.location.search = s2.pathmode + path2 : window_default.history[replace2 ? "replaceState" : "pushState"](state, null, s2.pathmode + path2);
     routeState[path2] = state;
@@ -289,7 +293,7 @@ function router(s2, root, rootContext) {
       routing = true;
       s2.pathmode[0] === "#" ? window_default.addEventListener("hashchange", s2.redraw, { passive: true }) : isFunction(window_default.history.pushState) && window_default.addEventListener("popstate", s2.redraw, { passive: true });
     }
-    const path2 = getPath2(location, root.length);
+    const path2 = getPath2(location2, root.length);
     const pathTokens = tokenizePath(path2);
     const [, match, view] = Object.entries(routes).reduce((acc, [match2, view2]) => {
       match2.charCodeAt(0) === 47 || (match2 = "/" + match2);
@@ -745,10 +749,8 @@ function px(x2) {
 }
 function vendor(x2) {
   if (properties.indexOf(x2) === -1) {
-    if (vendorMap[x2]) {
-      console.log(x2, "prefixed to", vendorMap[x2]);
+    if (vendorMap[x2])
       return vendorMap[x2];
-    }
     x2.indexOf("--") !== 0 && console.error(x2, "css property not found");
   }
   return x2;
@@ -917,7 +919,7 @@ function shouldHydrate(dom) {
   return dom && dom.nodeType === 8 && dom.nodeValue === "h" && (dom.remove(), true);
 }
 function redraw() {
-  idle && (Promise.resolve().then(globalRedraw), idle = false);
+  idle && (requestAnimationFrame(globalRedraw), idle = false);
 }
 function globalRedraw() {
   mounts.forEach(draw);
@@ -938,7 +940,7 @@ function draw({ view, attrs, context }, dom) {
 }
 function updates(parent, next, context, before, last2 = parent.lastChild) {
   const keys = next[0] && next[0].key !== void 0 && new Array(next.length), ref = getNext(before, parent), tracked = ref && hasOwn.call(ref, keysSymbol), after = last2 ? last2.nextSibling : null;
-  keys && (keys.rev = {}) && tracked ? keyed(parent, context, ref[keysSymbol], next, keys, after) : nonKeyed(parent, context, next, keys, ref, after);
+  keys && (keys.rev = {}) && tracked ? keyed(parent, context, ref[keysSymbol], next, keys, after, ref) : nonKeyed(parent, context, next, keys, ref, after);
   const first = getNext(before, parent);
   keys && (first[keysSymbol] = keys);
   return Ret(first, after && after.previousSibling || parent.lastChild);
@@ -972,12 +974,14 @@ function nonKeyed(parent, context, next, keys, dom, after = null) {
   while (dom && dom !== after)
     dom = remove(dom, parent);
 }
-function keyed(parent, context, as, bs, keys, after) {
+function keyed(parent, context, as, bs, keys, after, ref) {
   const map = as.rev;
   let ai = as.length - 1, bi = bs.length - 1, a = as[ai], b = bs[bi], temp2 = -1;
   outer:
     while (true) {
       while (a.key === b.key) {
+        if (a.key === void 0 || b.key === void 0)
+          return nonKeyed(parent, context, bs, keys, ref, after);
         after = updateView(a.dom, b, context, parent).first;
         Ref(keys, after, b.key, bi);
         delete map[b.key];
@@ -990,6 +994,8 @@ function keyed(parent, context, as, bs, keys, after) {
         a = as[--ai];
         b = bs[--bi];
       }
+      if (a.key === void 0 || b.key === void 0)
+        return nonKeyed(parent, context, bs, keys, ref, after);
       if (hasOwn.call(map, b.key)) {
         temp2 = map[b.key];
         if (temp2 > bi) {
@@ -1276,7 +1282,7 @@ function mergeTag(a, b) {
   return a;
 }
 function attributes(dom, view, context) {
-  let tag = view.tag;
+  let tag = view.tag, value2;
   const prev = dom[attrSymbol], create = !prev;
   hasOwn.call(view.attrs, "id") === false && view.tag.id && (view.attrs.id = view.tag.id);
   if (create && view.tag.classes || view.attrs.class !== (prev && prev.class) || view.attrs.className !== (prev && prev.className) || dom.className !== view.tag.classes)
@@ -1288,8 +1294,16 @@ function attributes(dom, view, context) {
     if (ignoredAttr(attr)) {
       attr === "deferrable" && (dom[deferrableSymbol] = view.attrs[attr]);
     } else if (!prev || prev[attr] !== view.attrs[attr]) {
-      const value2 = view.attrs[attr];
+      value2 = view.attrs[attr];
       updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value2, create);
+    }
+  }
+  if (hasOwn.call(view.attrs, "href")) {
+    value2 = view.attrs.href;
+    updateAttribute(dom, context, view.attrs, "href", prev && prev.href, value2, create);
+    if (value2 && !String(value2).match(/^[a-z]+:|\/\//)) {
+      view.attrs.href = s.pathmode + cleanSlash(value2);
+      link(dom, context.route);
     }
   }
   if (prev) {
@@ -1380,10 +1394,6 @@ function giveLife(dom, attrs, children, context, life) {
 function updateAttribute(dom, context, attrs, attr, old, value2, create) {
   if (old === value2)
     return;
-  if (attr === "href" && value2 && !String(value2).match(/^[a-z]+:|\/\//)) {
-    value2 = s.pathmode + cleanSlash(value2);
-    link(dom, context.route);
-  }
   const on2 = isEvent(attr);
   if (on2 && typeof old === typeof value2)
     return;

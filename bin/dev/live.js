@@ -2,6 +2,7 @@ import path from 'path'
 import tls from 'tls'
 import net from 'net'
 import fs from 'fs/promises'
+import prexit from 'prexit'
 
 const empty = Buffer.alloc(21)
 empty[0] = 2
@@ -11,7 +12,7 @@ export default async function live(home, port) {
   const idPath = path.join(home, '.sin-live')
   let id = await fs.readFile(idPath).catch(() => [])
   id.length !== 21 && (id = empty)
-  connect(id, port).then(
+  connect(id, port, true).then(
     data => {
       fs.writeFile(idPath, data).catch(console.error) // eslint-disable-line
       console.log('Live at https://' + data.readBigInt64BE(5).toString(36) + '.live.sinjs.com') // eslint-disable-line
@@ -23,13 +24,15 @@ export default async function live(home, port) {
   )
 }
 
-async function connect(id, port) {
+async function connect(id, port, main) {
+  id = Buffer.from(id)
+  id[0] = main ? 2 : 3
   return new Promise(async(resolve, reject) => {
     const options = [443, 'host.live.sinjs.com', { servername: 'host.live.sinjs.com' }]
     const clients = new Map()
 
     const socket = tls.connect(...options)
-
+    prexit(() => socket.end())
     let rest = 0
       , client = null
 
@@ -49,7 +52,7 @@ async function connect(id, port) {
             , length = x.readUInt32BE(1)
             , end = length <= x.length ? length : x.length
 
-        if (type === 2) {
+        if (type === 2 || type === 3) {
           resolve(x.slice(0, length))
         } else if (type === 1) {
           close(client = x.readUInt32BE(5))

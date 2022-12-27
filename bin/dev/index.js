@@ -75,15 +75,6 @@ app.get(
     if (r.url.charCodeAt(1) === 46 || r.url.indexOf('/.') !== -1) // _
       return r.end(403)
   },
-  ey.files({
-    compressions: false,
-    cache: false,
-    transform
-  }),
-  ey.files('+public', {
-    compressions: false,
-    cache: false
-  }),
   async r => {
     if ((r.headers.accept || '').indexOf('text/html') !== 0)
       return
@@ -98,7 +89,16 @@ app.get(
       head: '<script type=module src="/node_modules/sin/bin/dev/browser.js"></script>',
       body: useJS && '<script type=module async defer src="/' + entry + '"></script>'
     }), x.status || 200, x.headers)
-  }
+  },
+  ey.files({
+    compressions: false,
+    cache: false,
+    transform
+  }),
+  ey.files('+public', {
+    compressions: false,
+    cache: false
+  })
 )
 
 watcher.on('change', async(x) => {

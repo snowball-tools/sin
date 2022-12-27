@@ -28,7 +28,7 @@ const env = process.env
     , useJS = process.argv.includes('--no-js') ? undefined : true
     , { mount, entry } = await getMount()
     , watcher = chokidar.watch([], { persistent: true })
-    , scriptsPath = path.join(chromeHome, '.scripts')
+    , scriptsPath = path.join(chromeHome, '.sin-scripts')
     , scripts = (await fsp.readFile(scriptsPath, 'utf8').then(x => JSON.parse(x)).catch(() => {}) || {})
     , seen = {}
     , originals = {}

@@ -11,6 +11,7 @@ import uaParser from 'ua-parser-js'
 
 import ssr, { wrap } from '../../ssr/index.js'
 import editor from './editor.js'
+import live from './live.js'
 
 let chrome
 
@@ -141,6 +142,8 @@ chrome = await (await import('./chrome.js')).default(chromeHome, url, async x =>
 
 await app.listen(port)
 console.log('Listening on', port)
+
+process.argv.indexOf('--live') !== -1 && live(chromeHome, port)
 
 prexit(async(signal, code) => {
   code !== 123 && await chrome.send('Browser.close')

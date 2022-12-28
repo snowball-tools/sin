@@ -1,4 +1,4 @@
-import './log.js'
+import '../log.js'
 import s from '../../src/index.js'
 import window from '../../src/window.js'
 import { stackTrace } from '../../src/shared.js'

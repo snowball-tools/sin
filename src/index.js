@@ -872,14 +872,13 @@ function setVars(dom, vars, args, init, reapply) {
 function setVar(dom, id, value, cssVar, init, reapply, after) {
   if (isObservable(value)) {
     init && value.observe(x => dom.style.setProperty(id, formatValue(x, cssVar)))
-    if (init || reapply) setVar(dom, id, value.value, cssVar, init, init)
+    if (init || reapply)
+      setVar(dom, id, value.value, cssVar, init, init)
     return
   }
 
-  if (isFunction(value)) {
-    requestAnimationFrame(() => setVar(dom, id, value(dom), cssVar, init, reapply, after))
-    return
-  }
+  if (isFunction(value))
+    return Promise.resolve().then(() => setVar(dom, id, value(dom), cssVar, init, reapply, after))
 
   dom.style.setProperty(id, formatValue(value, cssVar))
   after && afterUpdate.push(() => dom.style.setProperty(id, formatValue(value, cssVar)))

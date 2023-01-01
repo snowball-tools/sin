@@ -4,7 +4,7 @@ import path from 'path'
 import ssr from '../../ssr/index.js'
 import { wrap } from '../../ssr/shared.js'
 
-const j = (...xs) => path.join('.build', ...xs.flatMap(x => x.split('/')))
+const j = (...xs) => path.join('+build', ...xs.flatMap(x => x.split('/')))
     , entry = process.argv[3] || 'index.js'
     , absEntry = path.isAbsolute(entry) ? entry : path.join(process.cwd(), entry)
     , hasEntry = (await fs.readFile(absEntry, 'utf8')).indexOf('export default ') !== -1

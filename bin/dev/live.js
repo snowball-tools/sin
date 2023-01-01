@@ -85,7 +85,7 @@ async function connect(id, port, main) {
 
       x.on('data', x => send(0, client, x))
       x.on('close', () => (send(1, client), clients.delete(client)))
-      x.on('error', x => console.error('wat', x))
+      x.on('error', () => { /* noop */ })
 
       return x
     }

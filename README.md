@@ -101,16 +101,39 @@ s.mount(({ route }) => [
 ])
 ```
 
-## The Helpers
+## Simplifying and improving common tasks
 
-### Media queries
+### Lean CSS
+
+`:` and `;` are optional for single line definitions. No more bloated syntax.
 
 ### CSS units
 
+Sin will automatically add px as a units if left out unless the relevant css property takes a unitless value.
+
 ### CSS property shorthands
 
+The most popular CSS properties can be references by its initials. A few popular properties have overlapping initials, so the most used one
+
+### @ Media queries
+
+
 ### 
+
+## The CLI
+
+sin create
+
+sin start [server] [index.js]
+
+sin dev [server] [index.js]
+
+sin build
+
+sin generate
 
 ## Web3
 
 Sin was born to be Web3! It even has a pyramid shaped logo, so it'll fit right in!
+
+

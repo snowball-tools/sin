@@ -1,5 +1,7 @@
 /* eslint no-console:0 */
 
+import('../log.js')
+
 import path from 'path'
 import fs from 'fs'
 import fsp from 'fs/promises'
@@ -12,6 +14,9 @@ import uaParser from 'ua-parser-js'
 import ssr, { wrap } from '../../ssr/index.js'
 import editor from './editor.js'
 import live from './live.js'
+import s from 'sin'
+
+global.s = s
 
 let chrome
 
@@ -19,6 +24,7 @@ process.env.NODE_ENV = 'development'
 
 const env = process.env
     , cwd = process.cwd()
+    , argv = process.argv.slice(3)
     , home = env.SIN_HOME || path.join(env.HOMEPATH || env.HOME || '', '.sin')
     , port = env.PORT ? parseInt(env.PORT) : devPort()
     , url = 'http://localhost:' + port
@@ -26,7 +32,7 @@ const env = process.env
     , staticImportRegex = new RegExp('((?:^|[^@])(?:import|export)\\s*[{}0-9a-zA-Z*,\\s]*\\s*(?: from |)[\'"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)([\'"])', 'g') // eslint-disable-line
     , dynamicImportRegex = new RegExp('([^$.]import\\(\\s?[\'"])([a-zA-Z1-9@][a-zA-Z0-9@\\/._-]*)([\'"]\\s?\\))', 'g')
     , resolveCache = Object.create(null)
-    , useJS = process.argv.includes('--no-js') ? undefined : true
+    , noScript = argv.includes('--noscript') || argv.includes('server')
     , { mount, entry } = await getMount()
     , watcher = chokidar.watch([], { persistent: true })
     , scriptsPath = path.join(chromeHome, '.sin-scripts')
@@ -88,7 +94,7 @@ app.get(
 
     r.end(wrap(x, {
       head: '<script type=module src="/node_modules/sin/bin/dev/browser.js"></script>',
-      body: useJS && '<script type=module async defer src="/' + entry + '"></script>'
+      body: noScript ? '' : '<script type=module async defer src="/' + entry + '"></script>'
     }), x.status || 200, x.headers)
   },
   ey.files({
@@ -117,7 +123,7 @@ watcher.on('change', async(x) => {
   changed && saveScripts(x)
 })
 
-chrome = await (await import('./chrome.js')).default(chromeHome, url, async x => {
+chrome = !argv.includes('server') && await (await import('./chrome.js')).default(chromeHome, url, async x => {
   if (x.url.indexOf(url) !== 0)
     return
 
@@ -143,10 +149,10 @@ chrome = await (await import('./chrome.js')).default(chromeHome, url, async x =>
 await app.listen(port)
 console.log('Listening on', port)
 
-process.argv.indexOf('--live') !== -1 && live(chromeHome, port)
+argv.indexOf('--live') !== -1 && live(chromeHome, port)
 
-prexit(async(signal, code) => {
-  code !== 123 && await chrome.send('Browser.close')
+prexit(async(...xs) => {
+  process.exitCode !== 123 && await chrome.send('Browser.close')
   app.unlisten()
   sockets.forEach(x => x.close())
 })
@@ -212,8 +218,25 @@ async function loadServer() {
     if (!fs.existsSync(serverPath))
       return
 
+    const watcher = chokidar.watch([], {
+      cwd: process.cwd(),
+      disableGlobbing: true,
+      persistent: true
+    })
+
+    watcher.on('change', x => {
+      console.log(x, 'Changed - restart') // eslint-disable-line
+      prexit.exit(123)
+    })
+
+    global.sinLoadedFiles.forEach(add)
+    global.sinLoadedFiles.add = add
     const x = await import(serverPath)
     typeof x.default === 'function' && x.default(app)
+
+    function add(x) {
+      watcher.add(x)
+    }
   } catch (e) {
     console.error(e)
   }
@@ -259,7 +282,7 @@ function devPort() {
 }
 
 async function getMount() {
-  const specifiesIndex = process.argv.slice(3).find((x, i, xs) => x[0] !== '-' && (xs[i - 1] || '')[0] !== '-')
+  const specifiesIndex = argv.find((x, i, xs) => x[0] !== '-' && x.endsWith('.js'))
       , entry = specifiesIndex || 'index.js'
       , absEntry = path.isAbsolute(entry) ? entry : path.join(cwd, entry)
       , hasEntry = (await fsp.readFile(absEntry, 'utf8').catch(specifiesIndex ? undefined : (() => ''))).indexOf('export default ') !== -1

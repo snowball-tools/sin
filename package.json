@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "dev": "sin",
+    "dev": "sin dev play.js",
     "lint": "eslint . --ignore-pattern sin.js --ignore-pattern sin.min.js --ignore-pattern play.js",
     "build": "pnpm build:min && pnpm build:bundle && pnpm build:gzip",
     "build:min": "esbuild src/index.js --minify --format=esm --bundle --outfile=sin.min.js",
@@ -46,7 +46,7 @@
     "esbuild": "0.16.10",
     "eslint": "8.30.0",
     "ey": "1.0.1",
-    "prexit": "2.0.0",
+    "prexit": "2.0.1",
     "ua-parser-js": "1.0.32",
     "ws": "8.11.0"
   }

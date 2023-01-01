@@ -7,11 +7,17 @@ import fsp from 'fs/promises'
 import ey from 'ey'
 
 import ssr, { wrap } from '../../ssr/index.js'
+import s from 'sin'
 
-const ssl = process.env.SSL_CERT && { cert: process.env.SSL_CERT, key: process.env.SSL_KEY }
-    , useJS = !process.argv.slice(3).find((x, i, xs) => x === '--no-js')
+global.s = s
+
+const argv = process.argv
+    , env = process.env
+    , cwd = process.cwd()
+    , noScript = argv.inclues('--noscript')
+    , ssl = env.SSL_CERT && { cert: env.SSL_CERT, key: env.SSL_KEY }
     , protocol = ssl ? 'https://' : 'http://'
-    , port = process.env.PORT ? parseInt(process.env.PORT) : (ssl ? 443 : 80)
+    , port = env.PORT ? parseInt(env.PORT) : (ssl ? 443 : 80)
     , { mount, entry } = await getMount()
     , server = await getServer()
 
@@ -35,7 +41,7 @@ app.get(r => {
     { location: protocol + (r.headers.host || ('localhost' + port)) + r.url }
   ).then(x => {
     r.end(wrap(x, {
-      body: useJS ? '<script type=module async defer src="/' + entry + '"></script>' : ''
+      body: noScript ? '' : '<script type=module async defer src="/' + entry + '"></script>'
     }), x.status || 200, x.headers)
   })
 })
@@ -63,10 +69,10 @@ async function listen() {
 }
 
 async function getServer() {
-  const server = process.argv.find((x, i, xs) => xs[i + 1] === '-s' || xs[i + 1] === '--server')
+  const server = argv.find((x, i, xs) => xs[i + 1] === '-s' || xs[i + 1] === '--server')
   const serverPath = server
-        ? path.join(process.cwd(), server)
-        : path.join(process.cwd(), '+', 'index.js')
+        ? path.join(cwd, server)
+        : path.join(cwd, '+', 'index.js')
 
   return fs.existsSync(serverPath)
     ? await import(serverPath)
@@ -74,9 +80,9 @@ async function getServer() {
 }
 
 async function getMount() {
-  const specifiesIndex = process.argv.slice(3).find((x, i, xs) => x[0] !== '-' && (xs[i - 1] || '')[0] !== '-')
+  const specifiesIndex = argv.find((x, i, xs) => x[0] !== '-' && (xs[i - 1] || '')[0] !== '-')
       , entry = specifiesIndex || 'index.js'
-      , absEntry = path.isAbsolute(entry) ? entry : path.join(process.cwd(), entry)
+      , absEntry = path.isAbsolute(entry) ? entry : path.join(cwd, entry)
       , hasEntry = (await fsp.readFile(absEntry, 'utf8').catch(specifiesIndex ? undefined : (() => ''))).indexOf('export default ') !== -1
 
   return hasEntry

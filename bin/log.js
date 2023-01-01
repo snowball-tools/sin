@@ -1,4 +1,4 @@
-globalThis.l = globalThis.p = globalThis.log = log // eslint-disable-line
+globalThis.p = globalThis.print = log // eslint-disable-line
 
 function log(...xs) {
   console.log(...xs) // eslint-disable-line

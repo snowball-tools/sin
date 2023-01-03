@@ -8,6 +8,7 @@ import s from './style.js'
 
 import './env.js'
 
+console.log(process.argv, process.cwd())
 const argv = process.argv.slice(2)
     , local = path.join(process.cwd(), 'node_modules', 'sin', 'bin')
     , here = fs.existsSync(local) ? local : path.dirname(process.argv[1])

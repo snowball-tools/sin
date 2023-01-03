@@ -4,9 +4,9 @@ import fs from 'fs'
 global.sinLoadedFiles = new Set()
 
 export async function resolve(specifier, context, nextResolve) {
-  if (specifier.charCodeAt(0) === 47 && specifier.indexOf(process.cwd()) !== 0) { // /
+  if (specifier.startsWith('/') && specifier.indexOf(process.cwd()) !== 0) {
     specifier = extensionless(path.join(process.cwd(), specifier))
-  } else if (specifier.charCodeAt(0) === 46 && specifier.charCodeAt(1) === 47) { // . /
+  } else if (specifier.startsWith('./') || specifier.startsWith('../')) {
     specifier = extensionless(path.join(path.dirname(context.parentURL), specifier))
   }
 

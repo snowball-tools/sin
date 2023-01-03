@@ -5,13 +5,14 @@ import readline from 'readline'
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 
-const argv = process.argv.slice(3)
+const argv = process.argv.slice(2)
     , cwd = process.cwd()
     , xs = fs.readdirSync(cwd)
     , empty = !xs.some(x => x[0] !== '.')
     , yes = argv.some(x => x === '-y' || x === '--yes')
     , name = argv.find(x => x[0] !== '-') || (empty ? path.basename(cwd) : (await ask('Project name?')))
     , target = empty ? cwd : path.join(cwd, name)
+    , cd = target !== cwd
     , pkg = JSON.parse(fs.readFileSync(new URL('package.json', import.meta.url)))
     , server = await prompt('Server?')
     , client = await prompt('Client?')
@@ -41,6 +42,12 @@ mk(target, 'package.json', JSON.stringify(pkg, null, 2))
 
 await prompt('Git?') && cp.execSync('git init', { stdio: 'inherit' })
 await prompt('Install?') && cp.execSync('pnpm install porsager/sin', { stdio: 'inherit' })
+
+console.log(
+  cd
+    ? '\nRun `cd ' + name + '` and then `sin dev` to start development\n'
+    : '\nRun `sin dev` to start development\n'
+)
 
 rl.close()
 

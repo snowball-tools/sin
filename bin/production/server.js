@@ -1,5 +1,3 @@
-/* eslint no-console: 0 */
-
 import path from 'path'
 import fs from 'fs'
 import fsp from 'fs/promises'
@@ -14,7 +12,7 @@ global.s = s
 const argv = process.argv
     , env = process.env
     , cwd = process.cwd()
-    , noScript = argv.inclues('--noscript')
+    , command = (argv[0] && !argv[0].endsWith('.js') ? argv[0] : '').toLowerCase()
     , ssl = env.SSL_CERT && { cert: env.SSL_CERT, key: env.SSL_KEY }
     , protocol = ssl ? 'https://' : 'http://'
     , port = env.PORT ? parseInt(env.PORT) : (ssl ? 443 : 80)
@@ -41,7 +39,7 @@ app.get(r => {
     { location: protocol + (r.headers.host || ('localhost' + port)) + r.url }
   ).then(x => {
     r.end(wrap(x, {
-      body: noScript ? '' : '<script type=module async defer src="/' + entry + '"></script>'
+      body: command === 'ssr' ? '' : '<script type=module async defer src="/' + entry + '"></script>'
     }), x.status || 200, x.headers)
   })
 })

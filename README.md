@@ -124,9 +124,9 @@ The most popular CSS properties can be references by its initials. A few popular
 
 sin create
 
-sin start [server] [index.js]
+sin development
 
-sin dev [server] [index.js]
+sin production
 
 sin build
 

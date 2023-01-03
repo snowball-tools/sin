@@ -2,6 +2,7 @@ import fs from 'fs'
 import cp from 'child_process'
 import path from 'path'
 import readline from 'readline'
+import s from '../style.js'
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 
@@ -14,28 +15,53 @@ const argv = process.argv.slice(2)
     , target = empty ? cwd : path.join(cwd, name)
     , cd = target !== cwd
     , pkg = JSON.parse(fs.readFileSync(new URL('package.json', import.meta.url)))
-    , server = await prompt('Server?')
-    , client = await prompt('Client?')
-    , ssr = await prompt('SSR?')
+    , full = await prompt('Full Setup?')
+    , raw = !full && await prompt('Only Node Server?')
+    , ssr = !full && !raw && await prompt('Only SSR?')
+    , staticServe = !full && !raw && !ssr && await prompt('Only Static serve?')
+    , server = !full && !raw && !ssr && !staticServe && await prompt('Only HTTP?')
+
+const serverScript = `export default async function(app) {
+  app.get('/hello', r => r.end('Welcome to sin'))
+}`
+
+const clientScript = `import s from 'sin'
+
+export default s.mount(() =>
+  s\`h1\`('Welcome to sin')
+)
+`
 
 pkg.name = name
 
 mk(target)
 process.chdir(target)
 
-if (server && client) {
-  pkg.scripts.start = 'sin start'
+if (full) {
+  pkg.scripts.start = 'sin prod'
   pkg.scripts.dev = 'sin dev'
-  mk(path.join(target, '+'), 'index.js', 'export default async function(app) {\n  // Do your thing\n}')
-  mk(target, 'index.js', (ssr ? 'export default ' : '') + 's.mount(() => 42)')
-} else if (server && !client) {
-  pkg.scripts.start = 'sin start index.js'
-  pkg.scripts.dev = 'sin watch index.js'
-  mk(target, 'index.js', 'export default async function(app) {\n  // Do your thing\n}')
-} else if (client && !server) {
-  pkg.scripts.start = 'sin index.js'
-  pkg.scripts.dev = 'sin dev'
-  mk(target, 'index.js', (ssr ? 'export default ' : '') + 's.mount(() => 42)')
+  pkg.scripts.build = 'sin build'
+  mk(path.join(target, '+'), 'index.js', serverScript)
+  mk(target, 'index.js', clientScript.replace('export', '// Remove `export default` to disable ssr with hydration\nexport'))
+} else if (raw) {
+  pkg.scripts.start = 'sin prod raw index.js'
+  pkg.scripts.dev = 'sin dev raw index.js'
+  mk(target, 'index.js', '// Do your thing\n')
+} else if (ssr) {
+  pkg.scripts.start = 'sin prod ssr'
+  pkg.scripts.dev = 'sin dev ssr'
+  mk(path.join(target, '+'), 'index.js', serverScript)
+  mk(target, 'index.js', clientScript)
+} else if (staticServe) {
+  pkg.scripts.start = 'sin prod static'
+  pkg.scripts.dev = 'sin dev static'
+  pkg.scripts.generate = 'sin generate'
+  mk(path.join(target, '+'), 'index.js', serverScript)
+  mk(target, 'index.js', clientScript)
+} else if (server) {
+  pkg.scripts.start = 'sin prod server'
+  pkg.scripts.dev = 'sin dev server'
+  mk(target, 'index.js', serverScript)
 }
 
 mk(target, 'package.json', JSON.stringify(pkg, null, 2))
@@ -43,7 +69,7 @@ mk(target, 'package.json', JSON.stringify(pkg, null, 2))
 await prompt('Git?') && cp.execSync('git init', { stdio: 'inherit' })
 await prompt('Install?') && cp.execSync('pnpm install porsager/sin', { stdio: 'inherit' })
 
-console.log(
+!global.print && console.log(
   cd
     ? '\nRun `cd ' + name + '` and then `sin dev` to start development\n'
     : '\nRun `sin dev` to start development\n'
@@ -57,9 +83,9 @@ function mk(x, file, data = '') {
 }
 
 async function prompt(x) {
-  return yes || (await ask(x)).toLowerCase() !== 'n'
+  return yes || (await ask(x + s.gray(' (Y/n)'))).toLowerCase() !== 'n'
 }
 
 async function ask(x) {
-  return new Promise(r => rl.question('> ' + x + ' ', r))
+  return new Promise(r => rl.question(x + ' ', r))
 }

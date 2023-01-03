@@ -9,10 +9,11 @@ import prexit from 'prexit'
 import chokidar from 'chokidar'
 import uaParser from 'ua-parser-js'
 
-import ssr, { wrap } from '../../ssr/index.js'
+import ssr, { wrap } from 'sin/ssr/index.js'
+import s from 'sin'
+
 import editor from './editor.js'
 import live from './live.js'
-import s from 'sin'
 
 global.s = s
 
@@ -121,7 +122,7 @@ watcher.on('change', async(x) => {
   changed && saveScripts(x)
 })
 
-chrome = !argv.includes('server') && await (await import('./chrome.js')).default(chromeHome, url, async x => {
+chrome = command !== 'server' && await (await import('./chrome.js')).default(chromeHome, url, async x => {
   if (x.url.indexOf(url) !== 0)
     return
 
@@ -147,7 +148,7 @@ chrome = !argv.includes('server') && await (await import('./chrome.js')).default
 await app.listen(port)
 console.log('Listening on', port)
 
-argv.indexOf('--live') !== -1 && live(chromeHome, port)
+argv.includes('live') && live(chromeHome, port)
 
 prexit(async(...xs) => {
   process.exitCode !== 123 && await chrome.send('Browser.close')

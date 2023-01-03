@@ -1,3 +1,5 @@
+/* eslint no-console: 0 */
+
 import path from 'path'
 import fs from 'fs'
 import fsp from 'fs/promises'
@@ -21,7 +23,7 @@ const argv = process.argv
 
 let certChangeThrottle
 
-server.esbuild && (await import('../../build/index.js')).default()
+server.esbuild && (await import('../../build/index.js')).default(server.esbuild)
 
 const app = ey(ssl)
 
@@ -29,7 +31,7 @@ app.get(ey.files('+public'))
 
 app.get(ey.files('+build'))
 
-app.get(r => {
+command !== 'server' && app.get(r => {
   if ((r.headers.accept || '').indexOf('text/html') !== 0)
     return
 
@@ -58,12 +60,8 @@ ssl && fs.watch(ssl.cert, () => {
 })
 
 async function listen() {
-  app.listen(port, x => {
-    if (!x)
-      throw new Error('Failed listening on ' + port)
-
-    console.log('Listening on', port)
-  })
+  await app.listen(port)
+  console.log('Listening on', port)
 }
 
 async function getServer() {

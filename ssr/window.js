@@ -168,7 +168,7 @@ function XMLHttpRequest() {
           res.on('error', e => emit('error', e))
         })
         req.on('error', error)
-        xhr.timeout && req.setTimeout(xhr.timeout)
+        xhr.timeout && (req.setTimeout(xhr.timeout), req.on('timeout', () => req.abort()))
         data && req.write(data)
         req.end()
       } catch (e) {

@@ -11,6 +11,7 @@ import uaParser from 'ua-parser-js'
 
 import ssr, { wrap } from '../../ssr/index.js'
 
+import serverWatch from './watch.js'
 import editor from './editor.js'
 import live from './live.js'
 
@@ -37,7 +38,7 @@ const env = process.env
     , originals = {}
     , sockets = new Set()
 
-Object.values(scripts).forEach(x => watcher.add(x.path))
+Object.values(scripts).forEach(watchAdd)
 
 fs.mkdirSync(home, { recursive: true })
 
@@ -89,7 +90,7 @@ app.get(
     )
 
     r.end(wrap(x, {
-      head: '<script type=module src="/node_modules/sin/bin/dev/browser.js"></script>',
+      head: '<script type=module src="/node_modules/sin/bin/development/browser.js"></script>',
       body: command === 'ssr' ? '' : '<script type=module async defer src="/' + entry + '"></script>'
     }), x.status || 200, x.headers)
   },
@@ -190,6 +191,11 @@ function watch(x) {
     return
 
   scripts[x.path] = x
+  watchAdd(x)
+}
+
+function watchAdd(x) {
+  global.sinLoadedFiles.unwatch(x.path)
   watcher.add(x.path)
 }
 
@@ -214,7 +220,7 @@ async function loadServer() {
     if (!fs.existsSync(serverPath))
       return
 
-    await import('./watch.js')
+    serverWatch(scripts)
     const x = await import(serverPath)
     typeof x.default === 'function' && x.default(app)
   } catch (e) {

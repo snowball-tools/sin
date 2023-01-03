@@ -3,6 +3,8 @@ import fs from 'fs'
 
 global.sinLoadedFiles = new Set()
 
+const cwd = process.cwd()
+
 export async function resolve(specifier, context, nextResolve) {
   if (specifier.startsWith('/') && specifier.indexOf(process.cwd()) !== 0) {
     specifier = extensionless(path.join(process.cwd(), specifier))
@@ -11,7 +13,7 @@ export async function resolve(specifier, context, nextResolve) {
   }
 
   if (specifier.startsWith('/') || specifier.startsWith('./'))
-    global.sinLoadedFiles.add(specifier)
+    specifier.indexOf(cwd) === 0 && global.sinLoadedFiles.add(specifier)
 
   return nextResolve(specifier, context)
 }

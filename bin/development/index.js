@@ -13,7 +13,7 @@ const abs = (x = './index.js') => x.startsWith('/')
   ? path.join(process.cwd(), x)
   : ('./' + x)
 
-import('./watch.js')
+import('./watch.js').then(x => x.default())
 
 argv[0] === 'raw'
   ? import(abs(argv[1]))

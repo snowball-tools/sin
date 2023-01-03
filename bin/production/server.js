@@ -7,11 +7,8 @@ import fsp from 'fs/promises'
 import ey from 'ey'
 
 import ssr, { wrap } from '../../ssr/index.js'
-import s from 'sin'
 
-global.s = s
-
-const argv = process.argv
+const argv = process.argv.slice(2)
     , env = process.env
     , cwd = process.cwd()
     , command = (argv[0] && !argv[0].endsWith('.js') ? argv[0] : '').toLowerCase()

@@ -23,7 +23,8 @@ const argv = process.argv.slice(2)
 
 const serverScript = `export default async function(app) {
   app.get('/hello', r => r.end('Welcome to sin'))
-}`
+}
+`
 
 const clientScript = `import s from 'sin'
 

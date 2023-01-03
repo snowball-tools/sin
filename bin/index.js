@@ -8,22 +8,24 @@ import s from './style.js'
 
 import './env.js'
 
-const argv = process.argv
-    , here = path.dirname(argv[1])
+const argv = process.argv.slice(2)
+    , local = path.join(process.cwd(), 'node_modules', 'sin', 'bin')
+    , here = fs.existsSync(local) ? local : path.dirname(process.argv[1])
     , commands = fs.readdirSync(here).filter(x => fs.existsSync(path.join(here, x, 'index.js')))
-    , help = (argv.slice(2).some(x => x === '-h' || x === '--help') || argv.length === 2) && 'help'
-    , version = argv.slice(2).some(x => x === '-v' || x === '--version') && 'version'
-    , command = commands.find(x => argv[2] && x.startsWith(argv[2].toLowerCase())) || help || version
+    , help = (argv.some(x => x === '-h' || x === '--help') || argv.length === 0) && 'help'
+    , version = argv.some(x => x === '-v' || x === '--version') && 'version'
+    , command = commands.find(x => argv[0] && x.startsWith(argv[0].toLowerCase())) || help || version
 
 command
   ? start()
-  : console.log('\nThe command `' + s.bold(argv[2]) + '` was not found - see `' + s.bold`sin help` + '` for usage\n')
+  : console.log('\nThe command `' + s.bold(argv[0]) + '` was not found - see `' + s.bold`sin help` + '` for usage\n')
 
 function start() {
   const child = cp.fork(
     path.join(here, command, 'index.js'),
-    process.argv.slice(3),
+    argv.slice(1),
     {
+      cwd: process.cwd(),
       execArgv: [
         '--no-warnings',
         '--experimental-loader', path.join(here, '/loader.js')

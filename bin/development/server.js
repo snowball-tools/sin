@@ -9,13 +9,10 @@ import prexit from 'prexit'
 import chokidar from 'chokidar'
 import uaParser from 'ua-parser-js'
 
-import ssr, { wrap } from 'sin/ssr/index.js'
-import s from 'sin'
+import ssr, { wrap } from '../../ssr/index.js'
 
 import editor from './editor.js'
 import live from './live.js'
-
-global.s = s
 
 let chrome
 

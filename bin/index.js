@@ -1,17 +1,18 @@
 #! /usr/bin/env node
+
 /* eslint no-console: 0 */
 
 import path from 'path'
 import cp from 'child_process'
 import fs from 'fs'
-import s from './style.js'
+import url from 'url'
 
+import s from './style.js'
 import './env.js'
 
-console.log(process.argv, process.cwd())
 const argv = process.argv.slice(2)
     , local = path.join(process.cwd(), 'node_modules', 'sin', 'bin')
-    , here = fs.existsSync(local) ? local : path.dirname(process.argv[1])
+    , here = fs.existsSync(local) ? local : url.fileURLToPath(new URL('.', import.meta.url))
     , commands = fs.readdirSync(here).filter(x => fs.existsSync(path.join(here, x, 'index.js')))
     , help = (argv.some(x => x === '-h' || x === '--help') || argv.length === 0) && 'help'
     , version = argv.some(x => x === '-v' || x === '--version') && 'version'

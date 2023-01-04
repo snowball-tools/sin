@@ -6,7 +6,6 @@ export default async function Watcher(fn) {
 
   return {
     add(x) {
-      p(x)
       x = normalize(x)
       if (watched.has(x))
         return

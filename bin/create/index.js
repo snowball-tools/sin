@@ -20,6 +20,8 @@ const argv = process.argv.slice(2)
     , ssr = !full && !raw && await prompt('Only SSR?')
     , staticServe = !full && !raw && !ssr && await prompt('Only Static serve?')
     , server = !full && !raw && !ssr && !staticServe && await prompt('Only HTTP?')
+    , npm = new Promise(r => cp.exec('which pnpm', e => r(e ? 'npm' : 'pnpm')))
+    , run = npm + (npm === 'npm' ? ' run' : '')
 
 const serverScript = `export default async function(app) {
   app.get('/hello', r => r.end('Welcome to sin'))
@@ -68,12 +70,12 @@ if (full) {
 mk(target, 'package.json', JSON.stringify(pkg, null, 2))
 
 await prompt('Git?') && cp.execSync('git init', { stdio: 'inherit' })
-await prompt('Install?') && cp.execSync('pnpm install porsager/sin', { stdio: 'inherit' })
+await prompt('Install?') && cp.execSync(npm + ' install porsager/sin', { stdio: 'inherit' })
 
 !global.print && console.log(
   cd
-    ? '\nRun `cd ' + name + '` and then `sin dev` to start development\n'
-    : '\nRun `sin dev` to start development\n'
+    ? '\nRun `cd ' + name + '` and then `' + run + ' dev` to start development\n'
+    : '\nRun `' + run + ' dev` to start development\n'
 )
 
 rl.close()

@@ -150,6 +150,9 @@ export default async function(home, url, scriptParsed) {
     if (method === 'Page.navigatedWithinDocument' && params.url.indexOf(url) === 0)
       return fs.writeFileSync(urlPath, params.url)
 
+    if (method === 'Page.frameNavigated' && !params.frame.parentId && params.frame.url.indexOf(url) === 0)
+      return fs.writeFileSync(urlPath, params.frame.url)
+
     if (!requests.has(id))
       return
 

@@ -3,14 +3,16 @@
 import path from 'path'
 import fs from 'fs'
 import fsp from 'fs/promises'
+import Url from 'url'
 
 import ey from 'ey'
 import prexit from 'prexit'
-import chokidar from 'chokidar'
+import Watcher from '../watcher.js'
 import uaParser from 'ua-parser-js'
 
 import ssr, { wrap } from '../../ssr/index.js'
 
+import s from '../style.js'
 import serverWatch from './watch.js'
 import editor from './editor.js'
 import live from './live.js'
@@ -26,17 +28,19 @@ const env = process.env
     , home = env.SIN_HOME || path.join(env.HOMEPATH || env.HOME || '', '.sin')
     , port = env.PORT ? parseInt(env.PORT) : devPort()
     , url = 'http://localhost:' + port
-    , chromeHome = path.join(home, port + '-' + path.basename(cwd))
+    , { mount, entry } = await getMount()
+    , name = port + '-' + path.basename(cwd) // + '-' + (entry === 'index.js' ? '' : entry)
+    , chromeHome = path.join(home, name)
     , staticImportRegex = new RegExp('((?:^|[^@])(?:import|export)\\s*[{}0-9a-zA-Z*,\\s]*\\s*(?: from |)[\'"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)([\'"])', 'g') // eslint-disable-line
     , dynamicImportRegex = new RegExp('([^$.]import\\(\\s?[\'"])([a-zA-Z1-9@][a-zA-Z0-9@\\/._-]*)([\'"]\\s?\\))', 'g')
     , resolveCache = Object.create(null)
-    , { mount, entry } = await getMount()
-    , watcher = chokidar.watch([], { persistent: process.platform === 'darwin' })
+    , watcher = await Watcher(changed)
     , scriptsPath = path.join(chromeHome, '.sin-scripts')
     , scripts = (await fsp.readFile(scriptsPath, 'utf8').then(x => JSON.parse(x)).catch(() => {}) || {})
     , seen = {}
     , originals = {}
     , sockets = new Set()
+    , sinRoot = path.join(Url.fileURLToPath(new URL('.', import.meta.url)), '..', '..')
 
 Object.values(scripts).forEach(watchAdd)
 
@@ -80,7 +84,7 @@ app.get(
       return r.end(403)
   },
   async r => {
-    if ((r.headers.accept || '').indexOf('text/html') !== 0)
+    if ((r.headers.accept || '').indexOf('text/html') !== 0 || path.extname(r.url))
       return
 
     const x = await ssr(
@@ -94,54 +98,64 @@ app.get(
       body: command === 'ssr' ? '' : '<script type=module async defer src="/' + entry + '"></script>'
     }), x.status || 200, x.headers)
   },
-  ey.files({
+  app.files('+public', {
+    compressions: false,
+    cache: false
+  }),
+  app.files({
     compressions: false,
     cache: false,
     transform
-  }),
-  ey.files('+public', {
-    compressions: false,
-    cache: false
   })
 )
 
-watcher.on('change', async(x) => {
+app.get('/node_modules/sin', app.files(sinRoot, {
+  compressions: false,
+  cache: false,
+  transform
+}))
+
+async function changed(x) {
   const file = scripts[x]
-      , bytes = await fsp.readFile(x, 'utf8')
-      , changed = bytes !== file.original
+      , source = await fsp.readFile(x, 'utf8')
+      , changed = source !== file.original
 
   app.publish('update', 'reload')
-  file.original = bytes
-  file.bytes = modify(bytes)
+  file.original = source
+  file.source = modify(source)
 
   changed && file.scriptId
     ? setSource(file).then(() => app.publish('update', 'redraw'), console.error)
     : app.publish('update', 'forceReload')
   changed && saveScripts(x)
-})
+}
 
-chrome = command !== 'server' && await (await import('./chrome.js')).default(chromeHome, url, async x => {
-  if (x.url.indexOf(url) !== 0)
-    return
+chrome = command !== 'server' && await startChrome()
 
-  const filePath = extensionless(path.join(cwd, new URL(x.url).pathname))
-
-  if (scripts[filePath]) {
-    scripts[filePath].scriptId = x.scriptId
-  } else {
-    const original = await fsp.readFile(filePath, 'utf8').catch(() => null)
-    if (original === null)
+async function startChrome() {
+  return (await import('./chrome.js')).default(chromeHome, url, async x => {
+    if (x.url.indexOf(url) !== 0)
       return
-    watch({
-      path: filePath,
-      original,
-      bytes: modify(original),
-      scriptId: x.scriptId,
-      type: 'text/javascript'
-    })
-  }
-  saveScripts()
-})
+
+    const filePath = extensionless(path.join(cwd, new URL(x.url).pathname))
+
+    if (scripts[filePath]) {
+      scripts[filePath].scriptId = x.scriptId
+    } else {
+      const original = await fsp.readFile(filePath, 'utf8').catch(() => null)
+      if (original === null)
+        return
+
+      watch({
+        path: filePath,
+        original,
+        source: modify(original),
+        scriptId: x.scriptId
+      })
+    }
+    saveScripts()
+  })
+}
 
 await app.listen(port)
 console.log('Listening on', port)
@@ -173,17 +187,18 @@ function canRead(x) {
 async function setSource(x) {
   await chrome.send('Debugger.setScriptSource', {
     scriptId: x.scriptId,
-    scriptSource: x.bytes
+    scriptSource: x.source
   }).catch(console.error)
 }
 
-function transform(x, r) {
-  watch(x)
-  if (!r.url.endsWith('.js'))
+function transform(x, path) {
+  if (!path.endsWith('.js'))
     return x
 
-  const string = originals[r.pathname] = Buffer.from(x).toString()
-  return modify(string)
+  const original = originals[path] = Buffer.from(x).toString()
+  const file = { original, source: modify(original), path }
+  watch(file)
+  return file.source
 }
 
 function watch(x) {
@@ -195,7 +210,7 @@ function watch(x) {
 }
 
 function watchAdd(x) {
-  global.sinLoadedFiles.unwatch(x.path)
+  global.sinLoadedFiles.remove(x.path)
   watcher.add(x.path)
 }
 
@@ -220,7 +235,7 @@ async function loadServer() {
     if (!fs.existsSync(serverPath))
       return
 
-    serverWatch(scripts)
+    await serverWatch(scripts)
     const x = await import(serverPath)
     typeof x.default === 'function' && x.default(app)
   } catch (e) {
@@ -243,12 +258,14 @@ function resolve(n) {
     ? fullPath
     : fs.existsSync(path.join(fullPath, 'package.json'))
     ? pkgLookup(fullPath)
+    : name === 'sin'
+    ? pkgLookup(fullPath, sinRoot)
     : n
   )
 }
 
-function pkgLookup(root) {
-  const x = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
+function pkgLookup(root, abs = root) {
+  const x = JSON.parse(fs.readFileSync(path.join(abs, 'package.json'), 'utf8'))
   return root + '/' + (x.module || x.unpkg || x.main || 'index.js')
 }
 

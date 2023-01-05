@@ -24,9 +24,9 @@ server.esbuild && (await import('../../build/index.js')).default(server.esbuild)
 
 const app = ey(ssl)
 
-app.get(ey.files('+public'))
+app.get(app.files('+public'))
 
-app.get(ey.files('+build'))
+app.get(app.files('+build'))
 
 command !== 'server' && app.get(r => {
   if ((r.headers.accept || '').indexOf('text/html') !== 0)

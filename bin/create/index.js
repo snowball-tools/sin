@@ -20,7 +20,7 @@ const argv = process.argv.slice(2)
     , ssr = !full && !raw && await prompt('Only SSR?')
     , staticServe = !full && !raw && !ssr && await prompt('Only Static serve?')
     , server = !full && !raw && !ssr && !staticServe && await prompt('Only HTTP?')
-    , npm = new Promise(r => cp.exec('which pnpm', e => r(e ? 'npm' : 'pnpm')))
+    , npm = await new Promise(r => cp.exec('which pnpm', e => r(e ? 'npm' : 'pnpm')))
     , run = npm + (npm === 'npm' ? ' run' : '')
 
 const serverScript = `export default async function(app) {

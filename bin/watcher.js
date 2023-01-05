@@ -28,7 +28,7 @@ export default async function Watcher(fn) {
   function changed(xs) {
     xs.forEach(x => {
       const file = path.join(x.directory, x.file)
-      x.action === 2 && watched.has(file) && fn(file)
+      x.action !== 1 && watched.has(file) && fn(file)
     })
   }
 

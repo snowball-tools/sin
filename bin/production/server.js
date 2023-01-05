@@ -58,7 +58,7 @@ ssl && fs.watch(ssl.cert, () => {
 })
 
 async function listen() {
-  await app.listen(port, address)
+  await app.listen(address, port)
   console.log('Listening on', port)
 }
 

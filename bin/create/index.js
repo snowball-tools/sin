@@ -30,7 +30,7 @@ const serverScript = `export default async function(app) {
 
 const clientScript = `import s from 'sin'
 
-export default s.mount(() =>
+s.mount(() =>
   s\`h1\`('Welcome to sin')
 )
 `
@@ -45,7 +45,7 @@ if (full) {
   pkg.scripts.dev = 'sin dev'
   pkg.scripts.build = 'sin build'
   mk(path.join(target, '+'), 'index.js', serverScript)
-  mk(target, 'index.js', clientScript.replace('export', '// Remove `export default` to disable ssr with hydration\nexport'))
+  mk(target, 'index.js', clientScript.replace('export', '// Add `export default` to enable ssr with hydration\nexport'))
 } else if (raw) {
   pkg.scripts.start = 'sin prod raw index.js'
   pkg.scripts.dev = 'sin dev raw index.js'

@@ -15,6 +15,7 @@ const argv = process.argv.slice(2)
     , ssl = env.SSL_CERT && { cert: env.SSL_CERT, key: env.SSL_KEY }
     , protocol = ssl ? 'https://' : 'http://'
     , port = env.PORT ? parseInt(env.PORT) : (ssl ? 443 : 80)
+    , address = env.ADDRESS || '0.0.0.0'
     , { mount, entry } = await getMount()
     , server = await getServer()
 
@@ -57,7 +58,7 @@ ssl && fs.watch(ssl.cert, () => {
 })
 
 async function listen() {
-  await app.listen(port)
+  await app.listen(port, address)
   console.log('Listening on', port)
 }
 

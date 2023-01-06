@@ -22,14 +22,14 @@ export default async function(x = {}) {
           x => ({ path: extensionless(x.path.indexOf(cwd) === 0 ? x.path : path.join(cwd, x.path)) })
         )
       },
-      ...[].concat(plugins && plugins || [])
+      ...[].concat(plugins || [])
     ]
   })
 }
 
 function extensionless(x) {
   return path.extname(x) ? x
-    : canRead(x, 'index.js') ? x + '/index.js'
+    : canRead(path.join(x, 'index.js')) ? x + '/index.js'
     : canRead(x + '.js') ? x + '.js'
     : x
 }

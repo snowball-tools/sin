@@ -1,5 +1,5 @@
 import window from './window.js'
-import { isFunction, snake, asCssVar, isServer, hasOwn } from './shared.js'
+import { isFunction, snake, asCssVar, isServer, hasOwn, isObservable } from './shared.js'
 import { popular, initials } from './shorthands.js'
 
 const doc = window.document
@@ -411,7 +411,7 @@ export function formatValue(v, { property, unit }) {
   if (!v && v !== 0)
     return ''
 
-  isFunction(v) && (v = isServer ? '' : v())
+  isFunction(v) && !isObservable(v) && (v = isServer ? '' : v())
   if (typeof v === 'number')
     return v + unit
 

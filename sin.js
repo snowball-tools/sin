@@ -65,7 +65,7 @@ var View = class {
     this.key = attrs ? attrs.key : void 0;
     this.dom = null;
     this.children = children;
-    this.stack = hasOwn.call(window_default, stackTrace) ? new Error().stack : null;
+    this[stackTrace] = hasOwn.call(window_default, stackTrace) ? new Error().stack : null;
   }
 };
 
@@ -709,7 +709,7 @@ function getUnit(prop2, fn2 = "") {
 function formatValue(v, { property, unit }) {
   if (!v && v !== 0)
     return "";
-  isFunction(v) && (v = isServer ? "" : v());
+  isFunction(v) && !isObservable(v) && (v = isServer ? "" : v());
   if (typeof v === "number")
     return v + unit;
   typeof v !== "string" && (v = "" + v);
@@ -732,7 +732,7 @@ function getPath(selectors2) {
     return "&&";
   return selectors2.reduce((acc, x2, i, xs) => {
     const char2 = x2.charCodeAt(0);
-    return char2 === 64 && isNested(x2) ? x2 + "{" + (i === xs.length - 1 ? "&&" : "") + acc : acc + (raw ? "" : char2 === 32 ? "&" : "&&") + x2;
+    return char2 === 64 && isNested(x2) ? x2 + "{" + (i === xs.length - 1 ? "&&" : "") + acc : acc + (raw || i ? "" : char2 === 32 ? "&" : "&&") + x2;
   }, "");
 }
 function px(x2) {
@@ -1076,7 +1076,8 @@ function getArray(dom) {
 function updateArray(dom, view, context, parent, create) {
   create && dom && parent && (dom = updateArray(dom, [], context, parent).first);
   const last2 = getArray(dom) || dom;
-  const comment = updateValue(dom, "[" + view.length, parent, dom === last2, 8);
+  create = create || dom && dom.nodeValue.charCodeAt(0) !== 91;
+  const comment = updateValue(dom, "[" + view.length, parent, create, 8);
   if (parent) {
     const after = last2 ? last2.nextSibling : null;
     updates(parent, view, context, comment.first, last2);
@@ -1320,7 +1321,7 @@ function attributes(dom, view, context) {
       setVars(dom, tag.vars, tag.args, create, reapply);
   }
   create && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom);
-  create && view.stack && (dom[stackTrace] = view.stack);
+  create && hasOwn.call(view, stackTrace) && (dom[stackTrace] = view[stackTrace]);
   dom[attrSymbol] = view.attrs;
 }
 function updateStyle(dom, style2, old) {
@@ -1375,10 +1376,8 @@ function setVar(dom, id2, value2, cssVar2, init, reapply, after) {
       setVar(dom, id2, value2.value, cssVar2, init, init);
     return;
   }
-  if (isFunction(value2)) {
-    requestAnimationFrame(() => setVar(dom, id2, value2(dom), cssVar2, init, reapply, after));
-    return;
-  }
+  if (isFunction(value2))
+    return Promise.resolve().then(() => setVar(dom, id2, value2(dom), cssVar2, init, reapply, after));
   dom.style.setProperty(id2, formatValue(value2, cssVar2));
   after && afterUpdate.push(() => dom.style.setProperty(id2, formatValue(value2, cssVar2)));
 }

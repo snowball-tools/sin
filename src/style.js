@@ -440,7 +440,7 @@ function getPath(selectors) {
     const char = x.charCodeAt(0)
     return char === 64 && isNested(x)
       ? x + '{' + (i === xs.length - 1 ? '&&' : '') + acc
-      : acc + (raw ? '' : char === 32 ? '&' : '&&') + x
+      : acc + (raw || i ? '' : char === 32 ? '&' : '&&') + x
   }, '')
 }
 

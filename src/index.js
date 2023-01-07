@@ -424,8 +424,12 @@ function Ret(dom, first = dom, last = first) {
 }
 
 function nthAfter(dom, n) {
-  while (dom && --n > 0)
-    dom = dom.nextSibling
+  while (dom && n > 0) {
+    if (!removing.has(dom)) {
+      dom = dom.nextSibling
+      n--
+    }
+  }
   return dom
 }
 
@@ -434,7 +438,7 @@ function fromComment(dom) {
     return
 
   const last = dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91
-      && nthAfter(dom.nextSibling, parseInt(dom.nodeValue.slice(1)))
+      && nthAfter(dom, parseInt(dom.nodeValue.slice(1)))
   last && (dom[arraySymbol] = last)
   return last
 }
@@ -446,8 +450,7 @@ function getArray(dom) {
 function updateArray(dom, view, context, parent, create) {
   create && dom && parent && (dom = updateArray(dom, [], context, parent).first)
   const last = getArray(dom) || dom
-  create = create || (dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) !== 91) // [
-  const comment = updateValue(dom, '[' + view.length, parent, create, 8)
+  const comment = updateValue(dom, '[' + view.length, parent, false, 8)
   if (parent) {
     const after = last ? last.nextSibling : null
     updates(parent, view, context, comment.first, last)

@@ -1076,7 +1076,7 @@ function getArray(dom) {
 function updateArray(dom, view, context, parent, create) {
   create && dom && parent && (dom = updateArray(dom, [], context, parent).first);
   const last2 = getArray(dom) || dom;
-  create = create || dom && dom.nodeValue.charCodeAt(0) !== 91;
+  create = create || dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) !== 91;
   const comment = updateValue(dom, "[" + view.length, parent, create, 8);
   if (parent) {
     const after = last2 ? last2.nextSibling : null;

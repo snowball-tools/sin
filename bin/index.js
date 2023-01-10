@@ -6,6 +6,7 @@ import path from 'path'
 import cp from 'child_process'
 import fs from 'fs'
 import url from 'url'
+import prexit from 'prexit'
 
 import s from './style.js'
 import './env.js'
@@ -35,5 +36,6 @@ function start() {
     }
   )
 
+  prexit('SIGINT', () => process.exitCode = 0)
   child.on('close', code => code === 123 && start())
 }

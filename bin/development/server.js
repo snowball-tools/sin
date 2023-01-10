@@ -31,10 +31,10 @@ const env = process.env
     , { mount, entry } = await getMount()
     , name = port + '-' + path.basename(cwd) // + '-' + (entry === 'index.js' ? '' : entry)
     , chromeHome = path.join(home, name)
-    , staticImport = new RegExp('((?:^|[^@])(?:import|export)\\s*[{}0-9a-zA-Z*,\\s]*\\s*(?: from |)\\s*[\'"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)([\'"])', 'g') // eslint-disable-line
-    , dynamicImport = new RegExp('([^$.]import\\(\\s?[\'"])([a-zA-Z1-9@][a-zA-Z0-9@\\/._-]*)([\'"]\\s?\\))', 'g')
-    , staticImportDir = new RegExp('((?:^|[^@])(?:import|export)\\s*[{}0-9a-zA-Z*,\\s]*\\s*(?: from |)\\s*[\'"])((?:\\.\\/|\\.\\.\\/|\\/)+?[a-zA-Z0-9@./_-]+?(?<!\\.[tj]s))([\'"])', 'g') // eslint-disable-line
-    , dynamicImportDir = new RegExp('([^$.]import\\(\\s?[\'"])((?:\\.\\/|\\.\\.\\/|\\/)+?[a-zA-Z0-9@\\/._-]+?(?<!\\.[tj]s))([\'"]\\s?\\))', 'g')
+    , staticImport = /((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: from )?\s*['"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)(['"])/g // eslint-disable
+    , dynamicImport = /([^$.]import\(\s?['"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)(['"]\s?\))/g
+    , staticImportDir = /((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: from )?\s*['"])((?:\.\/|\.\.\/|\/)+?[a-zA-Z0-9@./_-]+?(?<!\.[tj]s))(['"])/g // eslint-disable
+    , dynamicImportDir = /([^$.]import\(\s?['"])((?:\.\/|\.\.\/|\/)+?[a-zA-Z0-9@/._-]+?(?<!\.[tj]s))(['"]\s?\))/g
     , resolveCache = Object.create(null)
     , watcher = await Watcher(changed)
     , scriptsPath = path.join(chromeHome, '.sin-scripts')

@@ -1,8 +1,6 @@
 import path from 'path'
 import fs from 'fs'
 
-import('../log.js')
-
 if (!fs.readdirSync(process.cwd()).some(x => x[0] !== '.'))
   await import('../create/index.js')
 
@@ -14,6 +12,7 @@ const abs = (x = './index.js') => x.startsWith('/')
   : ('./' + x)
 
 import('./watch.js').then(x => x.default())
+import('../log.js')
 
 argv[0] === 'raw'
   ? import(abs(argv[1]))

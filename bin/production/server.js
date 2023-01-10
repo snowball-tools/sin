@@ -11,19 +11,23 @@ import ssr, { wrap } from '../../ssr/index.js'
 const argv = process.argv.slice(2)
     , env = process.env
     , cwd = process.cwd()
+    , host = process.env.HOST_FALLBACK || ''
     , command = (argv[0] && !argv[0].endsWith('.js') ? argv[0] : '').toLowerCase()
     , ssl = env.SSL_CERT && { cert: env.SSL_CERT, key: env.SSL_KEY }
     , protocol = ssl ? 'https://' : 'http://'
     , port = env.PORT ? parseInt(env.PORT) : (ssl ? 443 : 80)
+    , portHttp = env.PORT_HTTP ? parseInt(env.PORT_HTTP) : (ssl ? 80 : port)
+    , httpRedirect = env.HTTP_REDIRECT !== 'no'
     , address = env.ADDRESS || '0.0.0.0'
     , { mount, entry } = await getMount()
     , server = await getServer()
 
 let certChangeThrottle
+  , listener
 
 server.esbuild && (await import('../../build/index.js')).default(server.esbuild)
 
-const app = ey(ssl)
+const app = ey()
 
 app.get(app.files('+public'))
 
@@ -53,13 +57,30 @@ ssl && fs.watch(ssl.cert, () => {
   clearTimeout(certChangeThrottle)
   certChangeThrottle = setTimeout(() => {
     console.log('Reloading to update SSL certificate')
-    listen()
+    listenHttps()
   }, 5000)
 })
 
 async function listen() {
-  await app.listen(port, address)
-  console.log('Listening on', port)
+  ssl && listenHttps()
+  listenHttp()
+}
+
+async function listenHttp() {
+  if (httpRedirect) {
+    const app = ey()
+    app.all(r => r.end(301, { Location: 'https://' + (r.headers.host || host) + r.url }))
+    await app.listen(portHttp, address)
+  } else {
+    await app.listen(portHttp, address)
+  }
+  console.log('HTTP Listening on', portHttp)
+}
+
+async function listenHttps() {
+  listener && listener.unlisten()
+  await app.listen(port, address, ssl).then(x => listener = x)
+  console.log('HTTPS Listening on', port)
 }
 
 async function getServer() {

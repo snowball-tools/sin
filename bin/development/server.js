@@ -249,7 +249,7 @@ function modify(x) {
 
 async function loadServer() {
   try {
-    const serverPath = path.join(cwd, '+', 'index.js')
+    const serverPath = path.join(cwd, command === 'server' ? '' : '+', 'index.js')
     if (!fs.existsSync(serverPath))
       return
 

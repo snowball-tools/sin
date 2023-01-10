@@ -63,11 +63,7 @@ async function listen() {
 }
 
 async function getServer() {
-  const server = argv.find((x, i, xs) => xs[i + 1] === '-s' || xs[i + 1] === '--server')
-  const serverPath = server
-        ? path.join(cwd, server)
-        : path.join(cwd, '+', 'index.js')
-
+  const serverPath = path.join(cwd, command === 'server' ? '' : '+', 'index.js')
   return fs.existsSync(serverPath)
     ? await import(serverPath)
     : {}

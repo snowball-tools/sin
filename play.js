@@ -2,7 +2,7 @@
 
 import s from 'sin'
 
-liveOptimizationSample()
+nestedRouting()
 
 function liveOptimizationSample() {
   const xs = [...Array(200).keys()]
@@ -131,6 +131,7 @@ function testSpecificity() {
 }
 
 function asyncComponentArraysErrorFixed() {
+  window.s = s
   s.mount(() => s`div`(
     s(async() => {
       await s.sleep(1000)
@@ -146,7 +147,7 @@ function asyncComponentArraysErrorFixed() {
       ]
     }),
     s`h1`('nice'),
-    s`button`({ onclick: console.log }, 'hej')
+    s`button`({ onclick: () => {} }, 'hej')
   ))
 }
 
@@ -553,8 +554,10 @@ function liveTest() {
 }
 
 function nestedRouting() {
-  const nested = s(async({ id }, children, { route }) => {
-    await new Promise(r => setTimeout(r, 500))
+  const nested = s({
+    loading: 'Loading'
+  }, async({ id }, children, { route }) => {
+    await s.sleep(500)
     const items = [
       ...Array(
         5 + Math.ceil(Math.random() * 5)
@@ -587,7 +590,7 @@ function nestedRouting() {
         '/:id': nested
       })
     )
-  }, null, 'Loading')
+  })
 
   s.mount(({}, [], { route }) =>
     s`main

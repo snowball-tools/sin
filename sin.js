@@ -164,17 +164,17 @@ function signal() {
     [...observers].forEach((fn2) => fn2(...xs));
   }
 }
-function Live(value2, ...fn2) {
+function Live(value2, ...fns) {
   const observers = /* @__PURE__ */ new Set();
-  isFunction(fn2) && observers.add(fn2);
+  fns.forEach((fn2) => isFunction(fn2) && observers.add(fn2));
   live.value = value2;
-  live.observe = (fn3) => (observers.add(fn3), () => observers.delete(fn3));
+  live.observe = (fn2) => (observers.add(fn2), () => observers.delete(fn2));
   live.valueOf = live.toString = live.toJSON = () => value2;
   live.detach = noop;
   live.reduce = reduce;
   live.set = (x2) => (...args) => (live(isFunction(x2) ? x2(...args) : x2), live);
-  live.get = (x2) => Object.assign(getter.bind(null, x2), { observe: (fn3) => live.observe(() => fn3(getter(x2))) });
-  live.if = (...xs) => Object.assign(ternary.bind(null, ...xs), { observe: (fn3) => live.observe((x2) => fn3(ternary(...xs))) });
+  live.get = (x2) => Object.assign(getter.bind(null, x2), { observe: (fn2) => live.observe(() => fn2(getter(x2))) });
+  live.if = (...xs) => Object.assign(ternary.bind(null, ...xs), { observe: (fn2) => live.observe((x2) => fn2(ternary(...xs))) });
   return live;
   function getter(x2) {
     return isFunction(x2) ? x2(live.value) : live.value[x2];
@@ -186,14 +186,14 @@ function Live(value2, ...fn2) {
     if (!arguments.length)
       return live.value;
     live.value = x2;
-    [...observers].forEach((fn3) => live.value !== value2 && fn3(live.value, value2));
+    [...observers].forEach((fn2) => live.value !== value2 && fn2(live.value, value2));
     value2 = live.value;
     return live.value;
   }
-  function reduce(fn3, initial) {
+  function reduce(fn2, initial) {
     let i = 1;
-    const result = Live(arguments.length > 1 ? fn3(initial, live.value, i++) : live.value);
-    live.observe((x2) => result(fn3(result.value, x2, i++)));
+    const result = Live(arguments.length > 1 ? fn2(initial, live.value, i++) : live.value);
+    live.observe((x2) => result(fn2(result.value, x2, i++)));
     return result;
   }
 }
@@ -1059,14 +1059,18 @@ function Ret(dom, first = dom, last2 = first) {
   return { dom, first, last: last2 };
 }
 function nthAfter(dom, n) {
-  while (dom && --n > 0)
-    dom = dom.nextSibling;
+  while (dom && n > 0) {
+    if (!removing.has(dom)) {
+      dom = dom.nextSibling;
+      n--;
+    }
+  }
   return dom;
 }
 function fromComment(dom) {
   if (!dom)
     return;
-  const last2 = dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91 && nthAfter(dom.nextSibling, parseInt(dom.nodeValue.slice(1)));
+  const last2 = dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91 && nthAfter(dom, parseInt(dom.nodeValue.slice(1)));
   last2 && (dom[arraySymbol] = last2);
   return last2;
 }
@@ -1076,8 +1080,7 @@ function getArray(dom) {
 function updateArray(dom, view, context, parent, create) {
   create && dom && parent && (dom = updateArray(dom, [], context, parent).first);
   const last2 = getArray(dom) || dom;
-  create = create || dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) !== 91;
-  const comment = updateValue(dom, "[" + view.length, parent, create, 8);
+  const comment = updateValue(dom, "[" + view.length, parent, false, 8);
   if (parent) {
     const after = last2 ? last2.nextSibling : null;
     updates(parent, view, context, comment.first, last2);

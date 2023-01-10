@@ -1,5 +1,6 @@
 ## Todo
 - deferrable shorter removal children are not removed first (deferrableBug)
+- check responseText: 'text' on ssr
 
 ## Ideas
 - Check anchor handling (#wee scroll etc)

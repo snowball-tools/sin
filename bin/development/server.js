@@ -138,7 +138,7 @@ async function changed(x) {
 
   app.publish('update', 'reload')
   file.original = source
-  file.source = modify(source)
+  file.source = modify(source, x)
 
   changed && file.scriptId
     ? setSource(file).then(() => app.publish('update', 'redraw'), console.error)
@@ -184,11 +184,12 @@ prexit(async(...xs) => {
   sockets.forEach(x => x.close())
 })
 
-function extensionless(x) {
+function extensionless(x, root = '') {
   x.indexOf('file:') === 0 && (x = x.slice(5))
+  root = x[0] === '/' ? cwd : path.basename(root)
   return path.extname(x) ? x
-    : canRead(path.join(x, 'index.js')) ? x + '/index.js'
-    : canRead(x + '.js') ? x + '.js'
+    : canRead(path.join(root, x, 'index.js')) ? x + '/index.js'
+    : canRead(path.join(root, x + '.js')) ? x + '.js'
     : x
 }
 
@@ -238,12 +239,12 @@ function saveScripts() {
   }
 }
 
-function modify(x) {
+function modify(x, path) {
   return x
     .replace(staticImport, (_, a, b, c) => a + '/' + resolve(b) + c)
     .replace(dynamicImport, (_, a, b, c) => a + '/' + resolve(b) + c)
-    .replace(staticImportDir, (_, a, b, c) => a + extensionless(b) + c)
-    .replace(dynamicImportDir, (_, a, b, c) => a + extensionless(b) + c)
+    .replace(staticImportDir, (_, a, b, c) => a + extensionless(b, path) + c)
+    .replace(dynamicImportDir, (_, a, b, c) => a + extensionless(b, path) + c)
     .replace(/((function.*?\)|=>)\s*{)/g, '$1eval(0);') // jail
 }
 

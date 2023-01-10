@@ -10,9 +10,9 @@ export function signal() {
   }
 }
 
-export default function Live(value, ...fn) {
+export default function Live(value, ...fns) {
   const observers = new Set()
-  isFunction(fn) && observers.add(fn)
+  fns.forEach(fn => isFunction(fn) && observers.add(fn))
   live.value = value
   live.observe = fn => (observers.add(fn), () => observers.delete(fn))
   live.valueOf = live.toString = live.toJSON = () => value

@@ -184,6 +184,10 @@ function mount(dom, view, attrs = {}, context = {}) {
     attrs = view || {}
     view = dom
     dom = document.body
+    if (!dom)
+      throw new Error('Document.body does not exist.')
+  } else if (!dom) {
+    throw new Error('The dom element you tried to mount to does not exist.')
   }
 
   view instanceof View === false && (view = s(view))

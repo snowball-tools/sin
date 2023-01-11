@@ -1,6 +1,7 @@
 import fs from 'fs/promises'
 import path from 'path'
 
+import '../env.js'
 import ssr from '../../ssr/index.js'
 import { wrap } from '../../ssr/shared.js'
 

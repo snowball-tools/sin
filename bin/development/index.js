@@ -1,5 +1,6 @@
 import path from 'path'
 import fs from 'fs'
+import '../env.js'
 
 if (!fs.readdirSync(process.cwd()).some(x => x[0] !== '.'))
   await import('../create/index.js')

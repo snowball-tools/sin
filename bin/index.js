@@ -9,7 +9,6 @@ import url from 'url'
 import prexit from 'prexit'
 
 import s from './style.js'
-import './env.js'
 
 const argv = process.argv.slice(2)
     , local = path.join(process.cwd(), 'node_modules', 'sin', 'bin')

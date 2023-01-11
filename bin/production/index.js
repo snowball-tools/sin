@@ -1,4 +1,5 @@
 import path from 'path'
+import '../env.js'
 
 const argv = process.argv.slice(2)
 const abs = (x = './index.js') => x.startsWith('/')

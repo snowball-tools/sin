@@ -43,7 +43,7 @@
   ],
   "dependencies": {
     "esbuild": "0.16.13",
-    "ey": "1.1.0",
+    "ey": "1.1.1",
     "nsfw": "2.2.4",
     "prexit": "2.0.2",
     "ua-parser-js": "1.0.32",

@@ -72,13 +72,13 @@ app.ws('/sindev', {
             ua.os.name.replace(/ +/g, '') + ' v' + ua.os.version.split('.').slice(0, 2).join('.') +
             ' from ' + res.ip
     }
-  }
-}, async ws => {
-  sockets.add(ws)
-  ws.subscribe('update')
-
-  seen[ws.name] || setTimeout(() => console.log(seen[ws.name] = ws.name, 'connected'), 500)
-  for await (const { json } of ws) {
+  },
+  open(ws) {
+    sockets.add(ws)
+    ws.subscribe('update')
+    seen[ws.name] || setTimeout(() => console.log(seen[ws.name] = ws.name, 'connected'), 100)
+  },
+  message(ws, { json }) {
     if (!json)
       return
     const { file, line, column } = json
@@ -87,8 +87,10 @@ app.ws('/sindev', {
       line,
       column
     })
+  },
+  close(ws) {
+    sockets.delete(ws)
   }
-  sockets.delete(ws)
 })
 
 await loadServer()

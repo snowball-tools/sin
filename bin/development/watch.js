@@ -11,8 +11,8 @@ export default async function(scripts = {}) {
 
   global.sinLoadedFiles.add = x => x in scripts || watcher.add(x)
   global.sinLoadedFiles.forEach(global.sinLoadedFiles.add)
-  global.sinLoadedFiles.remove = watcher.remove
+  global.sinLoadedFiles.remove = x => watcher.remove(x)
 
   const env = path.join(process.cwd(), '.env')
-  fs.existsSync(env) && watcher.add(path.join(process.cwd(), '.env'))
+  fs.existsSync(env) && watcher.add(env)
 }

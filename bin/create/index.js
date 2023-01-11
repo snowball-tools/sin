@@ -40,10 +40,12 @@ pkg.name = name
 mk(target)
 process.chdir(target)
 
+pkg.scripts.build = 'sin build'
+pkg.scripts.generate = 'sin generate'
+
 if (full) {
   pkg.scripts.start = 'sin prod'
   pkg.scripts.dev = 'sin dev'
-  pkg.scripts.build = 'sin build'
   mk(path.join(target, '+'), 'index.js', serverScript)
   mk(target, 'index.js', clientScript.replace('export', '// Add `export default` to enable ssr with hydration\nexport'))
 } else if (raw) {
@@ -58,7 +60,6 @@ if (full) {
 } else if (staticServe) {
   pkg.scripts.start = 'sin prod static'
   pkg.scripts.dev = 'sin dev static'
-  pkg.scripts.generate = 'sin generate'
   mk(path.join(target, '+'), 'index.js', serverScript)
   mk(target, 'index.js', clientScript)
 } else if (server) {

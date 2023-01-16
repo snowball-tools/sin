@@ -47,7 +47,6 @@
   },
   "devDependencies": {
     "esbuild": "0.16.13",
-    "nsfw": "2.2.4",
     "ua-parser-js": "1.0.32",
     "ws": "8.11.0"
   }

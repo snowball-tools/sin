@@ -1,5 +1,5 @@
 import path from 'path'
-import nsfw from 'nsfw'
+import fs from 'fs'
 
 export default async function Watcher(fn) {
   const watched = new Map()
@@ -10,29 +10,38 @@ export default async function Watcher(fn) {
       if (watched.has(x))
         return
 
-      const promise = nsfw(x, changed, { debounceMS: 50 })
-      watched.set(x, promise)
-      promise.then(watcher => (watcher.start(), watched.set(x, watcher)))
+      const watcher = fs.watch(x, { persistent: false }, t => changed(x, watcher))
+      watched.set(x, watcher)
     },
-    async remove(x) {
+    remove(x) {
       x = normalize(x)
       if (!watched.has(x))
         return
-
       const watcher = watched.get(x)
+      watcher.close()
       watched.delete(x)
-      ;(await watcher).stop()
     }
-  }
-
-  function changed(xs) {
-    xs.forEach(x => {
-      const file = path.join(x.directory, x.file)
-      x.action !== 1 && watched.has(file) && fn(file)
-    })
   }
 
   function normalize(x) {
     return x[0] === '/' ? x : path.join(process.cwd(), x)
+  }
+
+  function changed(x, watcher) {
+    const time = modified(x)
+    if (time === watcher.time)
+      return
+
+    watcher.time = time
+    fn(x)
+  }
+
+}
+
+function modified(x) {
+  try {
+    return fs.statSync(x).mtimeMs
+  } catch (error) {
+    return Math.random()
   }
 }

@@ -22,6 +22,8 @@ const argv = process.argv.slice(2)
     , server = !full && !raw && !ssr && !staticServe && await prompt('Only HTTP?')
     , npm = await new Promise(r => cp.exec('which pnpm', e => r(e ? 'npm' : 'pnpm')))
     , run = npm + (npm === 'npm' ? ' run' : '')
+    , git = !hasGit(cwd) && await prompt('Git?')
+    , install = await prompt('Install?')
 
 const serverScript = `export default async function(app) {
   app.get('/hello', r => r.end('Welcome to sin'))
@@ -70,8 +72,8 @@ if (full) {
 
 mk(target, 'package.json', JSON.stringify(pkg, null, 2))
 
-await prompt('Git?') && cp.execSync('git init', { stdio: 'inherit' })
-await prompt('Install?') && cp.execSync(npm + ' install porsager/sin', { stdio: 'inherit' })
+git && cp.execSync('git init', { stdio: 'inherit' })
+install && cp.execSync(npm + ' install porsager/sin', { stdio: 'inherit' })
 
 !global.print && console.log(
   cd
@@ -92,4 +94,14 @@ async function prompt(x) {
 
 async function ask(x) {
   return new Promise(r => rl.question(x + ' ', r))
+}
+
+function hasGit(x) {
+  let prev
+  while (x !== prev) {
+    prev = x
+    if (fs.existsSync(path.join(x, '.git')))
+      return true
+    x = path.dirname(x)
+  }
 }

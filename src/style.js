@@ -7,12 +7,12 @@ const doc = window.document
     , vendorRegex = /^(ms|moz|webkit)[-A-Z]/i
     , prefix = style && style.getAttribute('id') || 'sin-'
     , div = doc.createElement('div')
-    , mediasCache = {}
+    , aliasCache = {}
     , propCache = {}
     , unitCache = {}
 
 export const cssRules = () => style.sheet.cssRules
-export const medias = x => Object.entries(x).forEach(([k, v]) => mediasCache['@' + k] = v)
+export const alias = x => Object.entries(x).forEach(([k, v]) => aliasCache['@' + k] = v)
 
 const pxCache = {
   flex: '',
@@ -249,8 +249,8 @@ function parseSelector(xs, j, args, parent) {
   }
 }
 
-function atHelper(x) {
-  return mediasCache[x] || x
+function aliases(x) {
+  return aliasCache[x] || x
 }
 
 function parseStyles(idx, end) {
@@ -317,7 +317,7 @@ function startBlock(i) {
   } else {
     rule && (rules[path] = rule)
     selector = (startChar === 64 // @
-      ? atHelper(prop) + (value || '') + x.slice(valueStart - 1, i)
+      ? aliases(prop) + (value || '') + x.slice(valueStart - 1, i)
       : x.slice(start, i)
     ).trim()
     selector.indexOf(',') !== -1 && (selector = splitSelector(selector))

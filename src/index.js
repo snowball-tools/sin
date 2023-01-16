@@ -3,7 +3,7 @@ import http from './http.js'
 import live, { signal } from './live.js'
 import window from './window.js'
 import router from './router.js'
-import { parse, medias, formatValue } from './style.js'
+import { parse, alias, formatValue } from './style.js'
 import {
   isObservable,
   ignoredAttr,
@@ -87,10 +87,10 @@ s.pathmode = ''
 s.redraw = redraw
 s.mount = mount
 s.css = (...x) => parse(x, null, 0, true)
+s.css.alias = alias
 s.animate = animate
 s.http = http
 s.http.redraw = !s.isServer && redraw
-s.medias = medias
 s.live = live
 s.signal = signal
 s.on = on

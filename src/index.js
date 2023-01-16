@@ -128,7 +128,7 @@ function animate(dom) {
     let running = false
     dom.setAttribute('animate', 'exit')
     dom.addEventListener('transitionrun', () => (running = true, end(r)), { once: true, passive: true })
-    raf3(() => running
+    requestAnimationFrame(() => running
       ? end(r)
       : r()
     )
@@ -1051,8 +1051,4 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
   )
 
   return after
-}
-
-function raf3(fn) {
-  requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(fn)))
 }

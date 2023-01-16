@@ -379,10 +379,10 @@ var style = doc.querySelector("style.sin") || doc.createElement("style");
 var vendorRegex = /^(ms|moz|webkit)[-A-Z]/i;
 var prefix = style && style.getAttribute("id") || "sin-";
 var div = doc.createElement("div");
-var mediasCache = {};
+var aliasCache = {};
 var propCache = {};
 var unitCache = {};
-var medias = (x2) => Object.entries(x2).forEach(([k, v]) => mediasCache["@" + k] = v);
+var alias = (x2) => Object.entries(x2).forEach(([k, v]) => aliasCache["@" + k] = v);
 var pxCache = {
   flex: "",
   border: "px",
@@ -583,8 +583,8 @@ function parseSelector(xs, j, args, parent) {
     }
   }
 }
-function atHelper(x2) {
-  return mediasCache[x2] || x2;
+function aliases(x2) {
+  return aliasCache[x2] || x2;
 }
 function parseStyles(idx, end) {
   for (let i = idx; i <= x.length; i++) {
@@ -638,7 +638,7 @@ function startBlock(i) {
     rule = "";
   } else {
     rule && (rules[path] = rule);
-    selector = (startChar === 64 ? atHelper(prop) + (value || "") + x.slice(valueStart - 1, i) : x.slice(start, i)).trim();
+    selector = (startChar === 64 ? aliases(prop) + (value || "") + x.slice(valueStart - 1, i) : x.slice(start, i)).trim();
     selector.indexOf(",") !== -1 && (selector = splitSelector(selector));
     value = prop = "";
     selectors.push(
@@ -810,10 +810,10 @@ s.pathmode = "";
 s.redraw = redraw;
 s.mount = mount;
 s.css = (...x2) => parse(x2, null, 0, true);
+s.css.alias = alias;
 s.animate = animate;
 s.http = http;
 s.http.redraw = !s.isServer && redraw;
-s.medias = medias;
 s.live = Live;
 s.signal = signal;
 s.on = on;
@@ -835,8 +835,8 @@ function trust(strings, ...values) {
   });
 }
 function on(target, event, fn2, options) {
-  return () => {
-    const handleEvent2 = (e) => callHandler(fn2, e);
+  return (...xs) => {
+    const handleEvent2 = (e) => callHandler(fn2, e, ...xs);
     target.addEventListener(event, handleEvent2, options);
     return () => target.removeEventListener(event, handleEvent2, options);
   };
@@ -848,7 +848,7 @@ function animate(dom) {
     let running = false;
     dom.setAttribute("animate", "exit");
     dom.addEventListener("transitionrun", () => (running = true, end(r)), { once: true, passive: true });
-    raf3(
+    requestAnimationFrame(
       () => running ? end(r) : r()
     );
   });
@@ -886,6 +886,10 @@ function mount(dom, view, attrs = {}, context = {}) {
     attrs = view || {};
     view = dom;
     dom = document.body;
+    if (!dom)
+      throw new Error("Document.body does not exist.");
+  } else if (!dom) {
+    throw new Error("The dom element you tried to mount to does not exist.");
   }
   view instanceof View === false && (view = s(view));
   hasOwn.call(context, "location") || (context.location = window_default.location);
@@ -1420,8 +1424,8 @@ function handleEvent(dom) {
     handleEvent: (e) => callHandler(dom[attrSymbol]["on" + e.type], e)
   };
 }
-function callHandler(handler, e) {
-  const result = isFunction(handler) ? handler.call(e.currentTarget, e) : isFunction(handler.handleEvent) && handler.handleEvent(e);
+function callHandler(handler, e, ...xs) {
+  const result = isFunction(handler) ? handler.call(e.currentTarget, e, ...xs) : isFunction(handler.handleEvent) && handler.handleEvent(e);
   if (e.redraw === false)
     return;
   !isObservable(result) && !isObservable(handler) && redraw();
@@ -1494,9 +1498,6 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
   }
   root && (promises.length === 0 ? removeChild(parent, dom) : (removing.add(dom), Promise.allSettled(promises).then(() => removeChild(parent, dom))));
   return after;
-}
-function raf3(fn2) {
-  requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(fn2)));
 }
 export {
   s as default

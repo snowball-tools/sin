@@ -114,8 +114,8 @@ function trust(strings, ...values) {
 }
 
 function on(target, event, fn, options) {
-  return () => {
-    const handleEvent = e => callHandler(fn, e)
+  return (...xs) => {
+    const handleEvent = e => callHandler(fn, e, ...xs)
     target.addEventListener(event, handleEvent, options)
     return () => target.removeEventListener(event, handleEvent, options)
   }
@@ -951,9 +951,9 @@ function handleEvent(dom) {
   }
 }
 
-function callHandler(handler, e) {
+function callHandler(handler, e, ...xs) {
   const result = isFunction(handler)
-    ? handler.call(e.currentTarget, e)
+    ? handler.call(e.currentTarget, e, ...xs)
     : isFunction(handler.handleEvent) && handler.handleEvent(e)
 
   if (e.redraw === false)

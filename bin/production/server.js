@@ -17,7 +17,7 @@ const argv = process.argv.slice(2)
     , protocol = ssl ? 'https://' : 'http://'
     , port = env.PORT ? parseInt(env.PORT) : (ssl ? 443 : 80)
     , portHttp = env.PORT_HTTP ? parseInt(env.PORT_HTTP) : (ssl ? 80 : port)
-    , httpRedirect = env.HTTP_REDIRECT !== 'no'
+    , httpRedirect = env.SSL && env.HTTP_REDIRECT !== 'no'
     , address = env.ADDRESS || '0.0.0.0'
     , { mount, entry } = await getMount()
     , server = await getServer()

@@ -49,6 +49,7 @@ if (full) {
   pkg.scripts.start = 'sin prod'
   pkg.scripts.dev = 'sin dev'
   mk(path.join(target, '+'), 'index.js', serverScript)
+  mk(path.join(target, '+public'))
   mk(target, 'index.js', clientScript.replace('export', '// Add `export default` to enable ssr with hydration\nexport'))
 } else if (raw) {
   pkg.scripts.start = 'sin prod raw index.js'
@@ -58,12 +59,11 @@ if (full) {
   pkg.scripts.start = 'sin prod ssr'
   pkg.scripts.dev = 'sin dev ssr'
   mk(path.join(target, '+'), 'index.js', serverScript)
+  mk(path.join(target, '+public'))
   mk(target, 'index.js', clientScript)
 } else if (staticServe) {
   pkg.scripts.start = 'sin prod static'
   pkg.scripts.dev = 'sin dev static'
-  mk(path.join(target, '+'), 'index.js', serverScript)
-  mk(target, 'index.js', clientScript)
 } else if (server) {
   pkg.scripts.start = 'sin prod server'
   pkg.scripts.dev = 'sin dev server'

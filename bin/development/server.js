@@ -25,7 +25,7 @@ const env = process.env
     , cwd = process.cwd()
     , argv = process.argv.slice(2)
     , command = (argv[0] && !argv[0].endsWith('.js') ? argv[0] : '').toLowerCase()
-    , home = env.SIN_HOME || path.join(env.HOMEPATH || env.HOME || '', '.sin')
+    , home = getHome()
     , port = env.PORT ? parseInt(env.PORT) : devPort()
     , url = 'http://localhost:' + port
     , { mount, entry } = await getMount()
@@ -315,4 +315,13 @@ async function getMount() {
   return hasEntry
     ? { entry, mount: (await import(absEntry)).default }
     : { entry }
+}
+
+function getHome() {
+  const x = env.SIN_HOME || path.join(
+    process.platform === 'win32' && env.USER_PROFILE || env.HOME,
+    '.sin'
+  )
+  fs.mkdirSync(x, { recursive: true })
+  return x
 }

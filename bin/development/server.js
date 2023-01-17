@@ -188,7 +188,7 @@ prexit(async(...xs) => {
 
 function extensionless(x, root = '') {
   x.indexOf('file:') === 0 && (x = x.slice(5))
-  root = x[0] === '/' ? cwd : path.basename(root)
+  root = path.isAbsolute(x[0]) ? cwd : path.basename(root)
   return path.extname(x) ? x
     : canRead(path.join(root, x, 'index.js')) ? x + '/index.js'
     : canRead(path.join(root, x + '.js')) ? x + '.js'
@@ -257,7 +257,7 @@ async function loadServer() {
       return
 
     await serverWatch(scripts)
-    const x = await import(serverPath)
+    const x = await import(Url.pathToFileURL(serverPath))
     typeof x.default === 'function' && x.default(app)
   } catch (e) {
     console.error(e)
@@ -272,22 +272,23 @@ function resolve(n) {
       , scoped = n[0] === '@'
       , install = parts.slice(0, scoped ? 2 : 1).join('/')
       , name = install.replace(/(.+)@.*/, '$1')
-      , root = path.join('node_modules', ...name.split('/'))
-      , fullPath = path.join(root, ...parts.slice(scoped ? 2 : 1))
+      , root = 'node_modules/' + name
+      , full = [root, ...parts.slice(scoped ? 2 : 1)].join('/')
+      , fullPath = Url.pathToFileURL(path.join(cwd, full))
 
   return resolveCache[n] = (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()
-    ? fullPath
-    : fs.existsSync(path.join(fullPath, 'package.json'))
-    ? pkgLookup(fullPath)
+    ? full
+    : fs.existsSync(path.join(cwd, full, 'package.json'))
+    ? pkgLookup(full)
     : name === 'sin'
-    ? pkgLookup(fullPath, sinRoot)
+    ? pkgLookup(full, sinRoot)
     : n
   )
 }
 
-function pkgLookup(root, abs = root) {
-  const x = JSON.parse(fs.readFileSync(path.join(abs, 'package.json'), 'utf8'))
-  return root + '/' + (x.module || x.unpkg || x.main || 'index.js')
+function pkgLookup(x, abs = x) {
+  const pkg = JSON.parse(fs.readFileSync(path.join(abs, 'package.json'), 'utf8'))
+  return x + '/' + (pkg.module || pkg.unpkg || pkg.main || 'index.js')
 }
 
 function devPort() {

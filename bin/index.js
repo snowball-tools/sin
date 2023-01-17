@@ -30,7 +30,7 @@ function start() {
       cwd: process.cwd(),
       execArgv: [
         '--no-warnings',
-        '--experimental-loader', path.join(here, '/loader.js')
+        '--experimental-loader', url.pathToFileURL(path.join(here, '/loader.js'))
       ]
     }
   )

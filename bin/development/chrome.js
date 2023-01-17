@@ -62,7 +62,7 @@ export default async function(home, url, scriptParsed) {
       '--user-data-dir=' + home,
       '--remote-debugging-port=' + chromePort,
       lastUrl || url
-    ], {
+    ].filter(x => x), {
       detached: true,
       stdio: 'ignore'
     })

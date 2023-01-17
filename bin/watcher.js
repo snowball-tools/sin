@@ -24,7 +24,7 @@ export default async function Watcher(fn) {
   }
 
   function normalize(x) {
-    return path.isAbsolute(x[0]) ? x : path.join(process.cwd(), x)
+    return path.isAbsolute(x) ? x : path.join(process.cwd(), x)
   }
 
   function changed(x, watcher) {

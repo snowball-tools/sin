@@ -188,7 +188,7 @@ prexit(async(...xs) => {
 
 function extensionless(x, root = '') {
   x.indexOf('file:') === 0 && (x = x.slice(5))
-  root = path.isAbsolute(x[0]) ? cwd : path.basename(root)
+  root = path.isAbsolute(x) ? cwd : path.basename(root)
   return path.extname(x) ? x
     : canRead(path.join(root, x, 'index.js')) ? x + '/index.js'
     : canRead(path.join(root, x + '.js')) ? x + '.js'

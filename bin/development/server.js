@@ -31,10 +31,10 @@ const env = process.env
     , { mount, entry } = await getMount()
     , name = port + '-' + path.basename(cwd) // + '-' + (entry === 'index.js' ? '' : entry)
     , chromeHome = path.join(home, name)
-    , staticImport = /((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: from )?\s*['"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)(['"])/g // eslint-disable
-    , dynamicImport = /([^$.]import\(\s?['"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)(['"]\s?\))/g
-    , staticImportDir = /((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: from )?\s*['"])((?:\.\/|\.\.\/|\/)+?[a-zA-Z0-9@./_-]+?(?<!\.[tj]s))(['"])/g // eslint-disable
-    , dynamicImportDir = /([^$.]import\(\s?['"])((?:\.\/|\.\.\/|\/)+?[a-zA-Z0-9@/._-]+?(?<!\.[tj]s))(['"]\s?\))/g
+    , staticImport = /(?:`[^`]*`)|((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: from )?\s*['"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)(['"])/g // eslint-disable
+    , dynamicImport = /(?:`[^`]*`)|([^$.]import\(\s?['"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)(['"]\s?\))/g
+    , staticImportDir = /(?:`[^`]*`)|((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: from )?\s*['"])((?:\.\/|\.\.\/|\/)+?[a-zA-Z0-9@./_-]+?(?<!\.[tj]s))(['"])/g // eslint-disable
+    , dynamicImportDir = /(?:`[^`]*`)|([^$.]import\(\s?['"])((?:\.\/|\.\.\/|\/)+?[a-zA-Z0-9@/._-]+?(?<!\.[tj]s))(['"]\s?\))/g
     , resolveCache = Object.create(null)
     , watcher = await Watcher(changed)
     , scriptsPath = path.join(chromeHome, '.sin-scripts')
@@ -243,10 +243,10 @@ function saveScripts() {
 
 function modify(x, path) {
   return x
-    .replace(staticImport, (_, a, b, c) => a + '/' + resolve(b) + c)
-    .replace(dynamicImport, (_, a, b, c) => a + '/' + resolve(b) + c)
-    .replace(staticImportDir, (_, a, b, c) => a + extensionless(b, path) + c)
-    .replace(dynamicImportDir, (_, a, b, c) => a + extensionless(b, path) + c)
+    .replace(staticImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
+    .replace(dynamicImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
+    .replace(staticImportDir, (_, a, b, c) => a ? a + extensionless(b, path) + c : _)
+    .replace(dynamicImportDir, (_, a, b, c) => a ? a + extensionless(b, path) + c : _)
     .replace(/((function.*?\)|=>)\s*{)/g, '$1eval(0);') // jail
 }
 

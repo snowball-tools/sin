@@ -65,12 +65,12 @@ fs.mkdirSync(home, { recursive: true })
 const app = ey()
 
 app.ws('/sindev', {
-  upgrade: res => {
-    const ua = uaParser(res.headers['user-agent'])
+  upgrade: r => {
+    const ua = uaParser(r.headers['user-agent'])
     return {
       name: ua.browser.name.replace(/^Mobile /, '') + ' v' + ua.browser.version.split('.')[0] + ' on ' +
             ua.os.name.replace(/ +/g, '') + ' v' + ua.os.version.split('.').slice(0, 2).join('.') +
-            ' from ' + res.ip
+            ' from ' + r.ip
     }
   },
   open(ws) {

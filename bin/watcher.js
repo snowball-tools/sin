@@ -10,8 +10,12 @@ export default async function Watcher(fn) {
       if (watched.has(x))
         return
 
-      const watcher = fs.watch(x, { persistent: false }, t => changed(x, watcher))
-      watched.set(x, watcher)
+      try {
+        const watcher = fs.watch(x, { persistent: false }, t => changed(x, watcher))
+        watched.set(x, watcher)
+      } catch (e) {
+        // noop - watch is best effort
+      }
     },
     remove(x) {
       x = normalize(x)

@@ -5,11 +5,13 @@ import { asLocation, wrap } from './shared.js'
 import { formatValue, cssRules } from '../src/style.js'
 import router from '../src/router.js'
 import s from '../src/index.js'
+import mimes from 'ey/src/mimes.js'
 
 export { wrap }
 
 class TimeoutError extends Error {}
 
+s.mimes = mimes
 s.trust = (strings, ...values) => new window.Node('<!--[1-->' + String.raw({ raw: strings }, ...values))
 
 let lastWasText = false

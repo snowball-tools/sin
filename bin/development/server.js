@@ -288,7 +288,7 @@ function resolve(n) {
 
 function pkgLookup(x, abs = x) {
   const pkg = JSON.parse(fs.readFileSync(path.join(abs, 'package.json'), 'utf8'))
-  return x + '/' + (pkg.module || pkg.unpkg || pkg.main || 'index.js')
+  return x + '/' + (pkg.module || pkg.unpkg || pkg.main || 'index.js').replace(/^\.\//, '')
 }
 
 function devPort() {

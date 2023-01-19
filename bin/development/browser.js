@@ -31,7 +31,7 @@ goto.observe(x => send(JSON.stringify(parseStackTrace(x)[3])))
 
 s.error = s((error) => {
   console.error(error) // eslint-disable-line
-  const stack = parseStackTrace(error[stackTrace] || '')
+  const stack = parseStackTrace(error.stack || '')
       , attrs = typeof error === 'object' && JSON.stringify(error, null, 2).replace(/"([a-z]\w+)":/ig, '$1:')
 
   return () => {

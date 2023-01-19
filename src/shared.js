@@ -5,7 +5,7 @@ export const stackTrace = Symbol('stackTrace')
 export const hasOwn = {}.hasOwnProperty
 
 export function cleanSlash(x) {
-  return String(x).replace(/\/+/g, '/').replace(/(.)\/$/, '$1')
+  return String(x).replace(/\/+/g, '/').replace(/\/+$/, '')
 }
 
 export function notValue(x) {

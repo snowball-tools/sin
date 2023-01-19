@@ -30,6 +30,14 @@ const editors = ({
       path: process.env.ProgramFiles + '\\Sublime Text\\sublime_text.exe',
       args: stackLine
     },
+    sublime4: {
+      path: process.env.ProgramFiles + '\\Sublime Text 4\\sublime_text.exe',
+      args: stackLine
+    },
+    sublime3: {
+      path: process.env.ProgramFiles + '\\Sublime Text 3\\sublime_text.exe',
+      args: stackLine
+    },
     code: {
       path: process.env.LOCALAPPDATA + '\\Programs\\Microsoft VS Code\\Code.exe',
       args: x => ['--goto', stackLine(x)]

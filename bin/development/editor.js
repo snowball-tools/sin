@@ -27,15 +27,15 @@ const editors = ({
   },
   win32: {
     sublime: {
-      path: '%ProgramFiles%\\Sublime Text 4\\sublime_text.exe',
+      path: process.env.ProgramFiles + '\\Sublime Text\\sublime_text.exe',
       args: stackLine
     },
     code: {
-      path: '%LOCALAPPDATA%\\Programs\\Microsoft VS Code\\Code.exe',
+      path: process.env.LOCALAPPDATA + '\\Programs\\Microsoft VS Code\\Code.exe',
       args: x => ['--goto', stackLine(x)]
     },
     atom: {
-      path: '%LOCALAPPDATA%\\atom\\atom.exe',
+      path: process.env.LOCALAPPDATA + '\\atom\\atom.exe',
       args: stackLine
     }
   },

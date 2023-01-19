@@ -185,7 +185,7 @@ function mount(dom, view, attrs = {}, context = {}) {
     view = dom
     dom = document.body
     if (!dom)
-      throw new Error('Document.body does not exist.')
+      throw new Error('document.body does not exist.')
   } else if (!dom) {
     throw new Error('The dom element you tried to mount to does not exist.')
   }

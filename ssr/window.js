@@ -26,6 +26,7 @@ Object.assign(window, {
     state: null
   },
   document: {
+    body: {},
     querySelector: () => null,
     createElement: x => {
       const dom = {

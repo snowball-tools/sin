@@ -781,10 +781,10 @@ function attributes(dom, view, context) {
   }
 
   if (hasOwn.call(view.attrs, 'href')) {
-    value = view.attrs.href
+    value = cleanSlash(view.attrs.href)
     updateAttribute(dom, context, view.attrs, 'href', prev && prev.href, value, create)
     if (value && !String(value).match(/^[a-z]+:|\/\//)) {
-      view.attrs.href = s.pathmode + cleanSlash(value)
+      view.attrs.href = s.pathmode + value
       link(dom, context.route)
     }
   }

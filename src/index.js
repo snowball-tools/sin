@@ -208,7 +208,6 @@ function mount(dom, view, attrs = {}, context = {}) {
   }
 
   context.doc = doc
-  Object.assign(context, doc)
   context.route = router(s, '', context)
   mounts.set(dom, { view, attrs, context })
   draw({ view, attrs, context }, dom)
@@ -947,14 +946,14 @@ function addEvent(dom, attrs, name) {
 
 function handleEvent(dom) {
   return {
-    handleEvent: e => callHandler(dom[attrSymbol]['on' + e.type], e)
+    handleEvent: e => callHandler(dom[attrSymbol]['on' + e.type], e, dom)
   }
 }
 
 function callHandler(handler, e, ...xs) {
   const result = isFunction(handler)
     ? handler.call(e.currentTarget, e, ...xs)
-    : isFunction(handler.handleEvent) && handler.handleEvent(e)
+    : isFunction(handler.handleEvent) && handler.handleEvent(e, ...xs)
 
   if (e.redraw === false)
     return

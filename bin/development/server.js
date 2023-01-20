@@ -38,7 +38,7 @@ const env = process.env
     , resolveCache = Object.create(null)
     , watcher = await Watcher(changed)
     , scriptsPath = path.join(chromeHome, '.sin-scripts')
-    , scripts = (await fsp.readFile(scriptsPath, 'utf8').then(x => JSON.parse(x)).catch(() => {}) || {})
+    , scripts = (await gracefulRead(scriptsPath).then(x => JSON.parse(x)).catch(() => {}) || {})
     , seen = {}
     , originals = {}
     , sockets = new Set()
@@ -135,7 +135,7 @@ app.get('/node_modules/sin', app.files(sinRoot, {
 
 async function changed(x) {
   const file = scripts[x]
-      , source = await fsp.readFile(x, 'utf8')
+      , source = await gracefulRead(x)
       , changed = source !== file.original
 
   app.publish('update', 'reload')
@@ -146,6 +146,12 @@ async function changed(x) {
     ? setSource(file).then(() => app.publish('update', 'redraw'), console.error)
     : app.publish('update', 'forceReload')
   changed && saveScripts(x)
+}
+
+async function gracefulRead(x) {
+  return fsp.readFile(x, 'utf8')
+    .catch(async() => (await new Promise(r => setTimeout(r, 10)), fsp.readFile(x, 'utf8')))
+    .catch(async() => (await new Promise(r => setTimeout(r, 20)), fsp.readFile(x, 'utf8')))
 }
 
 chrome = command !== 'server' && await startChrome()
@@ -160,7 +166,7 @@ async function startChrome() {
     if (scripts[filePath]) {
       scripts[filePath].scriptId = x.scriptId
     } else {
-      const original = await fsp.readFile(filePath, 'utf8').catch(() => null)
+      const original = await gracefulRead(filePath).catch(() => null)
       if (original === null)
         return
 
@@ -310,7 +316,7 @@ async function getMount() {
   const specifiesIndex = argv.find((x, i, xs) => x[0] !== '-' && x.endsWith('.js'))
       , entry = specifiesIndex || 'index.js'
       , absEntry = path.isAbsolute(entry) ? entry : path.join(cwd, entry)
-      , hasEntry = (await fsp.readFile(absEntry, 'utf8').catch(specifiesIndex ? undefined : (() => ''))).indexOf('export default ') !== -1
+      , hasEntry = (await gracefulRead(absEntry).catch(specifiesIndex ? undefined : (() => ''))).indexOf('export default ') !== -1
 
   return hasEntry
     ? { entry, mount: (await import(absEntry)).default }

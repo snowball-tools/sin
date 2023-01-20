@@ -1,30 +1,53 @@
 import path from 'path'
 import fs from 'fs'
 
+const start = Date.now()
+
 export default async function Watcher(fn) {
   const watched = new Map()
 
   return {
-    add(x) {
-      x = normalize(x)
-      if (watched.has(x))
-        return
+    add,
+    remove
+  }
 
-      try {
-        const watcher = fs.watch(x, { persistent: false }, t => changed(x, watcher))
-        watched.set(x, watcher)
-      } catch (e) {
-        // noop - watch is best effort
-      }
-    },
-    remove(x) {
-      x = normalize(x)
-      if (!watched.has(x))
-        return
-      const watcher = watched.get(x)
-      watcher.close()
-      watched.delete(x)
+  function add(x) {
+    x = normalize(x)
+    if (watched.has(x))
+      return
+
+    try {
+      const watcher = fs.watch(x, { persistent: false }, t => {
+        t === 'rename'
+          ? readd(x, watcher)
+          : changed(x, watcher)
+      })
+      watched.set(x, watcher)
+      return watcher
+    } catch (e) {
+      // noop - watch is best effort
     }
+  }
+
+  function readd(x, watcher) {
+    const time = watcher.time
+    remove(x)
+    setTimeout(() => {
+      const watcher = add(x)
+      if (watcher) {
+        watcher.time = time
+        changed(x, watcher)
+      }
+    }, 20)
+  }
+
+  function remove(x) {
+    x = normalize(x)
+    if (!watched.has(x))
+      return
+    const watcher = watched.get(x)
+    watcher.close()
+    watched.delete(x)
   }
 
   function normalize(x) {
@@ -33,13 +56,12 @@ export default async function Watcher(fn) {
 
   function changed(x, watcher) {
     const time = modified(x)
-    if (time === watcher.time)
+    if (time === watcher.time || start > time)
       return
 
     watcher.time = time
     fn(x)
   }
-
 }
 
 function modified(x) {

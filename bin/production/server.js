@@ -17,7 +17,7 @@ const argv = process.argv.slice(2)
     , protocol = ssl ? 'https://' : 'http://'
     , port = env.PORT ? parseInt(env.PORT) : (ssl ? 443 : 80)
     , portHttp = env.PORT_HTTP ? parseInt(env.PORT_HTTP) : (ssl ? 80 : port)
-    , httpRedirect = env.SSL && env.HTTP_REDIRECT !== 'no'
+    , httpRedirect = ssl && env.HTTP_REDIRECT !== 'no'
     , address = env.ADDRESS || '0.0.0.0'
     , { mount, entry } = await getMount()
     , server = await getServer()
@@ -45,7 +45,7 @@ command !== 'server' && app.get(r => {
     { location: protocol + (r.headers.host || ('localhost' + port)) + r.url }
   ).then(x => {
     r.end(wrap(x, {
-      body: command === 'ssr' ? '' : '<script type=module async defer src="/' + entry + '"></script>'
+      body: command === 'ssr' ? '' : '<script type=module src="/' + entry + '"></script>'
     }), x.status || 200, x.headers)
   })
 })

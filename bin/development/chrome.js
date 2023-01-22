@@ -47,7 +47,7 @@ export default async function(home, url, scriptParsed) {
   return { send, kill: () => chrome && chrome.kill() }
 
   async function spawn() {
-    console.log('Launching Chrome')
+    print.debug('Launching Chrome')
     chrome = cp.spawn(chromePath, [
       args.includes('--fps') ? '--show-fps-counter' : '',
       args.includes('--tools') ? '--auto-open-devtools-for-tabs' : '',
@@ -72,9 +72,8 @@ export default async function(home, url, scriptParsed) {
     // Delay return to prevent uws tying port to child
     await new Promise(r => setTimeout(r, 60))
 
-    process.stdout.write('Connecting to Chrome')
+    print('Connecting to Chrome')
     const tabs = await getTabs(chromeUrl)
-    process.stdout.write('\n')
     const tab = tabs.find(t => t.url.indexOf(url) === 0)
 
     if (!tab)
@@ -100,11 +99,11 @@ export default async function(home, url, scriptParsed) {
   function onerror(x) {
     errored = x
     if (opened) {
-      console.log('Chrome closed')
+      print.debug('Chrome closed')
       chrome && chrome.kill()
       process.exit(0)
     } else {
-      opened && console.error('Unknown Chrome WS Error:', x.message)
+      opened && print.error('Unknown Chrome WS Error:', x.message)
       launched && open.reject(x)
       fsp.unlink(wsUrlPath).catch(() => {})
       fsp.unlink(scriptsPath).catch(() => {})
@@ -135,7 +134,7 @@ export default async function(home, url, scriptParsed) {
     await send('Network.setCacheDisabled', { cacheDisabled: true })
     await send('Page.enable')
     await send('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
-    console.log(launched
+    print.debug(launched
       ? 'Reconnected to Chrome'
       : 'Connected to Chrome') // eslint-disable-line
     launched = true
@@ -168,13 +167,10 @@ export default async function(home, url, scriptParsed) {
 
 async function getTabs(url, retries = 0) {
   try {
-    process.stdout.write('.')
     return await s.http(url + 'list/')
   } catch (err) {
-    if (retries > 20) {
-      process.stdout.write('\n')
+    if (retries > 20)
       throw new Error('Could not connect to Chrome dev tools')
-    }
 
     await new Promise(r => setTimeout(r, 500))
     return getTabs(url, ++retries)

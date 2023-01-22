@@ -10,6 +10,9 @@ import prexit from 'prexit'
 
 import s from './style.js'
 
+let retries = 0
+  , timeout
+
 const argv = process.argv.slice(2)
     , local = path.join(process.cwd(), 'node_modules', 'sin', 'bin')
     , here = fs.existsSync(local) ? local : url.fileURLToPath(new URL('.', import.meta.url))
@@ -36,5 +39,17 @@ function start() {
   )
 
   prexit('SIGINT', () => process.exitCode = 0)
-  child.on('close', code => code === 123 && start())
+
+  if (command === 'development') {
+    const timer = setTimeout(() => retries = 0, timeout)
+    child.on('close', code => {
+      clearTimeout(timer)
+      if (code === 123) // watch fired, start immidiately
+        return start()
+
+      timeout = Math.min(Math.pow(1.5, ++retries) * 1000, 1000 * 60)
+      console.log(`⛔️ Closed with code: ${ s.bold(code) } - restarting in ${ s.bold((timeout / 1000).toFixed(2)) }s`)
+      setTimeout(start, timeout)
+    })
+  }
 }

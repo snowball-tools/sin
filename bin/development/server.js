@@ -257,17 +257,13 @@ function modify(x, path) {
 }
 
 async function loadServer() {
-  try {
-    const serverPath = path.join(cwd, command === 'server' ? '' : '+', 'index.js')
-    if (!fs.existsSync(serverPath))
-      return
+  const serverPath = path.join(cwd, command === 'server' ? '' : '+', 'index.js')
+  if (!fs.existsSync(serverPath))
+    return
 
-    await serverWatch(scripts)
-    const x = await import(Url.pathToFileURL(serverPath))
-    typeof x.default === 'function' && x.default(app)
-  } catch (e) {
-    console.error(e)
-  }
+  await serverWatch(scripts)
+  const x = await import(Url.pathToFileURL(serverPath))
+  typeof x.default === 'function' && x.default(app)
 }
 
 function resolve(n) {

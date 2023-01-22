@@ -29,6 +29,8 @@ server.esbuild && (await import('../../build/index.js')).default(server.esbuild)
 
 const app = ey()
 
+typeof server.default === 'function' && await server.default(app)
+
 app.get(app.files('+public'))
 
 app.get(app.files('+build'))
@@ -47,8 +49,6 @@ command !== 'server' && app.get(r => {
     }), x.status || 200, x.headers)
   })
 })
-
-typeof server.default === 'function' && await server.default(app)
 
 listen()
 

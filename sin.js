@@ -887,7 +887,7 @@ function mount(dom, view, attrs = {}, context = {}) {
     view = dom;
     dom = document.body;
     if (!dom)
-      throw new Error("Document.body does not exist.");
+      throw new Error("document.body does not exist.");
   } else if (!dom) {
     throw new Error("The dom element you tried to mount to does not exist.");
   }
@@ -905,7 +905,6 @@ function mount(dom, view, attrs = {}, context = {}) {
     headers: noop
   };
   context.doc = doc2;
-  Object.assign(context, doc2);
   context.route = router(s, "", context);
   mounts.set(dom, { view, attrs, context });
   draw({ view, attrs, context }, dom);
@@ -1307,10 +1306,10 @@ function attributes(dom, view, context) {
     }
   }
   if (hasOwn.call(view.attrs, "href")) {
-    value2 = view.attrs.href;
+    value2 = cleanSlash(view.attrs.href);
     updateAttribute(dom, context, view.attrs, "href", prev && prev.href, value2, create);
     if (value2 && !String(value2).match(/^[a-z]+:|\/\//)) {
-      view.attrs.href = s.pathmode + cleanSlash(value2);
+      view.attrs.href = s.pathmode + value2;
       link(dom, context.route);
     }
   }
@@ -1421,11 +1420,11 @@ function addEvent(dom, attrs, name2) {
 }
 function handleEvent(dom) {
   return {
-    handleEvent: (e) => callHandler(dom[attrSymbol]["on" + e.type], e)
+    handleEvent: (e) => callHandler(dom[attrSymbol]["on" + e.type], e, dom)
   };
 }
 function callHandler(handler, e, ...xs) {
-  const result = isFunction(handler) ? handler.call(e.currentTarget, e, ...xs) : isFunction(handler.handleEvent) && handler.handleEvent(e);
+  const result = isFunction(handler) ? handler.call(e.currentTarget, e, ...xs) : isFunction(handler.handleEvent) && handler.handleEvent(e, ...xs);
   if (e.redraw === false)
     return;
   !isObservable(result) && !isObservable(handler) && redraw();

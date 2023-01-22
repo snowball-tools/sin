@@ -72,7 +72,7 @@ if (full) {
 
 mk(target, 'package.json', JSON.stringify(pkg, null, 2))
 
-git && cp.execSync('git init', { stdio: 'inherit' })
+git && (cp.execSync('git init', { stdio: 'inherit' }), mk(target, '.gitignore', 'node_modules'))
 install && cp.execSync(npm + ' install porsager/sin', { stdio: 'inherit' })
 
 !global.print && console.log(
@@ -85,7 +85,7 @@ rl.close()
 
 function mk(x, file, data = '') {
   fs.mkdirSync(x, { recursive: true })
-  file && fs.writeFileSync(path.join(x, file), data)
+  file && !fs.existsSync(path.join(x, file)) && fs.writeFileSync(path.join(x, file), data)
 }
 
 async function prompt(x) {

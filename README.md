@@ -131,9 +131,3 @@ sin production
 sin build
 
 sin generate
-
-## Web3
-
-Sin was born to be Web3! It even has a pyramid shaped logo, so it'll fit right in!
-
-

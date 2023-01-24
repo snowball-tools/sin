@@ -626,10 +626,12 @@ class Stack {
 }
 
 function onremoves(stack, instance, x) {
-  instance.onremoves
-    ? stack.life.push(() => () => instance.onremoves.forEach(x => x()))
-    : instance.onremoves = new Set()
-  instance.onremoves.add(x)
+  if (!instance.onremoves) {
+    instance.onremoves = new Set([x])
+    stack.life.push(() => () => instance.onremoves.forEach(x => x()))
+  } else {
+    instance.onremoves.add(x)
+  }
 }
 
 function hydrate(dom) {

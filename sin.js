@@ -3,7 +3,7 @@ var isServer = typeof window === "undefined" || typeof window.document === "unde
 var stackTrace = Symbol("stackTrace");
 var hasOwn = {}.hasOwnProperty;
 function cleanSlash(x2) {
-  return String(x2).replace(/\/+/g, "/").replace(/(.)\/$/, "$1");
+  return x2 && String(x2).replace(/\/+/g, "/").replace(/(.)\/$/, "$1");
 }
 function notValue(x2) {
   return !x2 && x2 !== 0 && x2 !== "";
@@ -610,7 +610,7 @@ function parseStyles(idx, end) {
       prop = x.slice(start, i);
       colon = char === 58;
     } else if (valueStart === -1 && prop && !propEndChar(char)) {
-      valueStart = i;
+      valueStart = lastSpace = i;
       isNumber(char) ? numberStart = i : char === 36 && (cssVar = i);
     } else if (valueStart !== -1) {
       handleValue(i);
@@ -620,12 +620,15 @@ function parseStyles(idx, end) {
   }
 }
 function addRule(i) {
-  numberStart > -1 && !isUnit(char) ? addUnit(i) : cssVar > -1 && addCssVar(i);
+  afterValue(i);
   prop === "@import" ? insert(prop + " " + x.slice(valueStart, i) + ";", 0) : rule += propValue(rule, prop, value + x.slice(valueStart, i));
   hasRules = true;
   start = valueStart = -1;
   colon = false;
   prop = value = "";
+}
+function afterValue(i) {
+  numberStart !== -1 ? addUnit(i) : cssVar !== -1 && addCssVar(i);
 }
 function startBlock(i) {
   if (prop === "animation") {
@@ -670,12 +673,7 @@ function endBlock() {
   prop = "";
 }
 function handleValue(i) {
-  if (isNumber(char))
-    numberStart === -1 && (numberStart = i);
-  else if (numberStart > -1)
-    addUnit(i);
-  else if (cssVar > -1)
-    addCssVar(i);
+  isNumber(char) ? numberStart === -1 && (numberStart = i) : afterValue(i);
   if (char === 40)
     fn.push(x.slice(Math.max(lastSpace, valueStart), i));
   else if (char === 41)
@@ -1213,8 +1211,12 @@ var Stack = class {
   }
 };
 function onremoves(stack, instance, x2) {
-  instance.onremoves ? stack.life.push(() => () => instance.onremoves.forEach((x3) => x3())) : instance.onremoves = /* @__PURE__ */ new Set();
-  instance.onremoves.add(x2);
+  if (!instance.onremoves) {
+    instance.onremoves = /* @__PURE__ */ new Set([x2]);
+    stack.life.push(() => () => instance.onremoves.forEach((x3) => x3()));
+  } else {
+    instance.onremoves.add(x2);
+  }
 }
 function hydrate(dom) {
   let last2 = dom.nextSibling;

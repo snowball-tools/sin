@@ -292,10 +292,7 @@ function parseStyles(idx, end) {
 }
 
 function addRule(i) {
-  numberStart > -1 && !isUnit(char)
-    ? addUnit(i)
-    : cssVar > -1 && addCssVar(i)
-
+  afterValue(i)
   prop === '@import'
     ? insert(prop + ' ' + x.slice(valueStart, i) + ';', 0)
     : rule += propValue(rule, prop, value + x.slice(valueStart, i))
@@ -303,6 +300,12 @@ function addRule(i) {
   start = valueStart = -1
   colon = false
   prop = value = ''
+}
+
+function afterValue(i) {
+  numberStart !== -1
+    ? addUnit(i)
+    :cssVar !== -1 && addCssVar(i)
 }
 
 function startBlock(i) {
@@ -357,12 +360,9 @@ function endBlock() {
 }
 
 function handleValue(i) {
-  if (isNumber(char))
-    numberStart === -1 && (numberStart = i)
-  else if (numberStart > -1)
-    addUnit(i)
-  else if (cssVar > -1)
-    addCssVar(i)
+  isNumber(char)
+    ? numberStart === -1 && (numberStart = i)
+    : afterValue(i)
 
   if (char === 40) // (
     fn.push(x.slice(Math.max(lastSpace, valueStart), i))

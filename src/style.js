@@ -279,7 +279,7 @@ function parseStyles(idx, end) {
       prop = x.slice(start, i)
       colon = char === 58 // :
     } else if (valueStart === -1 && prop && !propEndChar(char)) {
-      valueStart = i
+      valueStart = lastSpace = i
       isNumber(char)
         ? (numberStart = i)
         : char === 36 && (cssVar = i)

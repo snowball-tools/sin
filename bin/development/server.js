@@ -29,7 +29,7 @@ const env = process.env
     , port = env.PORT ? parseInt(env.PORT) : devPort()
     , url = 'http://localhost:' + port
     , { mount, entry } = await getMount()
-    , name = port + '-' + path.basename(cwd) // + '-' + (entry === 'index.js' ? '' : entry)
+    , name = port + '-' + path.basename(cwd) // + (entry === 'index.js' ? '' : '-' + entry)
     , chromeHome = path.join(home, name)
     , staticImport = /(?:`[^`]*`)|((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: from )?\s*['"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)(['"])/g // eslint-disable
     , dynamicImport = /(?:`[^`]*`)|([^$.]import\(\s?['"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)(['"]\s?\))/g

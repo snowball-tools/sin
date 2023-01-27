@@ -239,8 +239,7 @@ function globalRedraw() {
 function draw({ view, attrs, context }, dom) {
   redrawing = true
   try {
-    const x = view(attrs, [], context)
-    updates(dom, asArray(x), context)
+    updates(dom, asArray(view(attrs)), context)
   } catch (error) {
     attrs.error = error
     updates(dom, asArray(context.error(error, attrs, [], context)), context)

@@ -8,7 +8,6 @@ import Url from 'url'
 import ey from 'ey'
 import prexit from 'prexit'
 import Watcher from '../watcher.js'
-import uaParser from 'ua-parser-js'
 
 import ssr, { wrap } from '../../ssr/index.js'
 
@@ -66,11 +65,8 @@ const app = ey()
 
 app.ws('/sindev', {
   upgrade: r => {
-    const ua = uaParser(r.headers['user-agent'])
     return {
-      name: ua.browser.name.replace(/^Mobile /, '') + ' v' + ua.browser.version.split('.')[0] + ' on ' +
-            ua.os.name.replace(/ +/g, '') + ' v' + ua.os.version.split('.').slice(0, 2).join('.') +
-            ' from ' + r.ip
+      name: r.ip
     }
   },
   open(ws) {

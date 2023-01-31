@@ -3,7 +3,7 @@
   src="sin.svg?sanitize=true"
 />
 
-# Sin
+# 🔥 sìn
 
 Sin merges HTML, CSS & Javascript to form a highly composable framework that'll cheer you up and never get in your way.
 
@@ -43,7 +43,7 @@ wonderButton({
 ```
 
 
-## The Stateless Component `s(fn)`
+## The Stateless Component `s(() => ...)`
 ```js
 // Definition
 const wonderButton = s(({ onclick, ...attrs }, children) => 
@@ -68,9 +68,9 @@ wonderButton({
 )
 ```
 
-## The Stateful Component `s(fn => fn)`
+## The Stateful Component `s(() => () => ...)`
 
-## The Async Component `s(init, error, loading)`
+## The Async Component `s(async() => () => ...)`
 
 ## Routing `s.route`
 

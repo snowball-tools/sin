@@ -108,7 +108,9 @@ function trust(strings, ...values) {
   return s(() => {
     const div = document.createElement('div')
     div.innerHTML = String.raw({ raw: strings }, ...values)
-    const nodes = [...div.childNodes]
+    const nodes = div.firstChild === div.lastChild
+      ? div.firstChild
+      : [...div.childNodes]
     return () => nodes
   })
 }

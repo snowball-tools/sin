@@ -182,7 +182,8 @@ console.log('Listening on', port)
 
 argv.includes('live') && live(chromeHome, port)
 
-prexit(async(...xs) => {
+prexit(async(signal, code) => {
+  signal === 'SIGHUP' && !process.exitCode && (process.exitCode = 123)
   process.exitCode !== 123 && await chrome.send('Browser.close')
   app.unlisten()
   sockets.forEach(x => x.close())

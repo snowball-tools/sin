@@ -66,9 +66,7 @@ export function styleProp(x) {
 }
 
 function classes(x) {
-  return isObservable(x)
-    ? classes(x.value)
-    : isFunction(x)
+  return isObservable(x) || isFunction(x)
     ? classes(x())
     : !x
     ? ''

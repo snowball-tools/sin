@@ -409,7 +409,7 @@ function updateLive(dom, view, context, parent) {
     return dom[liveSymbol]
 
   let result
-  run(view.value)
+  run(view())
   view.observe(run)
 
   return result
@@ -881,7 +881,7 @@ function setVar(dom, id, value, cssVar, init, reapply, after) {
   if (isObservable(value)) {
     init && value.observe(x => dom.style.setProperty(id, formatValue(x, cssVar)))
     if (init || reapply)
-      setVar(dom, id, value.value, cssVar, init, init)
+      setVar(dom, id, value(), cssVar, init, init)
     return
   }
 

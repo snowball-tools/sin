@@ -76,7 +76,7 @@ if (command === 'development' && process.stdin.isTTY) {
       if (sigint)
         return process.exit(1)
       sigint = true
-      child.kill('SIGINT')
+      child && child.kill('SIGINT')
     } else if (key.name === 'r') {
       retries = 0
       child

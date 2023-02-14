@@ -15,3 +15,5 @@ await build(
     ? { entryPoints: [file ? root : path.join(root, 'index.js')] }
     : {}
 )
+
+console.log('Finished building   in', performance.now())

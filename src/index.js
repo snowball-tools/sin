@@ -89,7 +89,6 @@ s.css = (...x) => parse(x, null, 0, true)
 s.css.alias = alias
 s.animate = animate
 s.http = http
-s.http.redraw = !s.isServer && redraw
 s.live = live
 s.signal = signal
 s.on = on

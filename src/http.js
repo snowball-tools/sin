@@ -49,8 +49,6 @@ export default function http(url, {
       } catch (e) {
         reject(e)
       }
-
-      redraw && http.redraw && http.redraw()
     })
     xhr.addEventListener('error', reject)
     xhr.addEventListener('abort', () => reject(new Error('ABORTED')))

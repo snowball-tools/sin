@@ -14,7 +14,6 @@ import {
   styleProp,
   isTagged,
   notValue,
-  isServer,
   isEvent,
   asArray,
   hasOwn,
@@ -82,7 +81,7 @@ function bind(x, that) {
 
 s.sleep = (x, ...xs) => new Promise(r => setTimeout(r, x, ...xs))
 s.with = (x, fn) => fn(x)
-s.isServer = isServer
+s.isServer = false
 s.pathmode = ''
 s.redraw = redraw
 s.mount = mount
@@ -197,7 +196,7 @@ function mount(dom, view, attrs = {}, context = {}) {
   hasOwn.call(context, 'location') || (context.location = window.location)
   hasOwn.call(context, 'error') || (context.error = s.error)
 
-  if (isServer)
+  if (s.isServer)
     return { view, attrs, context }
 
   context.hydrating = shouldHydrate(dom.firstChild)

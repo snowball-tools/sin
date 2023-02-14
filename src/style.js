@@ -1,5 +1,5 @@
 import window from './window.js'
-import { isFunction, snake, asCssVar, isServer, hasOwn, isObservable } from './shared.js'
+import { isFunction, snake, asCssVar, hasOwn, isObservable } from './shared.js'
 import { popular, initials } from './shorthands.js'
 
 const doc = window.document
@@ -49,7 +49,8 @@ const vendorMap = properties.reduce((acc, x) => {
 
 const cache = new Map()
     , hashed = new Set()
-    , cssVars = isServer || (typeof window !== 'undefined' && window.CSS && CSS.supports('color', 'var(--support-test)'))
+    , isServer = typeof window === 'undefined'
+    , cssVars = isServer || (window.CSS && CSS.supports('color', 'var(--support-test)'))
     , pxFunctions = ['perspective', 'blur', 'drop-shadow', 'inset', 'polygon']
     , nested = ['@media', '@supports', '@document', '@layer']
     , isNested = x => nested.some(n => x.indexOf(n) === 0)

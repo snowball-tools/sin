@@ -11,6 +11,7 @@ export { wrap }
 
 class TimeoutError extends Error {}
 
+s.isServer = true
 s.mimes = mimes
 s.trust = (strings, ...values) => new window.Node('<!--[1-->' + String.raw({ raw: strings }, ...values))
 

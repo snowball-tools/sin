@@ -1,5 +1,3 @@
-export const isServer = typeof window === 'undefined' || typeof window.document === 'undefined'
-
 export const stackTrace = Symbol('stackTrace')
 
 export const hasOwn = {}.hasOwnProperty

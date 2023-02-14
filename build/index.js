@@ -16,6 +16,13 @@ export default async function(x = {}) {
     ...options,
     plugins: [
       {
+        name: 'sinssr',
+        setup: x => x.onResolve(
+          { filter: /\+\// },
+          x => ({ external: true })
+        )
+      },
+      {
         name: 'sinport',
         setup: x => x.onResolve(
           { filter: /^\// },

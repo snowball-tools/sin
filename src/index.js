@@ -80,7 +80,7 @@ function bind(x, that) {
 }
 
 s.sleep = (x, ...xs) => new Promise(r => setTimeout(r, x, ...xs))
-s.with = (x, fn) => fn(x)
+s.with = (x, fn) => x === undefined ? x : fn(x)
 s.isServer = false
 s.pathmode = ''
 s.redraw = redraw

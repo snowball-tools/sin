@@ -180,7 +180,7 @@ async function startChrome() {
 await app.listen(port)
 console.log('Listening on', port)
 
-argv.includes('live') && live(chromeHome, port)
+argv.includes('--live') && live(chromeHome, port)
 
 prexit(async(signal, code) => {
   signal === 'SIGHUP' && !process.exitCode && (process.exitCode = 123)

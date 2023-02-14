@@ -2,12 +2,12 @@ import path from 'path'
 import '../env.js'
 
 const argv = process.argv.slice(2)
-const abs = (x = './index.js') => x.startsWith('/')
-  ? x
-  : x.startsWith('./') || x.startsWith('../')
-  ? path.join(process.cwd(), x)
-  : ('./' + x)
+const entry = argv.find(x => x[0] !== '-') || ''
+const root = path.isAbsolute(entry) ? entry : path.join(process.cwd(), entry)
+const file = root.endsWith('.js')
+
+process.chdir(process.env.PWD = file ? path.dirname(root) : root)
 
 argv[0] === 'raw'
-  ? import(abs(argv[1]))
+  ? import(file ? root : path.join(root, 'index.js'))
   : import('./server.js')

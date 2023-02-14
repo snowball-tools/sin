@@ -41,7 +41,11 @@ export default function http(url, {
 
       try {
         xhr.status && Object.defineProperty(xhr, 'body', {
-          value: accept === json ? JSON.parse(xhr.response) : xhr.response
+          value: accept === json
+            ? xhr.response === undefined || xhr.response === ''
+              ? undefined
+              : JSON.parse(xhr.response)
+            : xhr.response
         })
         xhr.status === 304 || (xhr.status >= 200 && xhr.status < 300)
           ? resolve(full ? xhr : xhr.body)

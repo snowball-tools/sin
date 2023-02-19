@@ -6,7 +6,7 @@ if (!fs.readdirSync(process.cwd()).some(x => x[0] !== '.'))
   await import('../create/index.js')
 
 const argv = process.argv.slice(2)
-const entry = argv.find(x => x[0] !== '-') || ''
+const entry = argv.find(x => x.startsWith('./') || x.endsWith('.js')) || ''
 const root = path.isAbsolute(entry) ? entry : path.join(process.cwd(), entry)
 const file = root.endsWith('.js')
 

@@ -6,7 +6,7 @@ import ssr from '../../ssr/index.js'
 import { wrap } from '../../ssr/shared.js'
 
 const argv = process.argv.slice(2)
-    , entry = argv.find(x => x[0] !== '-') || ''
+    , entry = argv.find(x => x.startsWith('./') || x.endsWith('.js')) || ''
     , root = path.isAbsolute(entry) ? entry : path.join(process.cwd(), entry)
     , file = root.endsWith('.js')
     , rootFile = file ? root : path.join(root, 'index.js')

@@ -45,27 +45,28 @@ function start() {
 
   prexit('SIGINT', () => process.exitCode = 0)
 
-  if (command === 'development') {
-    const resetTimer = setTimeout(() => retries = 0, timeout)
-    child.on('close', code => {
-      child = null
-      clearTimeout(resetTimer)
-      if (code === 123) // watch fired, start immidiately
-        return start()
+  if (command !== 'development')
+    return child.on('close', x => process.exit(x))
 
-      timeout = Math.min(Math.pow(1.5, ++retries) * 1000, 1000 * 60)
-      if (sigint) {
-        console.log(`⛔️ Closed with code: ${ s.bold(code) }`)
-        process.stdin.destroy()
-      } else if (code) {
-        console.log(`⛔️ Closed with code: ${ s.bold(code) } - restarting in ${ s.bold((timeout / 1000).toFixed(2)) }s`)
-        timer = setTimeout(start, timeout)
-      } else {
-        console.log(`✅ Closed with code: ${ s.bold(code) }`)
-        process.stdin.destroy()
-      }
-    })
-  }
+  const resetTimer = setTimeout(() => retries = 0, timeout)
+  child.on('close', code => {
+    child = null
+    clearTimeout(resetTimer)
+    if (code === 123) // watch fired, start immidiately
+      return start()
+
+    timeout = Math.min(Math.pow(1.5, ++retries) * 1000, 1000 * 60)
+    if (sigint) {
+      console.log(`⛔️ Closed with code: ${ s.bold(code) }`)
+      process.stdin.destroy()
+    } else if (code) {
+      console.log(`⛔️ Closed with code: ${ s.bold(code) } - restarting in ${ s.bold((timeout / 1000).toFixed(2)) }s`)
+      timer = setTimeout(start, timeout)
+    } else {
+      console.log(`✅ Closed with code: ${ s.bold(code) }`)
+      process.stdin.destroy()
+    }
+  })
 }
 
 if (command === 'development' && process.stdin.isTTY) {

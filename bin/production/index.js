@@ -1,6 +1,8 @@
 import path from 'path'
 import '../env.js'
 
+process.env.NODE_ENV = 'production'
+
 const argv = process.argv.slice(2)
 const entry = argv.find(x => x.startsWith('./') || x.endsWith('.js')) || ''
 const root = path.isAbsolute(entry) ? entry : path.join(process.cwd(), entry)

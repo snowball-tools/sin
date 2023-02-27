@@ -43,10 +43,13 @@ function start() {
     }
   )
 
-  prexit('SIGINT', () => process.exitCode = 0)
+  prexit(signal => new Promise(r => {
+    child.kill(signal)
+    child.once('close', x => (process.exitCode = x, r()))
+  }))
 
   if (command !== 'development')
-    return child.on('close', x => process.exit(x))
+    return
 
   const resetTimer = setTimeout(() => retries = 0, timeout)
   child.on('close', code => {

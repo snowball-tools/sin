@@ -30,7 +30,7 @@ async function generate(location = '/') {
   const html = wrap(x, {
     body: noscript
       ? ''
-      : '<script type=module async defer src="/' + entry + '"></script>'
+      : '<script type=module async defer src="/index.js"></script>'
   })
 
   await fs.mkdir(path.dirname(indexPath), { recursive: true })

@@ -13,8 +13,9 @@ const argv = process.argv.slice(2)
     , hasEntry = (await fs.readFile(rootFile, 'utf8')).indexOf('export default ') !== -1
     , mount = hasEntry ? (await import(rootFile)).default : {}
     , generated = new Set()
+    , noscript = argv.some(x => x === '--noscript')
 
-argv.every(x => x !== '--noscript') && await import('../build/index.js')
+noscript || await import('../build/index.js')
 const start = performance.now()
 await generate()
 console.log('Finished generating in', performance.now() - start)
@@ -24,8 +25,13 @@ async function generate(location = '/') {
     return
 
   const x = await ssr(mount, {}, { location })
-      , html = wrap(x)
       , indexPath = path.join('+build', ...location.split('/'), 'index.html')
+
+  const html = wrap(x, {
+    body: noscript
+      ? ''
+      : '<script type=module async defer src="/' + entry + '"></script>'
+  })
 
   await fs.mkdir(path.dirname(indexPath), { recursive: true })
   await fs.writeFile(indexPath, html)

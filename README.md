@@ -5,7 +5,7 @@
 
 # 🔥 sìn
 
-Sin merges HTML, CSS & Javascript to form a highly composable framework that'll cheer you up and never get in your way.
+Sin is a framework for the rest of us, who can see past the sophisticated bloat of the status quo.
 
 ## The "Sintax"
 

@@ -43,15 +43,8 @@ function start() {
     }
   )
 
-  prexit(signal => {
-    if (child.exitCode !== null)
-      return process.exitCode = child.exitCode
-
-    return new Promise(r => {
-      child.kill(signal)
-      child.once('close', x => (process.exitCode = x, r()))
-    })
-  })
+  process.on('SIGINFO', restart)
+  prexit(signal => child && child.exitCode !== null && (process.exitCode = child.exitCode))
 
   if (command !== 'development')
     return
@@ -64,15 +57,15 @@ function start() {
       return start()
 
     timeout = Math.min(Math.pow(1.5, ++retries) * 1000, 1000 * 60)
-    if (sigint) {
-      console.log(`⛔️ Closed with code: ${ s.bold(code) }`)
+    if (sigint || !code) {
+      console.log(
+        code ? '⛔️' : '✅',
+        'Closed with code: ' + s.bold(code)
+      )
       process.stdin.destroy()
-    } else if (code) {
+    } else {
       console.log(`⛔️ Closed with code: ${ s.bold(code) } - restarting in ${ s.bold((timeout / 1000).toFixed(2)) }s`)
       timer = setTimeout(start, timeout)
-    } else {
-      console.log(`✅ Closed with code: ${ s.bold(code) }`)
-      process.stdin.destroy()
     }
   })
 }
@@ -82,15 +75,21 @@ if (command === 'development' && process.stdin.isTTY) {
   process.stdin.setRawMode(true)
   process.stdin.on('keypress', (str, key) => {
     if (key.ctrl && key.name === 'c') {
-      if (sigint)
+      if (sigint) {
+        console.log(`⛔️ Force closed`)
         return process.exit(1)
+      }
       sigint = true
       child && child.kill('SIGINT')
-    } else if (key.name === 'r') {
-      retries = 0
-      child
-        ? child.kill('SIGHUP')
-        : start()
+    } else if (key.name === 'r' || (key.ctrl && key.name === 't')) {
+      restart()
     }
   })
+}
+
+function restart() {
+  retries = 0
+  child
+    ? child.kill('SIGHUP')
+    : start()
 }

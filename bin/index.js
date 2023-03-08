@@ -43,10 +43,15 @@ function start() {
     }
   )
 
-  prexit(signal => new Promise(r => {
-    child.kill(signal)
-    child.once('close', x => (process.exitCode = x, r()))
-  }))
+  prexit(signal => {
+    if (child.exitCode !== null)
+      return process.exitCode = child.exitCode
+
+    return new Promise(r => {
+      child.kill(signal)
+      child.once('close', x => (process.exitCode = x, r()))
+    })
+  })
 
   if (command !== 'development')
     return

@@ -27,7 +27,7 @@ export default async function live(home, port) {
 async function connect(id, port, main) {
   id = Buffer.from(id)
   id[0] = main ? 2 : 3
-  return new Promise(async(resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const options = [443, 'host.live.sinjs.com', { servername: 'host.live.sinjs.com' }]
     const clients = new Map()
 

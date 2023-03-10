@@ -124,8 +124,9 @@ function tagName(view) {
 async function updateElement(view, context) {
   lastWasText = false
   const tag = tagName(view)
+  const internal = !String(view.attrs.href).match(/^[a-z]+:|\/\//)
   hasOwn.call(view.attrs, 'id') === false && view.tag.id && (view.attrs.id = view.tag.id)
-  if (hasOwn.call(view.attrs, 'href') && !String(view.attrs.href).match(/^[a-z]+:|\/\//)) {
+  if (hasOwn.call(view.attrs, 'href') && internal) {
     view.attrs.href = cleanSlash(view.attrs.href)
     context.doc.links(view.attrs.href)
   }

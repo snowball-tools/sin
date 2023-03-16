@@ -126,12 +126,11 @@ function animate(dom) {
   requestAnimationFrame(() => dom.removeAttribute('animate'))
   return (deferrable) => deferrable && new Promise(r => {
     let running = false
-    dom.setAttribute('animate', 'exit')
     dom.addEventListener('transitionrun', () => (running = true, end(r)), { once: true, passive: true })
-    requestAnimationFrame(() => running
-      ? end(r)
-      : r()
-    )
+    dom.setAttribute('animate', 'exit')
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => running || r())))
   })
 
   function end(r) {

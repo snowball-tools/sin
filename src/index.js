@@ -954,6 +954,9 @@ function handleEvent(dom) {
 }
 
 function callHandler(handler, e, ...xs) {
+  if (Array.isArray(handler))
+    return handler.forEach(x => callHandler(x, e, ...xs))
+
   const result = isFunction(handler)
     ? handler.call(e.currentTarget, e, ...xs)
     : isFunction(handler.handleEvent) && handler.handleEvent(e, ...xs)

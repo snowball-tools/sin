@@ -139,7 +139,7 @@ async function changed(x) {
   file.source = modify(source, x)
 
   changed && file.scriptId
-    ? setSource(file).then(() => app.publish('update', 'redraw'), console.error)
+    ? setSource(file).catch(console.error).then(() => app.publish('update', 'redraw'))
     : app.publish('update', 'forceReload')
   changed && saveScripts(x)
 }

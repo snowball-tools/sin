@@ -54,9 +54,9 @@ export default async function Watcher(fn) {
     return path.isAbsolute(x) ? x : path.join(process.cwd(), x)
   }
 
-  function changed(x, watcher) {
+  function changed(x, watcher, t) {
     const time = modified(x)
-    if (time === watcher.time || start > time)
+    if ((watcher.time && time - watcher.time < 5) || start > time)
       return
 
     watcher.time = time

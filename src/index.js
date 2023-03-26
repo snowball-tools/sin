@@ -671,7 +671,7 @@ function updateComponent(
     instance.next = hydrate(dom)
   } else {
     let view = catchInstance(create, instance, component)
-    view && hasOwn.call(view, sSymbol) && (view = view())
+    view && hasOwn.call(view, sSymbol) && (view = view(component.attrs, component.children, instance.context))
     instance.next = update(
       dom,
       !instance.caught && !instance.promise && view instanceof View

@@ -31,10 +31,6 @@ function params(path, xs) {
   }, {})
 }
 
-function resolve(view, attrs, context) {
-  return isFunction(view) ? view(attrs, [], context) : view
-}
-
 export default function router(s, root, rootContext) {
   const location = rootContext.location
   const routed = s(({ route, ...attrs }, [view], context) => { // eslint-disable-line
@@ -60,6 +56,13 @@ export default function router(s, root, rootContext) {
   })
 
   return route
+
+  function resolve(view, attrs, context) {
+    let result = isFunction(view) ? view(attrs, [], context) : view
+    return result && isFunction(result.then)
+      ? s(() => result)(attrs)
+      : result
+  }
 
   function getPath(location, x = 0) {
     return (s.pathmode[0] === '#'

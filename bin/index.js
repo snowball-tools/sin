@@ -29,6 +29,10 @@ command
   ? start()
   : console.log('\nThe command `' + s.bold(argv[0]) + '` was not found - see `' + s.bold`sin help` + '` for usage\n')
 
+command === 'development'
+  ? process.on('SIGINFO', restart)
+  : prexit(signal => child && child.exitCode !== null && (process.exitCode = child.exitCode))
+
 function start() {
   clearTimeout(timer)
   child = cp.fork(
@@ -42,9 +46,6 @@ function start() {
       ]
     }
   )
-
-  process.on('SIGINFO', restart)
-  prexit(signal => child && child.exitCode !== null && (process.exitCode = child.exitCode))
 
   if (command !== 'development')
     return

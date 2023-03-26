@@ -223,7 +223,7 @@ async function updateComponent(view, context) {
   const isAsync = x && isFunction(x.then) && ('<!--a' + context[uidSymbol]++ + '-->') || ''
   isAsync && (x = await x)
   x && hasOwn.call(x, 'default') && (x = x.default)
-  isFunction(x) && (x = x())
+  isFunction(x) && (x = x(view.attrs, view.children, context))
   return isAsync + (await update(x, context)) + isAsync
 }
 

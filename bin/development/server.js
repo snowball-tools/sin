@@ -115,11 +115,6 @@ app.get(
   app.files('+public', {
     compressions: false,
     cache: false
-  }),
-  app.files({
-    compressions: false,
-    cache: false,
-    transform
   })
 )
 
@@ -128,6 +123,19 @@ app.get('/node_modules/sin', app.files(sinRoot, {
   cache: false,
   transform
 }))
+
+app.get(r => {
+  if (!r.url.endsWith('.js') || !r.url.endsWith('.ts'))
+    return r.end('Not Found', 404)
+})
+
+app.get(
+  app.files({
+    compressions: false,
+    cache: false,
+    transform
+  })
+)
 
 async function changed(x) {
   const file = scripts[x]

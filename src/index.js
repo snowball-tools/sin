@@ -175,6 +175,7 @@ function isAttrs(x) {
     && !Array.isArray(x)
     && !(x instanceof View)
     && !(x instanceof window.Node)
+    && !isFunction(x.then)
 }
 
 function mount(dom, view, attrs = {}, context = {}) {

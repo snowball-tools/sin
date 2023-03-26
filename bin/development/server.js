@@ -125,7 +125,7 @@ app.get('/node_modules/sin', app.files(sinRoot, {
 }))
 
 app.get(r => {
-  if (!r.url.endsWith('.js') || !r.url.endsWith('.ts'))
+  if (!r.url.endsWith('.js') && !r.url.endsWith('.ts'))
     return r.end('Not Found', 404)
 })
 

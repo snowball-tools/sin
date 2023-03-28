@@ -224,7 +224,7 @@ async function updateComponent(view, context) {
   isAsync && (x = await x)
   x && hasOwn.call(x, 'default') && (x = x.default)
   isFunction(x) && (x = x(view.attrs, view.children, context))
-  return isAsync + (await update(x, context)) + isAsync
+  return isAsync + (await update(x, context)) + isAsync.replace('a', '/a')
 }
 
 function escape(x = '') {

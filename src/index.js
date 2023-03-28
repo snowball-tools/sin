@@ -436,12 +436,24 @@ function nthAfter(dom, n) {
 }
 
 function fromComment(dom) {
-  if (!dom)
+  if (!dom || dom.nodeType !== 8 || dom.nodeValue.charCodeAt(0) !== 91)
     return
 
-  const last = dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91
-      && nthAfter(dom, parseInt(dom.nodeValue.slice(1)))
-  last && (dom[arraySymbol] = last)
+  let l = parseInt(dom.nodeValue.slice(1))
+  let last = dom
+  let char
+  while (l && last.nextSibling) {
+    last = last.nextSibling
+    if (last.nodeType === 8) {
+      char = last.nodeValue.charCodeAt(0)
+      l += char === 91 ? parseInt(last.nodeValue.slice(1)) - 1
+         : char === 97 ? 1
+         : 0
+    } else {
+      l--
+    }
+  }
+  dom[arraySymbol] = last
   return last
 }
 
@@ -597,6 +609,7 @@ class Stack {
       updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, true, true)
     }
     instance.context = Object.create(context, {
+      hydrating: { value: context.hydrating, writable: true },
       onremove: { value: fn => { onremoves(this, instance, fn) } },
       ignore: { value: x => { instance.ignore = x } },
       refresh: { value: refresh },
@@ -634,16 +647,15 @@ function onremoves(stack, instance, x) {
 }
 
 function hydrate(dom) {
+  const id = '/' + dom.nodeValue
   let last = dom.nextSibling
-  while (last && (last.nodeType !== 8 || last.nodeValue !== dom.nodeValue))
+  while (last && (last.nodeType !== 8 || last.nodeValue !== id))
     last = last.nextSibling
-  return Ret(dom, dom, last)
-}
 
-function dehydrate(x, stack) {
-  x.first.nextSibling[componentSymbol] = stack
-  x.first.remove()
-  x.last && x.last.remove()
+  const x = Ret(dom.nextSibling, dom.nextSibling, last.previousSibling)
+  dom.remove()
+  last.remove()
+  return x
 }
 
 function updateComponent(
@@ -683,7 +695,7 @@ function updateComponent(
       stack,
       (create || instance.recreate) && !instance.hydrating ? true : undefined
     )
-    instance.hydrating && (instance.hydrating = context.hydrating = false)
+    instance.hydrating && (instance.hydrating = false)
     instance.recreate && (instance.recreate = false)
   }
 
@@ -694,7 +706,7 @@ function updateComponent(
       instance.view = resolveError(instance, component, error)
     })
     .then(() => hasOwn.call(instance.next.first, componentSymbol) && (
-      hydratingAsync && dehydrate(instance.next, stack),
+      context.hydrating = false,
       instance.recreate = true,
       instance.promise = false,
       redraw()

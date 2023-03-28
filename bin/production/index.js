@@ -7,7 +7,7 @@ const argv = process.argv.slice(2)
 const entry = argv.find(x => x.startsWith('./') || x.endsWith('.js')) || ''
 const root = path.isAbsolute(entry) ? entry : path.join(process.cwd(), entry)
 const file = root.endsWith('.js')
-const workers = parseInt(argv.find((x, i) => argv[i - 1] === '--workers') || 1)
+const workers = parseInt(argv.find((x, i) => argv[i - 1] === '--workers') || process.env.SIN_WORKERS || 1)
 
 process.chdir(process.env.PWD = file ? path.dirname(root) : root)
 

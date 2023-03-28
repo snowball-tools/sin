@@ -93,6 +93,7 @@ await loadServer()
 
 app.get(
   r => {
+    r.set('Cache-Control', 'no-store')
     // Don't serve _ (server) folder or hidden paths
     if (r.url.charCodeAt(1) === 46 || r.url.indexOf('/.') !== -1) // _
       return r.end(403)

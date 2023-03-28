@@ -315,9 +315,6 @@ function keyed(parent, context, as, bs, keys, after, ref) {
 
   outer: while (true) { // eslint-disable-line
     while (a.key === b.key) {
-      if (a.key === undefined || b.key === undefined)
-        return nonKeyed(parent, context, bs, keys, ref, after)
-
       after = updateView(a.dom, b, context, parent).first
       Ref(keys, after, b.key, bi)
       delete map[b.key]
@@ -333,9 +330,6 @@ function keyed(parent, context, as, bs, keys, after, ref) {
       a = as[--ai]
       b = bs[--bi]
     }
-
-    if (a.key === undefined || b.key === undefined)
-      return nonKeyed(parent, context, bs, keys, ref, after)
 
     if (hasOwn.call(map, b.key)) {
       temp = map[b.key]

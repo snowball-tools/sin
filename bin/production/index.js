@@ -1,5 +1,6 @@
 import path from 'path'
 import '../env.js'
+import { Worker } from 'worker_threads'
 
 process.env.NODE_ENV = 'production'
 

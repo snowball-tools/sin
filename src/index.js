@@ -828,7 +828,7 @@ function attributes(dom, view, context) {
   }
 
   create && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom)
-  create && hasOwn.call(view, stackTrace) && (dom[stackTrace] = view[stackTrace])
+  hasOwn.call(view, stackTrace) && (dom[stackTrace] = view[stackTrace])
 
   dom[attrSymbol] = view.attrs
 }

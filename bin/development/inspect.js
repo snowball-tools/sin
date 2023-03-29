@@ -5,55 +5,23 @@ const goto = s.signal()
 
 export default goto
 
-let show = false
-  , rect = null
+let rect = null
   , over = null
-
-window.addEventListener('click', function(e) {
-  if (!show)
-    return
-
-  e.preventDefault()
-  e.stopPropagation()
-
-  let dom = e.target
-  while (dom) {
-    if (dom.hasOwnProperty(stackTrace))
-      return goto(dom[stackTrace])
-
-    dom = dom.parentNode
-  }
-}, true)
-
-window.addEventListener('mouseover', e => {
-  if (over === e.target)
-    return
-
-  over = e.target
-  rect = over.getBoundingClientRect()
-  show && s.redraw()
-})
 
 window.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
-    show = !show
-    s.redraw()
+    window.hasOwnProperty(stackTrace)
+      ? hide()
+      : show()
   }
-})
-
-window.addEventListener('blur', () => {
-  if (!show)
-    return
-
-  show = false
-  s.redraw()
 })
 
 const div = document.createElement('div')
 div.id = 'sindev'
 document.documentElement.appendChild(div)
+
 s.mount(div, () =>
-  show && rect && s`
+  window.hasOwnProperty(stackTrace) && rect && s`
     all initial
     position fixed
     z-index 200000
@@ -132,3 +100,50 @@ s.mount(div, () =>
     )
   )
 )
+
+
+function click(e) {
+  if (!window.hasOwnProperty(stackTrace))
+    return
+
+  e.preventDefault()
+  e.stopPropagation()
+
+  let dom = e.target
+  while (dom) {
+    if (dom.hasOwnProperty(stackTrace))
+      return goto(dom[stackTrace])
+
+    dom = dom.parentNode
+  }
+}
+
+function mouseover(e) {
+  if (over === e.target)
+    return
+
+  over = e.target
+  rect = over.getBoundingClientRect()
+  window.hasOwnProperty(stackTrace) && s.redraw()
+}
+
+function blur() {
+  window.hasOwnProperty(stackTrace) && hide()
+}
+
+function show() {
+  window[stackTrace] = true
+  window.addEventListener('click', click, true)
+  window.addEventListener('blur', blur)
+  window.addEventListener('mouseover', mouseover)
+  mouseover({ target: document.body })
+  s.redraw()
+}
+
+function hide() {
+  delete window[stackTrace]
+  window.removeEventListener('click', click)
+  window.removeEventListener('blur', blur)
+  window.removeEventListener('mouseover', mouseover)
+  s.redraw()
+}

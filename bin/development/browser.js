@@ -4,8 +4,6 @@ import window from '../../src/window.js'
 import { stackTrace } from '../../src/shared.js'
 import goto from './inspect.js'
 
-window[stackTrace] = true
-
 let ws
 connect()
 function connect() {

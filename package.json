@@ -16,6 +16,7 @@
     "sin": "./bin/index.js"
   },
   "files": [
+    "/build",
     "/src",
     "/ssr",
     "/bin",

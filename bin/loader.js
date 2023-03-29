@@ -19,6 +19,9 @@ export async function resolve(specifier, context, nextResolve) {
     return nextResolve(extensionless(specifier, x), context)
   }
 
+  if (path.isAbsolute(specifier))
+    return nextResolve(url.pathToFileURL(specifier).href, context)
+
   return nextResolve(specifier, context)
 }
 

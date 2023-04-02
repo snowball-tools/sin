@@ -782,13 +782,14 @@ function attributes(dom, view, context) {
       attr === 'deferrable' && (dom[deferrableSymbol] = view.attrs[attr])
     } else if (attr === 'value' && tag.name === 'input' && dom.value !== '' + view.attrs[attr]) {
       value = view.attrs[attr]
-      let start, end
+      let start
+        , end
       if (dom === document.activeElement) {
         start = dom.selectionStart
         end = dom.selectionEnd
       }
       updateAttribute(dom, context, view.attrs, attr, dom.value, value, create)
-      if (dom === document.activeElement && dom.selectionStart !== start || dom.selectionEnd !== end)
+      if (dom === document.activeElement && (dom.selectionStart !== start || dom.selectionEnd !== end))
         dom.setSelectionRange(start, end)
     } else if (!prev || prev[attr] !== view.attrs[attr]) {
       value = view.attrs[attr]

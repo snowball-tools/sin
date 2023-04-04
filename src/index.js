@@ -780,7 +780,7 @@ function attributes(dom, view, context) {
   for (const attr in view.attrs) {
     if (ignoredAttr(attr)) {
       attr === 'deferrable' && (dom[deferrableSymbol] = view.attrs[attr])
-    } else if (attr === 'value' && tag.name === 'input' && dom.value !== '' + view.attrs[attr]) {
+    } else if (attr === 'value' && tag.name === 'input' && dom.value !== '' + view.attrs.value) {
       value = view.attrs[attr]
       let start
         , end

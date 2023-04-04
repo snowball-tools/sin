@@ -947,7 +947,7 @@ function setAttribute(dom, attr, value, context) {
     return setAttribute(dom, attr, value(), context)
 
   !context.NS && attr in dom
-    ? dom[attr] = value
+    ? dom[attr] = value === undefined ? null : value
     : notValue(value)
       ? dom.removeAttribute(attr)
       : dom.setAttribute(attr, value === true ? '' : value)

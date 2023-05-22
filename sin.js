@@ -1,5 +1,8 @@
+// src/window.js
+typeof globalThis === "undefined" && (window.globalThis = window);
+var window_default = typeof window === "undefined" ? {} : window;
+
 // src/shared.js
-var isServer = typeof window === "undefined" || typeof window.document === "undefined";
 var stackTrace = Symbol("stackTrace");
 var hasOwn = {}.hasOwnProperty;
 function cleanSlash(x2) {
@@ -41,7 +44,7 @@ function styleProp(x2) {
   return asCssVar(x2) || (x2 === "cssFloat" ? "float" : snake(x2));
 }
 function classes(x2) {
-  return isObservable(x2) ? classes(x2.value) : isFunction(x2) ? classes(x2()) : !x2 ? "" : typeof x2 === "object" ? classObject(x2) : x2 + " ";
+  return isObservable(x2) || isFunction(x2) ? classes(x2()) : !x2 ? "" : typeof x2 === "object" ? classObject(x2) : x2 + " ";
 }
 function classObject(x2) {
   let c = "";
@@ -49,10 +52,6 @@ function classObject(x2) {
     c += (c ? " " : "") + (x2[k] || "");
   return c;
 }
-
-// src/window.js
-typeof globalThis === "undefined" && (window.globalThis = window);
-var window_default = isServer ? {} : window;
 
 // src/view.js
 var View = class {
@@ -91,12 +90,13 @@ function http(url, {
   pass,
   headers = {},
   config,
-  timeout = 0
+  timeout = 0,
+  ...options
 } = {}) {
   const origin = false;
-  const xhr = new window_default.XMLHttpRequest();
+  const xhr = new window_default.XMLHttpRequest(options);
   let full = false;
-  const promise = new Promise((resolve2, reject) => {
+  const promise = new Promise((resolve, reject) => {
     let accept, contentType;
     method = method.toUpperCase();
     xhr.addEventListener("readystatechange", function() {
@@ -104,13 +104,12 @@ function http(url, {
         return;
       try {
         xhr.status && Object.defineProperty(xhr, "body", {
-          value: accept === json ? JSON.parse(xhr.response) : xhr.response
+          value: accept === json ? xhr.response === void 0 || xhr.response === "" ? void 0 : JSON.parse(xhr.response) : xhr.response
         });
-        xhr.status === 304 || xhr.status >= 200 && xhr.status < 300 ? resolve2(full ? xhr : xhr.body) : reject(statusError(xhr));
+        xhr.status === 304 || xhr.status >= 200 && xhr.status < 300 ? resolve(full ? xhr : xhr.body) : reject(statusError(xhr));
       } catch (e) {
         reject(e);
       }
-      redraw2 && http.redraw && http.redraw();
     });
     xhr.addEventListener("error", reject);
     xhr.addEventListener("abort", () => reject(new Error("ABORTED")));
@@ -118,7 +117,7 @@ function http(url, {
     xhr.timeout = timeout;
     responseType && (xhr.responseType = responseType);
     Object.entries(headers).forEach(([x2, v]) => {
-      xhr.setRequestHeader(x2, v);
+      v && xhr.setRequestHeader(x2, v);
       x2.toLowerCase() === "accept" && (accept = v);
       x2.toLowerCase() === "content-type" && (contentType = v);
     });
@@ -224,7 +223,7 @@ function Query(s2, l) {
     const target = l.pathname + (usp + "" ? "?" + (usp + "").replace(/=$/g, "") : "") + l.hash;
     if (location.href.endsWith(target))
       return;
-    window_default.history.pushState(
+    window_default.history.replaceState(
       window_default.history.state,
       null,
       target
@@ -251,9 +250,6 @@ function params(path2, xs) {
     return acc;
   }, {});
 }
-function resolve(view, attrs, context) {
-  return isFunction(view) ? view(attrs, [], context) : view;
-}
 function router(s2, root, rootContext) {
   const location2 = rootContext.location;
   const routed = s2(({ route: route2, ...attrs }, [view], context) => {
@@ -270,6 +266,10 @@ function router(s2, root, rootContext) {
     }
   });
   return route;
+  function resolve(view, attrs, context) {
+    let result = isFunction(view) ? view(attrs, [], context) : view;
+    return result && isFunction(result.then) ? s2(() => result)(attrs) : result;
+  }
   function getPath2(location3, x2 = 0) {
     return (s2.pathmode[0] === "#" ? location3.hash.slice(s2.pathmode.length + x2) : s2.pathmode[0] === "?" ? location3.search.slice(s2.pathmode.length + x2) : location3.pathname.slice(s2.pathmode + x2)).replace(/(.)\/$/, "$1");
   }
@@ -413,7 +413,8 @@ var vendorMap = properties.reduce((acc, x2) => {
 }, {});
 var cache = /* @__PURE__ */ new Map();
 var hashed = /* @__PURE__ */ new Set();
-var cssVars = isServer || typeof window_default !== "undefined" && window_default.CSS && CSS.supports("color", "var(--support-test)");
+var isServer = typeof window_default === "undefined";
+var cssVars = isServer || window_default.CSS && CSS.supports("color", "var(--support-test)");
 var pxFunctions = ["perspective", "blur", "drop-shadow", "inset", "polygon"];
 var nested = ["@media", "@supports", "@document", "@layer"];
 var isNested = (x2) => nested.some((n) => x2.indexOf(n) === 0);
@@ -475,7 +476,7 @@ function renderProp(x2) {
   return propCache[x2] || (propCache[x2] = vendor(shorthand(x2)));
 }
 function splitSelector(x2) {
-  return x2.replace(/,\s*[:[]?/g, (x3) => noSpace(x3.charCodeAt(x3.length - 1)) ? ",&" + last(x3) : ",& ");
+  return raw ? x2 : x2.replace(/,\s*[:[]?/g, (x3) => noSpace(x3.charCodeAt(x3.length - 1)) ? ",&" + last(x3) : ",& ");
 }
 function insert(rule2, index) {
   if (append) {
@@ -802,8 +803,8 @@ function bind(x2, that) {
   return fn2;
 }
 s.sleep = (x2, ...xs) => new Promise((r) => setTimeout(r, x2, ...xs));
-s.with = (x2, fn2) => fn2(x2);
-s.isServer = isServer;
+s.with = (x2, fn2) => x2 === void 0 ? x2 : fn2(x2);
+s.isServer = false;
 s.pathmode = "";
 s.redraw = redraw;
 s.mount = mount;
@@ -811,7 +812,6 @@ s.css = (...x2) => parse(x2, null, 0, true);
 s.css.alias = alias;
 s.animate = animate;
 s.http = http;
-s.http.redraw = !s.isServer && redraw;
 s.live = Live;
 s.signal = signal;
 s.on = on;
@@ -824,15 +824,17 @@ s.error = s((error) => {
     "Unexpected Error: " + (error.message || error)
   ));
 });
+var trusted = s(({ key, values }) => {
+  const div2 = document.createElement("div");
+  div2.innerHTML = String.raw({ raw: key }, ...values);
+  const nodes = div2.firstChild === div2.lastChild ? div2.firstChild : [...div2.childNodes];
+  return () => nodes;
+});
 function trust(strings, ...values) {
-  return s(() => {
-    const div2 = document.createElement("div");
-    div2.innerHTML = String.raw({ raw: strings }, ...values);
-    const nodes = [...div2.childNodes];
-    return () => nodes;
-  });
+  return trusted({ key: "" + strings, values });
 }
 function on(target, event, fn2, options) {
+  typeof options === "function" && ([fn2, options] = [options, fn2]);
   return (...xs) => {
     const handleEvent2 = (e) => callHandler(fn2, e, ...xs);
     target.addEventListener(event, handleEvent2, options);
@@ -844,11 +846,9 @@ function animate(dom) {
   requestAnimationFrame(() => dom.removeAttribute("animate"));
   return (deferrable) => deferrable && new Promise((r) => {
     let running = false;
-    dom.setAttribute("animate", "exit");
     dom.addEventListener("transitionrun", () => (running = true, end(r)), { once: true, passive: true });
-    requestAnimationFrame(
-      () => running ? end(r) : r()
-    );
+    dom.setAttribute("animate", "exit");
+    requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => running || r())));
   });
   function end(r) {
     dom.addEventListener("transitionend", r, { once: true, passive: true });
@@ -876,7 +876,7 @@ function execute(x2, parent) {
   );
 }
 function isAttrs(x2) {
-  return x2 && typeof x2 === "object" && !(x2 instanceof Date) && !Array.isArray(x2) && !(x2 instanceof View) && !(x2 instanceof window_default.Node);
+  return x2 && typeof x2 === "object" && !(x2 instanceof Date) && !Array.isArray(x2) && !(x2 instanceof View) && !(x2 instanceof window_default.Node) && !isFunction(x2.then);
 }
 function mount(dom, view, attrs = {}, context = {}) {
   if (!isFunction(view)) {
@@ -892,7 +892,7 @@ function mount(dom, view, attrs = {}, context = {}) {
   view instanceof View === false && (view = s(view));
   hasOwn.call(context, "location") || (context.location = window_default.location);
   hasOwn.call(context, "error") || (context.error = s.error);
-  if (isServer)
+  if (s.isServer)
     return { view, attrs, context };
   context.hydrating = shouldHydrate(dom.firstChild);
   const doc2 = {
@@ -913,7 +913,7 @@ function head(x2) {
   const dom = document.createElement(x2.tag.name);
   for (const attr in x2.attrs)
     dom.setAttribute(attr, x2.attrs[attr]);
-  x2.children.length && (dom.innerHTML = dom.children[0]);
+  x2.children.length && (dom.innerHTML = x2.children[0]);
   document.head.appendChild(dom);
 }
 function shouldHydrate(dom) {
@@ -929,8 +929,7 @@ function globalRedraw() {
 function draw({ view, attrs, context }, dom) {
   redrawing = true;
   try {
-    const x2 = view(attrs, [], context);
-    updates(dom, asArray(x2), context);
+    updates(dom, asArray(view(attrs)), context);
   } catch (error) {
     attrs.error = error;
     updates(dom, asArray(context.error(error, attrs, [], context)), context);
@@ -981,9 +980,7 @@ function keyed(parent, context, as, bs, keys, after, ref) {
   outer:
     while (true) {
       while (a.key === b.key) {
-        if (a.key === void 0 || b.key === void 0)
-          return nonKeyed(parent, context, bs, keys, ref, after);
-        after = updateView(a.dom, b, context, parent).first;
+        after = update(a.dom, b, context, parent).first;
         Ref(keys, after, b.key, bi);
         delete map[b.key];
         if (bi === 0)
@@ -995,17 +992,15 @@ function keyed(parent, context, as, bs, keys, after, ref) {
         a = as[--ai];
         b = bs[--bi];
       }
-      if (a.key === void 0 || b.key === void 0)
-        return nonKeyed(parent, context, bs, keys, ref, after);
       if (hasOwn.call(map, b.key)) {
         temp2 = map[b.key];
         if (temp2 > bi) {
-          temp2 = updateView(as[temp2].dom, b, context, parent);
+          temp2 = update(as[temp2].dom, b, context, parent);
           insertBefore(parent, temp2, after);
           after = temp2.first;
           Ref(keys, after, b.key, bi);
         } else if (temp2 !== bi) {
-          temp2 = updateView(as[temp2].dom, b, context, parent);
+          temp2 = update(as[temp2].dom, b, context, parent);
           insertBefore(parent, temp2, after);
           after = temp2.first;
           Ref(keys, after, b.key, bi);
@@ -1018,7 +1013,7 @@ function keyed(parent, context, as, bs, keys, after, ref) {
           break;
         b = bs[--bi];
       } else {
-        temp2 = updateView(null, b, context);
+        temp2 = update(null, b, context);
         insertBefore(parent, temp2, after);
         after = temp2.first;
         Ref(keys, after, b.key, bi);
@@ -1038,7 +1033,10 @@ function insertBefore(parent, { first, last: last2 }, before) {
   } while (parent.insertBefore(dom, before) !== last2);
 }
 function update(dom, view, context, parent, stack, create) {
-  return isObservable(view) ? updateLive(dom, view, context, parent, stack, create) : isFunction(view) ? update(dom, view(), context, parent, stack, create) : view instanceof View ? updateView(dom, view, context, parent, stack, create) : view instanceof Promise ? updateView(dom, s(() => view)(), context, parent, stack, create) : Array.isArray(view) ? updateArray(dom, view, context, parent, create) : view instanceof Node ? Ret(view) : updateValue(dom, view, parent, create);
+  return isObservable(view) ? updateLive(dom, view, context, parent, stack, create) : isFunction(view) ? update(dom, view(), context, parent, stack, create) : view instanceof View ? updateView(dom, view, context, parent, stack, create) : view instanceof Promise ? updateView(dom, s(() => view)(), context, parent, stack, create) : Array.isArray(view) ? updateArray(dom, view, context, parent, create) : view instanceof Node ? updateNode(dom, view, context) : updateValue(dom, view, parent, create);
+}
+function updateNode(dom, view, context) {
+  return dom && context.hydrating ? Ret(dom) : Ret(view);
 }
 function updateView(dom, view, context, parent, stack, create) {
   return view.component ? updateComponent(dom, view, context, parent, stack, create) : updateElement(dom, view, context, parent, create);
@@ -1047,7 +1045,7 @@ function updateLive(dom, view, context, parent) {
   if (dom && hasOwn.call(dom, liveSymbol) && dom[liveSymbol] === view)
     return dom[liveSymbol];
   let result;
-  run(view.value);
+  run(view());
   view.observe(run);
   return result;
   function run(x2) {
@@ -1059,20 +1057,22 @@ function updateLive(dom, view, context, parent) {
 function Ret(dom, first = dom, last2 = first) {
   return { dom, first, last: last2 };
 }
-function nthAfter(dom, n) {
-  while (dom && n > 0) {
-    if (!removing.has(dom)) {
-      dom = dom.nextSibling;
-      n--;
+function fromComment(dom) {
+  if (!dom || dom.nodeType !== 8 || dom.nodeValue.charCodeAt(0) !== 91)
+    return;
+  let l = parseInt(dom.nodeValue.slice(1));
+  let last2 = dom;
+  let char2;
+  while (l && last2.nextSibling) {
+    last2 = last2.nextSibling;
+    if (last2.nodeType === 8) {
+      char2 = last2.nodeValue.charCodeAt(0);
+      l += char2 === 91 ? parseInt(last2.nodeValue.slice(1)) - 1 : char2 === 97 ? 1 : 0;
+    } else {
+      l--;
     }
   }
-  return dom;
-}
-function fromComment(dom) {
-  if (!dom)
-    return;
-  const last2 = dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 91 && nthAfter(dom, parseInt(dom.nodeValue.slice(1)));
-  last2 && (dom[arraySymbol] = last2);
+  dom[arraySymbol] = last2;
   return last2;
 }
 function getArray(dom) {
@@ -1106,7 +1106,7 @@ function updateValue(dom, view, parent, create, nodeType = typeof view === "bool
     dom.nodeValue = view;
   return Ret(dom);
 }
-function updateElement(dom, view, context, parent, create = dom === null || tagChanged(dom, view)) {
+function updateElement(dom, view, context, parent, create = dom === null || tagChanged(dom, view, context)) {
   const previousNS = context.NS;
   view.attrs.xmlns || NS[view.tag.name] && (context.NS = view.attrs.xmlns || NS[view.tag.name]);
   create && replace(
@@ -1126,8 +1126,8 @@ function removeChildren(dom, parent) {
   while (dom)
     dom = remove(dom, parent);
 }
-function tagChanged(dom, view) {
-  return dom[keySymbol] !== view.key || dom.nodeName.toUpperCase() !== (view.tag.name || "div").toUpperCase();
+function tagChanged(dom, view, context) {
+  return dom[keySymbol] !== view.key && !context.hydrating || dom.nodeName.toUpperCase() !== (view.tag.name || "div").toUpperCase();
 }
 function createElement(view, context) {
   const is = view.attrs.is;
@@ -1152,11 +1152,11 @@ var Stack = class {
     this.i = 0;
     this.top = 0;
   }
-  changed(view) {
+  changed(view, context) {
     if (this.i >= this.xs.length)
       return true;
     const instance = this.xs[this.i];
-    const x2 = instance.key !== view.key || instance.init && instance.init !== view.component[0];
+    const x2 = instance.key !== view.key && !context.hydrating || instance.init && instance.init !== view.component[0];
     return x2;
   }
   add(view, context, optimistic) {
@@ -1183,6 +1183,7 @@ var Stack = class {
       updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, true, true);
     };
     instance.context = Object.create(context, {
+      hydrating: { value: context.hydrating, writable: true },
       onremove: { value: (fn2) => {
         onremoves(this, instance, fn2);
       } },
@@ -1219,29 +1220,28 @@ function onremoves(stack, instance, x2) {
   }
 }
 function hydrate(dom) {
+  const id2 = "/" + dom.nodeValue;
   let last2 = dom.nextSibling;
-  while (last2 && (last2.nodeType !== 8 || last2.nodeValue !== dom.nodeValue))
+  while (last2 && (last2.nodeType !== 8 || last2.nodeValue !== id2))
     last2 = last2.nextSibling;
-  return Ret(dom, dom, last2);
+  const x2 = Ret(dom.nextSibling, dom.nextSibling, last2.previousSibling);
+  dom.remove();
+  last2.remove();
+  return x2;
 }
-function dehydrate(x2, stack) {
-  x2.first.nextSibling[componentSymbol] = stack;
-  x2.first.remove();
-  x2.last && x2.last.remove();
-}
-function updateComponent(dom, component, context, parent, stack = dom && dom[componentSymbol] || new Stack(), create = stack.changed(component), optimistic = false) {
+function updateComponent(dom, component, context, parent, stack = dom && dom[componentSymbol] || new Stack(), create = stack.changed(component, context), optimistic = false) {
   const instance = create ? stack.add(component, context, optimistic) : stack.next();
   if (!create && instance.ignore) {
     stack.pop();
     return stack.dom;
   }
-  component.key && create && (instance.key = component.key);
+  component.key && (create || context.hydrating) && (instance.key = component.key);
   const hydratingAsync = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 97;
   if (hydratingAsync) {
     instance.next = hydrate(dom);
   } else {
     let view = catchInstance(create, instance, component);
-    view && hasOwn.call(view, sSymbol) && (view = view());
+    view && hasOwn.call(view, sSymbol) && (view = view(component.attrs, component.children, instance.context));
     instance.next = update(
       dom,
       !instance.caught && !instance.promise && view instanceof View ? mergeTag(view, component) : view,
@@ -1250,13 +1250,13 @@ function updateComponent(dom, component, context, parent, stack = dom && dom[com
       stack,
       (create || instance.recreate) && !instance.hydrating ? true : void 0
     );
-    instance.hydrating && (instance.hydrating = context.hydrating = false);
+    instance.hydrating && (instance.hydrating = instance.context.hydrating = false);
     instance.recreate && (instance.recreate = false);
   }
   create && instance.promise && instance.promise.then((view) => instance.view = view && hasOwn.call(view, "default") ? view.default : view).catch((error) => {
     instance.caught = error;
     instance.view = resolveError(instance, component, error);
-  }).then(() => hasOwn.call(instance.next.first, componentSymbol) && (hydratingAsync && dehydrate(instance.next, stack), instance.recreate = true, instance.promise = false, redraw()));
+  }).then(() => hasOwn.call(instance.next.first, componentSymbol) && (context.hydrating = false, instance.recreate = true, instance.promise = false, redraw()));
   const changed = dom !== instance.next.first;
   if (stack.pop() && (changed || create)) {
     stack.dom = instance.next;
@@ -1295,22 +1295,34 @@ function attributes(dom, view, context) {
   const prev = dom[attrSymbol], create = !prev;
   hasOwn.call(view.attrs, "id") === false && view.tag.id && (view.attrs.id = view.tag.id);
   if (create && view.tag.classes || view.attrs.class !== (prev && prev.class) || view.attrs.className !== (prev && prev.className) || dom.className !== view.tag.classes)
-    setClass(dom, view, context);
-  create && observe(dom, view.attrs.class, () => setClass(dom, view, context));
-  create && observe(dom, view.attrs.className, () => setClass(dom, view, context));
-  view.attrs.type != null && setAttribute(dom, "type", view.attrs.type, context);
+    setClass(dom, view);
+  create && observe(dom, view.attrs.class, () => setClass(dom, view));
+  create && observe(dom, view.attrs.className, () => setClass(dom, view));
+  view.attrs.type != null && setAttribute(dom, "type", view.attrs.type);
   for (const attr in view.attrs) {
     if (ignoredAttr(attr)) {
       attr === "deferrable" && (dom[deferrableSymbol] = view.attrs[attr]);
+    } else if (attr === "value" && tag.name === "input" && dom.value !== "" + view.attrs.value) {
+      value2 = view.attrs[attr];
+      let start2, end;
+      if (dom === document.activeElement) {
+        start2 = dom.selectionStart;
+        end = dom.selectionEnd;
+      }
+      updateAttribute(dom, view.attrs, attr, dom.value, value2, create);
+      if (dom === document.activeElement && (dom.selectionStart !== start2 || dom.selectionEnd !== end))
+        dom.setSelectionRange(start2, end);
     } else if (!prev || prev[attr] !== view.attrs[attr]) {
       value2 = view.attrs[attr];
-      updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value2, create);
+      updateAttribute(dom, view.attrs, attr, prev && prev[attr], value2, create);
     }
   }
   if (hasOwn.call(view.attrs, "href")) {
-    value2 = cleanSlash(view.attrs.href);
-    updateAttribute(dom, context, view.attrs, "href", prev && prev.href, value2, create);
-    if (value2 && !String(value2).match(/^[a-z]+:|\/\//)) {
+    value2 = view.attrs.href;
+    const internal = !String(value2).match(/^[a-z]+:|\/\//);
+    internal && (value2 = cleanSlash(view.attrs.href));
+    updateAttribute(dom, view.attrs, "href", prev && prev.href, value2, create);
+    if (value2 && internal) {
       view.attrs.href = s.pathmode + value2;
       link(dom, context.route);
     }
@@ -1329,7 +1341,7 @@ function attributes(dom, view, context) {
       setVars(dom, tag.vars, tag.args, create, reapply);
   }
   create && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom);
-  create && hasOwn.call(view, stackTrace) && (dom[stackTrace] = view[stackTrace]);
+  hasOwn.call(view, stackTrace) && (dom[stackTrace] = view[stackTrace]);
   dom[attrSymbol] = view.attrs;
 }
 function updateStyle(dom, style2, old) {
@@ -1366,9 +1378,9 @@ function observe(dom, x2, fn2) {
   has || (dom[observableSymbol] = xs);
   xs.add(x2.observe(fn2));
 }
-function setClass(dom, view, context) {
+function setClass(dom, view) {
   const x2 = className(view);
-  x2 ? context.NS ? dom.setAttribute("class", x2) : dom.className = x2 : dom.removeAttribute("class");
+  x2 ? dom instanceof SVGElement ? dom.setAttribute("class", x2) : dom.className = x2 : dom.removeAttribute("class");
 }
 function setVars(dom, vars, args, init, reapply) {
   for (const id2 in vars) {
@@ -1381,7 +1393,7 @@ function setVar(dom, id2, value2, cssVar2, init, reapply, after) {
   if (isObservable(value2)) {
     init && value2.observe((x2) => dom.style.setProperty(id2, formatValue(x2, cssVar2)));
     if (init || reapply)
-      setVar(dom, id2, value2.value, cssVar2, init, init);
+      setVar(dom, id2, value2(), cssVar2, init, init);
     return;
   }
   if (isFunction(value2))
@@ -1398,18 +1410,18 @@ function giveLife(dom, attrs, children, context, life) {
     }, []);
   });
 }
-function updateAttribute(dom, context, attrs, attr, old, value2, create) {
+function updateAttribute(dom, attrs, attr, old, value2, create) {
   if (old === value2)
     return;
   const on2 = isEvent(attr);
   if (on2 && typeof old === typeof value2)
     return;
-  on2 ? value2 ? addEvent(dom, attrs, attr) : removeEvent(dom, attr) : (setAttribute(dom, attr, value2, context), create && observe(dom, value2, (x2) => setAttribute(dom, attr, x2, context)));
+  on2 ? value2 ? addEvent(dom, attrs, attr) : removeEvent(dom, attr) : (setAttribute(dom, attr, value2), create && observe(dom, value2, (x2) => setAttribute(dom, attr, x2)));
 }
-function setAttribute(dom, attr, value2, context) {
+function setAttribute(dom, attr, value2) {
   if (isFunction(value2))
-    return setAttribute(dom, attr, value2(), context);
-  !context.NS && attr in dom ? dom[attr] = value2 : notValue(value2) ? dom.removeAttribute(attr) : dom.setAttribute(attr, value2 === true ? "" : value2);
+    return setAttribute(dom, attr, value2());
+  dom instanceof SVGElement === false && attr in dom ? dom[attr] = value2 === void 0 ? null : value2 : notValue(value2) ? dom.removeAttribute(attr) : dom.setAttribute(attr, value2 === true ? "" : value2);
 }
 function removeEvent(dom, name2) {
   dom.removeEventListener(name2.slice(2), dom[eventSymbol]);
@@ -1426,6 +1438,8 @@ function handleEvent(dom) {
   };
 }
 function callHandler(handler, e, ...xs) {
+  if (Array.isArray(handler))
+    return handler.forEach((x2) => callHandler(x2, e, ...xs));
   const result = isFunction(handler) ? handler.call(e.currentTarget, e, ...xs) : isFunction(handler.handleEvent) && handler.handleEvent(e, ...xs);
   if (e.redraw === false)
     return;

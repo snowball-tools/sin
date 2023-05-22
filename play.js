@@ -2,7 +2,154 @@
 
 import s from 'sin'
 
-nestedRouting()
+reloadAsync()
+
+function wat() {
+  let checked = false
+  s.mount(() => [
+    s`button`({
+      onclick: () => checked = !checked
+    }, 'yas'),
+    s`input`({
+      type: 'date',
+      value: new Date()
+    }),
+    s`input`({
+      type: 'text',
+      value: undefined
+    }),
+    s`input`({
+      type: 'checkbox',
+      checked: checked,
+      onclick: () => checked = !checked
+    }),
+    s`a`({ href: 'http://sinjs.com' }, 'hej'),
+    checked && s`ul`(
+      [...Array(2000)].map((x, i) => s`li`(i))
+    ),
+    s`h1`('hej'),
+    s`h1`('hejsa'),
+    s`h1`('hejmed'),
+
+    s`h1`('hejdig')
+  ])
+}
+
+function mathml() {
+  s.mount(() =>
+    s`div`(
+      s`math
+        display block
+      `(
+        s`mtable`(
+          s`mtr
+            c blue
+            fw bold
+          `({
+            onclick: () => alert('wat')
+          },
+            s`mtd`(
+              s`msup`(
+                s`mi`('c'),
+                s`mn`('2')
+              ),
+              s`mo`('+'),
+              s`mn`('4'),
+              s`mo`('⋅'),
+              s`mo`('('),
+              s`mfrac`(
+                s`mn`('1'),
+                s`mn`('2')
+              ),
+              s`mi`('a'),
+              s`mi`('b'),
+              s`mo`(')')
+            )
+          )
+        )
+      )
+    )
+  )
+}
+
+function cssComments() {
+  s.css`
+    /*
+    body {
+      background: blue
+    }
+    */
+
+    body {
+      background: /* background: red */ green;
+      background red // green
+      // background: red
+    }
+  `
+}
+
+function format_time(time) {
+  time = Math.round(time)
+  let minutes = Math.floor(time / 60)
+    , seconds = time - minutes * 60
+
+  seconds = seconds < 10 ? '0' + seconds : seconds
+
+  return minutes + ":" + seconds
+}
+
+function onremoveTest() {
+  let show = false
+  s.mount(() => [
+    s`button`({ onclick: () => show = !show }, 'toggle'),
+    show && s(({}, [], { onremove }) => {
+      p('init')
+      onremove(() => p('remove'))
+      return () => s`h1`('Hejsa der')
+    })
+  ])
+}
+
+function cssDom() {
+  let show
+    , text = 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source. Lorem Ipsum comes from sections 1.10.32 and 1.10.33 of "de Finibus Bonorum et Malorum" (The Extremes of Good and Evil) by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular during the Renaissance. The first line of Lorem Ipsum, "Lorem ipsum dolor sit amet..", comes from a line in section 1.10.32.'
+
+  s.mount(() => [
+    s`button
+      bc blue
+      c white
+      fs 40
+
+      animation 1s {
+        from { o 0 }
+      }
+    `({
+      onclick: () => show = !show,
+      dom: s.on(document, 'keydown', (e, dom) => p(dom))
+    }, 'toggle it'),
+    show && s`div
+      w 200
+      transition max-height 1s
+      overflow hidden
+      max-height ${ x => x.scrollHeight }
+      [animate] {
+        max-height 0
+      }
+
+      [animate=exit] {
+        transition max-height 5s
+      }
+    `({
+      dom: s.animate,
+      oninput: (e) => {
+        text = e.target.textContent
+      },
+      contenteditable: true
+    },
+      text
+    )
+  ])
+}
 
 function liveOptimizationSample() {
   const xs = [...Array(200).keys()]
@@ -10,9 +157,7 @@ function liveOptimizationSample() {
   const value = s.live()
 
   s.mount(() => [
-    s`h1
-      margin-top 200
-    `('Yo'),
+    s`h1`('Yo'),
     s``('Redrew at: ', Date.now()),
     xs.map(id =>
       s`div
@@ -567,6 +712,7 @@ function nestedRouting() {
     return () => s`
       d flex
     `(
+      'wat',
       s`nav
         w 100
         mr 4m

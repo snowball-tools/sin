@@ -53,7 +53,7 @@ Object.assign(window, {
   }
 })
 
-function XMLHttpRequest() {
+function XMLHttpRequest(options) {
   const body = []
       , headers = {}
       , events = new Map()
@@ -148,7 +148,8 @@ function XMLHttpRequest() {
         req = http.request(url, {
           headers,
           method,
-          auth
+          auth,
+          ...options
         }, r => {
           res = r
           xhr.status = res.statusCode

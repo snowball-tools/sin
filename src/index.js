@@ -221,7 +221,7 @@ function head(x) {
   const dom = document.createElement(x.tag.name)
   for (const attr in x.attrs)
     dom.setAttribute(attr, x.attrs[attr])
-  x.children.length && (dom.innerHTML = dom.children[0])
+  x.children.length && (dom.innerHTML = x.children[0])
   document.head.appendChild(dom)
 }
 

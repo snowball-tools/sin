@@ -778,12 +778,12 @@ function attributes(dom, view, context) {
      view.attrs.className !== (prev && prev.className) ||
      dom.className !== view.tag.classes
   )
-    setClass(dom, view, context)
+    setClass(dom, view)
 
-  create && observe(dom, view.attrs.class, () => setClass(dom, view, context))
-  create && observe(dom, view.attrs.className, () => setClass(dom, view, context))
+  create && observe(dom, view.attrs.class, () => setClass(dom, view))
+  create && observe(dom, view.attrs.className, () => setClass(dom, view))
 
-  view.attrs.type != null && setAttribute(dom, 'type', view.attrs.type, context)
+  view.attrs.type != null && setAttribute(dom, 'type', view.attrs.type)
 
   for (const attr in view.attrs) {
     if (ignoredAttr(attr)) {
@@ -796,12 +796,12 @@ function attributes(dom, view, context) {
         start = dom.selectionStart
         end = dom.selectionEnd
       }
-      updateAttribute(dom, context, view.attrs, attr, dom.value, value, create)
+      updateAttribute(dom, view.attrs, attr, dom.value, value, create)
       if (dom === document.activeElement && (dom.selectionStart !== start || dom.selectionEnd !== end))
         dom.setSelectionRange(start, end)
     } else if (!prev || prev[attr] !== view.attrs[attr]) {
       value = view.attrs[attr]
-      updateAttribute(dom, context, view.attrs, attr, prev && prev[attr], value, create)
+      updateAttribute(dom, view.attrs, attr, prev && prev[attr], value, create)
     }
   }
 
@@ -809,7 +809,7 @@ function attributes(dom, view, context) {
     value = view.attrs.href
     const internal = !String(value).match(/^[a-z]+:|\/\//)
     internal && (value = cleanSlash(view.attrs.href))
-    updateAttribute(dom, context, view.attrs, 'href', prev && prev.href, value, create)
+    updateAttribute(dom, view.attrs, 'href', prev && prev.href, value, create)
     if (value && internal) {
       view.attrs.href = s.pathmode + value
       link(dom, context.route)
@@ -887,10 +887,10 @@ function observe(dom, x, fn) {
   xs.add(x.observe(fn))
 }
 
-function setClass(dom, view, context) {
+function setClass(dom, view) {
   const x = className(view)
   x
-    ? context.NS
+    ? dom instanceof SVGElement
       ? dom.setAttribute('class', x)
       : dom.className = x
     : dom.removeAttribute('class')
@@ -932,7 +932,7 @@ function giveLife(dom, attrs, children, context, life) {
   })
 }
 
-function updateAttribute(dom, context, attrs, attr, old, value, create) { // eslint-disable-line
+function updateAttribute(dom, attrs, attr, old, value, create) { // eslint-disable-line
   if (old === value)
     return
 
@@ -945,16 +945,16 @@ function updateAttribute(dom, context, attrs, attr, old, value, create) { // esl
       ? addEvent(dom, attrs, attr)
       : removeEvent(dom, attr)
     : (
-      setAttribute(dom, attr, value, context),
-      create && observe(dom, value, x => setAttribute(dom, attr, x, context))
+      setAttribute(dom, attr, value),
+      create && observe(dom, value, x => setAttribute(dom, attr, x))
     )
 }
 
-function setAttribute(dom, attr, value, context) {
+function setAttribute(dom, attr, value) {
   if (isFunction(value))
-    return setAttribute(dom, attr, value(), context)
+    return setAttribute(dom, attr, value())
 
-  !context.NS && attr in dom
+  dom instanceof SVGElement === false && attr in dom
     ? dom[attr] = value === undefined ? null : value
     : notValue(value)
       ? dom.removeAttribute(attr)

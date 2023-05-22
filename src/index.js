@@ -428,16 +428,6 @@ function Ret(dom, first = dom, last = first) {
   return { dom, first, last }
 }
 
-function nthAfter(dom, n) {
-  while (dom && n > 0) {
-    if (!removing.has(dom)) {
-      dom = dom.nextSibling
-      n--
-    }
-  }
-  return dom
-}
-
 function fromComment(dom) {
   if (!dom || dom.nodeType !== 8 || dom.nodeValue.charCodeAt(0) !== 91)
     return

@@ -1,4 +1,3 @@
-/* global globalThis */
 import window from './window.js'
 
 ['head', 'get', 'put', 'post', 'delete', 'patch'].forEach(x =>

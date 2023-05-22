@@ -102,15 +102,17 @@ s.error = s((error) => {
   ))
 })
 
+const trusted = s(({ key, values }) => {
+  const div = document.createElement('div')
+  div.innerHTML = String.raw({ raw: key }, ...values)
+  const nodes = div.firstChild === div.lastChild
+    ? div.firstChild
+    : [...div.childNodes]
+  return () => nodes
+})
+
 function trust(strings, ...values) {
-  return s(() => {
-    const div = document.createElement('div')
-    div.innerHTML = String.raw({ raw: strings }, ...values)
-    const nodes = div.firstChild === div.lastChild
-      ? div.firstChild
-      : [...div.childNodes]
-    return () => nodes
-  })
+  return trusted({ key: '' + strings, values })
 }
 
 function on(target, event, fn, options) {

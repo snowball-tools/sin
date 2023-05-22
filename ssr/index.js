@@ -13,7 +13,7 @@ class TimeoutError extends Error {}
 
 s.isServer = true
 s.mimes = mimes
-s.trust = (strings, ...values) => new window.Node('<!--[1-->' + String.raw({ raw: strings }, ...values))
+s.trust = trust
 
 let lastWasText = false
 
@@ -263,4 +263,39 @@ function escapeAttrValue(x = '') {
       c === 38 && (s += x.slice(l + 1, l = i) + '&amp;') // &
   }
   return s || x
+}
+
+function trust(raw, ...values) {
+  const html = String.raw({ raw }, ...values)
+      , count = rootNodeCount(html)
+
+  return new window.Node((count > 1 ? '<!--[' + count + '-->' : '') + html)
+}
+
+function rootNodeCount(x) {
+  let char = -1
+  , start = -1
+  , end = -1
+  , count = 0
+  , depth = 0
+
+  for (let i = 0; i < x.length; i++) {
+    char = x.charCodeAt(i)
+    if (char === 60) { // <
+      start = i + 1
+    } else if (char === 62) { // >
+      if (end >= 0) {
+        --depth || count++
+        end = -1
+      } else if (start >= 0) {
+        voidTags.has(x.slice(start, i).toLowerCase())
+          ? depth === 0 && count++
+          : depth++
+        start = -1
+      }
+    } else if (char === 47) {
+      start === i && (start = -1, end = i + 1)
+    }
+  }
+  return count
 }

@@ -511,7 +511,7 @@ function updateElement(
   view,
   context,
   parent,
-  create = dom === null || tagChanged(dom, view)
+  create = dom === null || tagChanged(dom, view, context)
 ) {
   const previousNS = context.NS
   view.attrs.xmlns || NS[view.tag.name] && (context.NS = view.attrs.xmlns || NS[view.tag.name])
@@ -541,8 +541,8 @@ function removeChildren(dom, parent) {
     dom = remove(dom, parent)
 }
 
-function tagChanged(dom, view) {
-  return dom[keySymbol] !== view.key // eslint-disable-line
+function tagChanged(dom, view, context) {
+  return (dom[keySymbol] !== view.key && !context.hydrating) // eslint-disable-line
       || dom.nodeName.toUpperCase() !== (view.tag.name || 'div').toUpperCase()
 }
 
@@ -596,7 +596,7 @@ class Stack {
       context.hydrating
     )
 
-    const redraw =  e => {
+    const redraw = e => {
       e instanceof Event && (e.redraw = false)
       updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, false)
     }

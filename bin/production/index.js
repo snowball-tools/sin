@@ -24,7 +24,7 @@ const url = argv[0] === 'raw'
 
 if (workers > 1) {
   for (let i = 0; i < workers; i++)
-    new Worker(new URL(url, import.meta.url), { argv })
+    new Worker(new URL(url, import.meta.url), { argv }) // eslint-disable-line
 } else {
   import(url)
 }

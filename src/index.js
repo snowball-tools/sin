@@ -317,7 +317,7 @@ function keyed(parent, context, as, bs, keys, after, ref) {
 
   outer: while (true) { // eslint-disable-line
     while (a.key === b.key) {
-      after = updateView(a.dom, b, context, parent).first
+      after = update(a.dom, b, context, parent).first
       Ref(keys, after, b.key, bi)
       delete map[b.key]
 
@@ -336,12 +336,12 @@ function keyed(parent, context, as, bs, keys, after, ref) {
     if (hasOwn.call(map, b.key)) {
       temp = map[b.key]
       if (temp > bi) {
-        temp = updateView(as[temp].dom, b, context, parent)
+        temp = update(as[temp].dom, b, context, parent)
         insertBefore(parent, temp, after)
         after = temp.first
         Ref(keys, after, b.key, bi)
       } else if (temp !== bi) {
-        temp = updateView(as[temp].dom, b, context, parent)
+        temp = update(as[temp].dom, b, context, parent)
         insertBefore(parent, temp, after)
         after = temp.first
         Ref(keys, after, b.key, bi)
@@ -354,7 +354,7 @@ function keyed(parent, context, as, bs, keys, after, ref) {
         break
       b = bs[--bi]
     } else {
-      temp = updateView(null, b, context)
+      temp = update(null, b, context)
       insertBefore(parent, temp, after)
       after = temp.first
       Ref(keys, after, b.key, bi)

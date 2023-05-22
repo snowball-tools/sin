@@ -116,6 +116,7 @@ function trust(strings, ...values) {
 }
 
 function on(target, event, fn, options) {
+  typeof options === 'function' && ([fn, options] = [options, fn])
   return (...xs) => {
     const handleEvent = e => callHandler(fn, e, ...xs)
     target.addEventListener(event, handleEvent, options)

@@ -24,10 +24,11 @@ export default function http(url, {
   pass,
   headers = {},
   config,
-  timeout = 0
+  timeout = 0,
+  ...options
 } = {}) {
   const origin = typeof 'chrome' === 'undefined' && new Error()
-  const xhr = new window.XMLHttpRequest()
+  const xhr = new window.XMLHttpRequest(options)
   let full = false
   const promise = new Promise((resolve, reject) => {
     let accept

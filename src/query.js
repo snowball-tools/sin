@@ -22,7 +22,7 @@ export default function Query(s, l) {
     if (location.href.endsWith(target))
       return
 
-    window.history.pushState(
+    window.history.replaceState(
       window.history.state,
       null,
       target

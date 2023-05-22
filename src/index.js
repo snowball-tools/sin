@@ -390,8 +390,14 @@ function update(dom, view, context, parent, stack, create) {
           : Array.isArray(view)
             ? updateArray(dom, view, context, parent, create)
             : view instanceof Node
-              ? Ret(view)
+              ? updateNode(dom, view, context)
               : updateValue(dom, view, parent, create)
+}
+
+function updateNode(dom, view, context) {
+  return dom && context.hydrating
+    ? Ret(dom)
+    : Ret(view)
 }
 
 function updateView(dom, view, context, parent, stack, create) {
@@ -572,12 +578,12 @@ class Stack {
     this.top = 0
   }
 
-  changed(view) {
+  changed(view, context) {
     if (this.i >= this.xs.length)
       return true
 
     const instance = this.xs[this.i]
-    const x = instance.key !== view.key || (instance.init && instance.init !== view.component[0])
+    const x = (instance.key !== view.key && !context.hydrating) || (instance.init && instance.init !== view.component[0])
     return x
   }
   add(view, context, optimistic) {
@@ -660,7 +666,7 @@ function updateComponent(
   context,
   parent,
   stack = dom && dom[componentSymbol] || new Stack(),
-  create = stack.changed(component),
+  create = stack.changed(component, context),
   optimistic = false
 ) {
   const instance = create
@@ -672,7 +678,7 @@ function updateComponent(
     return stack.dom
   }
 
-  component.key && create && (instance.key = component.key)
+  component.key && (create || context.hydrating) && (instance.key = component.key)
 
   const hydratingAsync = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 97 // a
 
@@ -691,7 +697,7 @@ function updateComponent(
       stack,
       (create || instance.recreate) && !instance.hydrating ? true : undefined
     )
-    instance.hydrating && (instance.hydrating = false)
+    instance.hydrating && (instance.hydrating = instance.context.hydrating = false)
     instance.recreate && (instance.recreate = false)
   }
 

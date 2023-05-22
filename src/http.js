@@ -62,7 +62,7 @@ export default function http(url, {
     responseType && (xhr.responseType = responseType)
 
     Object.entries(headers).forEach(([x, v]) => {
-      xhr.setRequestHeader(x, v)
+      v && xhr.setRequestHeader(x, v)
       x.toLowerCase() === 'accept' && (accept = v)
       x.toLowerCase() === 'content-type' && (contentType = v)
     })

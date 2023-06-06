@@ -258,7 +258,7 @@ function updates(parent, next, context, before, last = parent.lastChild) {
       , tracked = ref && hasOwn.call(ref, keysSymbol)
       , after = last ? last.nextSibling : null
 
-  keys && (keys.rev = {}) && tracked
+  keys && (keys.rev = new Map()) && tracked
     ? keyed(parent, context, ref[keysSymbol], next, keys, after, ref)
     : nonKeyed(parent, context, next, keys, ref, after)
 
@@ -278,7 +278,7 @@ function getNext(before, parent) {
 
 function Ref(keys, dom, key, i) {
   keys[i] = { dom, key }
-  keys.rev[key] = i
+  keys.rev.set(key, i)
 }
 
 function nonKeyed(parent, context, next, keys, dom, after = null) {
@@ -320,7 +320,7 @@ function keyed(parent, context, as, bs, keys, after, ref) {
     while (a.key === b.key) {
       after = update(a.dom, b, context, parent).first
       Ref(keys, after, b.key, bi)
-      delete map[b.key]
+      map.delete(b.key)
 
       if (bi === 0)
         break outer // eslint-disable-line
@@ -334,8 +334,8 @@ function keyed(parent, context, as, bs, keys, after, ref) {
       b = bs[--bi]
     }
 
-    if (hasOwn.call(map, b.key)) {
-      temp = map[b.key]
+    if (map.has(b.key)) {
+      temp = map.get(b.key)
       if (temp > bi) {
         temp = update(as[temp].dom, b, context, parent)
         insertBefore(parent, temp, after)
@@ -350,7 +350,7 @@ function keyed(parent, context, as, bs, keys, after, ref) {
         a = as[--ai]
         continue
       }
-      delete map[b.key]
+      map.delete(b.key)
       if (bi === 0)
         break
       b = bs[--bi]
@@ -365,8 +365,7 @@ function keyed(parent, context, as, bs, keys, after, ref) {
     }
   }
 
-  for (const k in map)
-    remove(as[map[k]].dom, parent)
+  map.forEach((v, k) => remove(as[v].dom, parent))
 }
 
 function insertBefore(parent, { first, last }, before) {

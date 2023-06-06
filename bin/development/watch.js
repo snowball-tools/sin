@@ -3,15 +3,19 @@ import prexit from 'prexit'
 import path from 'path'
 import fs from 'fs'
 
-export default async function(scripts = {}) {
+watch.loaded = new Set()
+
+globalThis.sinLoader.onmessage = e => [...e.data].forEach(x => watch.loaded.add(x))
+
+export default async function watch(scripts = {}) {
   const watcher = await Watcher(x => {
     console.log(x, 'Changed - restart') // eslint-disable-line
     prexit.exit(123)
   })
 
-  global.sinLoadedFiles.add = x => x in scripts || watcher.add(x)
-  global.sinLoadedFiles.forEach(global.sinLoadedFiles.add)
-  global.sinLoadedFiles.remove = x => watcher.remove(x)
+  watch.loaded.add = x => x in scripts || watcher.add(x)
+  watch.loaded.forEach(watch.loaded.add)
+  watch.loaded.remove = x => watcher.remove(x)
 
   const env = path.join(process.cwd(), '.env')
   fs.existsSync(env) && watcher.add(env)

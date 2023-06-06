@@ -43,7 +43,6 @@ const env = process.env
     , sockets = new Set()
     , sinRoot = path.join(Url.fileURLToPath(new URL('.', import.meta.url)), '..', '..')
 
-
 if (command === 'clear') {
   const xs = argv[1] === 'all'
     ? fs.readdirSync(home).filter(x => fs.statSync(path.join(home, x)).isDirectory())
@@ -57,6 +56,7 @@ if (command === 'clear') {
   process.exit(0)
 }
 
+globalThis.sinLoader.postMessage('get')
 Object.values(scripts).forEach(watchAdd)
 
 fs.mkdirSync(home, { recursive: true })
@@ -178,7 +178,7 @@ async function startChrome() {
       watch({
         path: filePath,
         original,
-        source: modify(original),
+        source: modify(original, filePath),
         scriptId: x.scriptId
       })
     }
@@ -222,12 +222,12 @@ async function setSource(x) {
   }).catch(console.error)
 }
 
-function transform(x, path) {
-  if (!path.endsWith('.js'))
-    return x
+function transform(buffer, filePath) {
+  if (!filePath.endsWith('.js'))
+    return buffer
 
-  const original = originals[path] = Buffer.from(x).toString()
-  const file = { original, source: modify(original), path }
+  const original = originals[filePath] = Buffer.from(buffer).toString()
+  const file = { original, source: modify(original, path.dirname(filePath)), path: filePath }
   watch(file)
   return file.source
 }
@@ -241,7 +241,7 @@ function watch(x) {
 }
 
 function watchAdd(x) {
-  global.sinLoadedFiles.remove(x.path)
+  serverWatch.loaded.remove(x.path)
   watcher.add(x.path)
 }
 

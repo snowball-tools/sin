@@ -282,6 +282,7 @@ function getNext(before, parent) {
 
 function Ref(keys, dom, key, i) {
   keys[i] = { dom, key }
+  dom[keysSymbol] = keys
   keys.rev.set(key, i)
 }
 
@@ -605,19 +606,25 @@ class Stack {
       context.hydrating
     )
 
-    const redraw = e => {
+    const update = (e, recreate, optimisic) => {
       e instanceof Event && (e.redraw = false)
-      updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, false)
+      const keys = this.dom.first[keysSymbol]
+      this.dom = updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, recreate, optimistic)
+      hasOwn.call(this.dom.first, keysSymbol) || (this.dom.first[keysSymbol] = keys)
+      keys && keys.rev.has(view.key) && (keys[keys.rev.get(view.key)].dom = this.dom.first)
+      afterRedraw()
+    }
+
+    const redraw = e => {
+      update(e, false)
     }
     const reload = e => {
       instance.onremoves && (instance.onremoves.forEach(x => x()), instance.onremoves = undefined)
-      e instanceof Event && (e.redraw = false)
-      updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, true)
+      update(e, true)
     }
     const refresh = e => {
       instance.onremoves && (instance.onremoves.forEach(x => x()), instance.onremoves = undefined)
-      e instanceof Event && (e.redraw = false)
-      updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, true, true)
+      update(e, true, true)
     }
     instance.context = Object.create(context, {
       hydrating: { value: context.hydrating, writable: true },

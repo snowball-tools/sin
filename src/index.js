@@ -248,6 +248,10 @@ function draw({ view, attrs, context }, dom) {
     updates(dom, asArray(context.error(error, attrs, [], context)), context)
   }
   redrawing = false
+  afterRedraw()
+}
+
+function afterRedraw() {
   afterUpdate.forEach(fn => fn())
   afterUpdate = []
 }
@@ -421,19 +425,20 @@ function updateView(dom, view, context, parent, stack, create) {
 }
 
 function updateLive(dom, view, context, parent) {
-  if (dom && hasOwn.call(dom, liveSymbol) && dom[liveSymbol] === view)
-    return dom[liveSymbol]
+  if (dom && hasOwn.call(dom, liveSymbol) && dom[liveSymbol].view === view)
+    return run(view())
 
-  let result
-  run(view())
-  view.observe(run)
+  const result = run(view())
+  observe(dom, view, run)
 
   return result
 
   function run(x) {
-    result = update(dom, x, context, parent || dom && dom.parentNode)
-    result.first[liveSymbol] = result
-    dom = result.first
+    const doms = update(dom, x, context, parent || dom && dom.parentNode)
+    arguments.length > 1 && afterRedraw()
+    dom = doms.first
+    doms.first[liveSymbol] = { view, doms }
+    return doms
   }
 }
 

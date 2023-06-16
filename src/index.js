@@ -309,6 +309,14 @@ function nonKeyed(parent, context, next, keys, dom, after = null) {
 
 function keyed(parent, context, as, bs, keys, after, ref) {
   const map = as.rev
+      , next = new Set()
+
+  for (const x of bs) {
+    if (x.key === undefined)
+      return nonKeyed(parent, context, bs, keys, ref, after)
+
+    next.add(x.key)
+  }
 
   let ai = as.length - 1
     , bi = bs.length - 1

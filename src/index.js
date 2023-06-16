@@ -728,7 +728,10 @@ function updateComponent(
   if (stack.pop() && (changed || create)) {
     stack.dom = instance.next
     instance.next.first[componentSymbol] = stack
-    !instance.promise && giveLife(instance.next.first, component.attrs, component.children, instance.context, stack.life)
+    if (instance.next.first.nodeType === 1) {
+      hasOwn.call(component.attrs, 'dom') && giveLife(instance.next.first, component.attrs, component.children, instance.context, component.attrs.dom)
+      giveLife(instance.next.first, component.attrs, component.children, instance.context, stack.life)
+    }
   }
 
   return instance.next

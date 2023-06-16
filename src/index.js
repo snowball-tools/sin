@@ -668,7 +668,7 @@ function updateComponent(
     return stack.dom
   }
 
-  component.key && (create || context.hydrating) && (instance.key = component.key)
+  component.key !== undefined && (create || context.hydrating) && (instance.key = component.key)
 
   const hydratingAsync = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 97 // a
 

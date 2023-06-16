@@ -325,7 +325,13 @@ function keyed(parent, context, as, bs, keys, after, ref) {
     , temp = -1
 
   outer: while (true) { // eslint-disable-line
-    while (a.key === b.key) {
+    while (a && !next.has(a.key)) {
+      remove(a.dom, parent)
+      map.delete(a.key)
+      a = as[--ai]
+    }
+
+    while (a && a.key === b.key) {
       after = update(a.dom, b, context, parent).first
       Ref(keys, after, b.key, bi)
       map.delete(b.key)

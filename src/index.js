@@ -727,7 +727,7 @@ function updateComponent(
       context.hydrating = false,
       instance.recreate = true,
       instance.promise = false,
-      redraw()
+      instance.context.redraw()
     ))
 
   const changed = dom !== instance.next.first

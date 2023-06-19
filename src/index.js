@@ -616,7 +616,7 @@ class Stack {
     const update = (e, recreate, optimisic) => {
       e instanceof Event && (e.redraw = false)
       const keys = this.dom.first[keysSymbol]
-      this.dom = updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, recreate, optimistic)
+      updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, recreate, optimistic)
       hasOwn.call(this.dom.first, keysSymbol) || (this.dom.first[keysSymbol] = keys)
       keys && keys.rev.has(view.key) && (keys[keys.rev.get(view.key)].dom = this.dom.first)
       afterRedraw()

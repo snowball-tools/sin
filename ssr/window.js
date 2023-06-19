@@ -30,7 +30,7 @@ Object.assign(window, {
     querySelector: () => null,
     createElement: x => {
       const dom = {
-        tagName: x.toUpperCase(),
+        tagName: x,
         setAttribute: (x, v) => dom.x = v,
         getAttribute: x => dom[x],
         style: {

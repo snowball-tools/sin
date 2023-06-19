@@ -577,6 +577,12 @@ class Instance {
     this.loading = loading
     this.hydrating = hydrating
     this.onremoves = undefined
+    this.promise = undefined
+    this.stateful = undefined
+    this.next = undefined
+    this.ignore = false
+    this.context = undefined
+    this.recreate = false
   }
 }
 
@@ -586,6 +592,7 @@ class Stack {
     this.xs = []
     this.i = 0
     this.top = 0
+    this.dom = null
   }
 
   changed(view, context) {

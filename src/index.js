@@ -172,11 +172,11 @@ function execute(x, parent) {
 }
 
 function isAttrs(x) {
-  return x
+  return x !== null
     && typeof x === 'object'
-    && !(x instanceof Date)
-    && !Array.isArray(x)
     && !(x instanceof View)
+    && !Array.isArray(x)
+    && !(x instanceof Date)
     && !(x instanceof window.Node)
     && !isFunction(x.then)
 }

@@ -36,9 +36,9 @@ export default function Live(value, ...fns) {
     if (!arguments.length)
       return live.value
 
-    live.value = x
-    ;[...observers].forEach(fn => live.value !== value && fn(live.value, value))
-    value = live.value
+    const prev = value
+    live.value = value = x
+    observers.forEach(fn => live.value !== prev && fn(live.value, prev))
     return live.value
   }
 

@@ -717,13 +717,14 @@ function updateComponent(
     instance.recreate && (instance.recreate = false)
   }
 
+  let i = stack.i - 1
   create && instance.promise && instance.promise
     .then(view => instance.view = view && hasOwn.call(view, 'default') ? view.default : view)
     .catch(error => {
       instance.caught = error
       instance.view = resolveError(instance, component, error)
     })
-    .then(() => hasOwn.call(instance.next.first, componentSymbol) && (
+    .then(() => hasOwn.call(instance.next.first, componentSymbol) && stack.xs[i] === instance && (
       context.hydrating = false,
       instance.recreate = true,
       instance.promise = false,

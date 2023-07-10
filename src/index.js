@@ -22,8 +22,8 @@ import {
 
 const document = window.document
     , NS = {
-      SVG: 'http://www.w3.org/2000/svg',
-      MATH: 'http://www.w3.org/1998/Math/MathML'
+      svg: 'http://www.w3.org/2000/svg',
+      math: 'http://www.w3.org/1998/Math/MathML'
     }
 
 const removing = new WeakSet()
@@ -553,7 +553,7 @@ function removeChildren(dom, parent) {
 
 function tagChanged(dom, view, context) {
   return (dom[keySymbol] !== view.key && !context.hydrating) // eslint-disable-line
-       || dom.nodeName !== (view.tag.name || 'DIV')
+       || dom.nodeName.toLowerCase() !== (view.tag.name ? view.tag.name.toLowerCase() : 'div')
 }
 
 function createElement(view, context) {
@@ -563,8 +563,8 @@ function createElement(view, context) {
       ? document.createElementNS(context.NS, view.tag.name, { is })
       : document.createElementNS(context.NS, view.tag.name)
     : is
-      ? document.createElement(view.tag.name || 'DIV', { is })
-      : document.createElement(view.tag.name || 'DIV')
+      ? document.createElement(view.tag.name || 'div', { is })
+      : document.createElement(view.tag.name || 'div')
 }
 
 class Instance {
@@ -815,7 +815,7 @@ function attributes(dom, view, context) {
   for (const attr in view.attrs) {
     if (ignoredAttr(attr)) {
       attr === 'deferrable' && (dom[deferrableSymbol] = view.attrs[attr])
-    } else if (attr === 'value' && tag.name === 'INPUT' && dom.value !== '' + view.attrs.value) {
+    } else if (attr === 'value' && tag.name === 'input' && dom.value !== '' + view.attrs.value) {
       value = view.attrs[attr]
       let start
         , end

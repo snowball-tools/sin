@@ -201,7 +201,7 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
   }
 
   const result = {
-    name: name && name.toUpperCase(),
+    name,
     classes,
     id,
     args,

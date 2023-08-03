@@ -93,10 +93,10 @@ await loadServer()
 
 app.get(
   r => {
-    r.set('Cache-Control', 'no-store')
+    r.header('Cache-Control', 'no-store')
     // Don't serve _ (server) folder or hidden paths
     if (r.url.charCodeAt(1) === 46 || r.url.indexOf('/.') !== -1) // _
-      return r.end(403)
+      return r.status(403).end()
   },
   async r => {
     if ((r.headers.accept || '').indexOf('text/html') !== 0 || path.extname(r.url))
@@ -127,7 +127,7 @@ app.get('/node_modules/sin', app.files(sinRoot, {
 
 app.get(r => {
   if (!r.url.endsWith('.js') && !r.url.endsWith('.ts'))
-    return r.end('Not Found', 404)
+    return r.status(404).end('Not Found')
 })
 
 app.get(

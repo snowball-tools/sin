@@ -44,9 +44,13 @@ command !== 'server' && app.get(r => {
     {},
     { location: protocol + (r.headers.host || ('localhost' + port)) + r.url }
   ).then(x => {
-    r.end(wrap(x, {
-      body: command === 'ssr' ? '' : '<script type=module src="/' + entry + '"></script>'
-    }), x.status || 200, x.headers)
+    r.end(
+      wrap(x, {
+        body: command === 'ssr' ? '' : '<script type=module src="/' + entry + '"></script>'
+      }),
+      x.status || 200,
+      x.headers
+    )
   })
 })
 
@@ -69,7 +73,7 @@ async function listen() {
 async function listenHttp() {
   if (httpRedirect) {
     const app = ey()
-    app.all(r => r.end(301, { Location: 'https://' + (r.headers.host || host) + r.url }))
+    app.all(r => r.end('', 301, { Location: 'https://' + (r.headers.host || host) + r.url }))
     await app.listen(portHttp, address)
   } else {
     await app.listen(portHttp, address)

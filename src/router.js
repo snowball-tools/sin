@@ -1,6 +1,5 @@
 import window from './window.js'
-import { isFunction, cleanSlash } from './shared.js'
-import query from './query.js'
+import { isFunction, cleanSlash, scrollSave, scrollRestore } from './shared.js'
 
 let routing = false
 
@@ -32,15 +31,18 @@ function params(path, xs) {
 }
 
 export default function router(s, root, rootContext) {
-  const location = rootContext.location
-  const routed = s(({ route, ...attrs }, [view], context) => { // eslint-disable-line
-    context.route = route
+  const location = route.location = rootContext.location
+  const routed = s(({ key, route, ...attrs }, [view], context) => { // eslint-disable-line
+    context.route = router(s, key.replace(/\/$/, ''), rootContext)
+    context.parent = route
+    context.root = route.parent ? route.parent.root : route
     return () => typeof view === 'string'
       ? import((view[0] === '/' ? '' : route) + view).then(x => resolve(x.default, attrs, context))
       : resolve(view, attrs, context)
   })
 
-  route.query = query(s, rootContext.location)
+  const query = route.query = rootContext.query
+
   route.toString = route
   route.has = x => x === '/'
     ? (getPath(location) === root || (getPath(location) === '/' && root === ''))
@@ -73,7 +75,7 @@ export default function router(s, root, rootContext) {
     ).replace(/(.)\/$/, '$1')
   }
 
-  function reroute(path, { state, replace = false, scroll = rootChange(path) } = {}) {
+  function reroute(path, { state, replace = false } = {}) {
     if (path === getPath(location) + location.search)
       return
 
@@ -83,12 +85,16 @@ export default function router(s, root, rootContext) {
         ? window.location.search = s.pathmode + path
         : window.history[replace ? 'replaceState' : 'pushState'](state, null, s.pathmode + path)
     routeState[path] = state
-    s.redraw()
-    scroll && scrollTo(0, 0)
+    path.indexOf(location.search) > -1 && rootContext.query(location.search)
+    s.redrawing
+      ? requestAnimationFrame(s.redraw)
+      : s.redraw()
+    scrollTo(0, 0)
   }
 
-  function rootChange(path) {
-    return path.split('/')[1] !== route.path.split('/')[1]
+  function popstate({ state = {} } = {}) {
+    s.redraw()
+    state && requestAnimationFrame(() => scrollRestore(state.scrollLeft, state.scrollTop))
   }
 
   function route(routes, options = {}) {
@@ -102,7 +108,7 @@ export default function router(s, root, rootContext) {
       routing = true
       s.pathmode[0] === '#'
         ? window.addEventListener('hashchange', s.redraw, { passive: true })
-        : isFunction(window.history.pushState) && window.addEventListener('popstate', s.redraw, { passive: true })
+        : isFunction(window.history.pushState) && window.addEventListener('popstate', popstate, { passive: true })
     }
 
     const path = getPath(location, root.length)
@@ -126,13 +132,9 @@ export default function router(s, root, rootContext) {
     if (view === undefined || match[0] === '/?')
       rootContext.doc.status(404)
 
-    const subRoute = router(s, current.replace(/\/$/, ''), rootContext)
-    subRoute.parent = route
-    subRoute.root = route.parent ? route.parent.root : route
-
     return routed({
       key: current || '?',
-      route: subRoute,
+      route,
       ...(root + path === current && routeState[root + path] || {}),
       ...params(match || [], pathTokens)
     },

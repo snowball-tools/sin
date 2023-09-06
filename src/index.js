@@ -5,11 +5,13 @@ import window from './window.js'
 import router from './router.js'
 import { parse, alias, formatValue } from './style.js'
 import {
+  scrollRestore,
   isObservable,
   ignoredAttr,
   stackTrace,
   cleanSlash,
   isFunction,
+  scrollSave,
   className,
   styleProp,
   isTagged,
@@ -43,7 +45,6 @@ const removing = new WeakSet()
 
 let idle = true
   , afterUpdate = []
-  , redrawing = false
 
 export default function s(...x) {
   const type = typeof x[0]
@@ -52,8 +53,8 @@ export default function s(...x) {
     : bind(S, isTagged(x[0])
         ? tagged(x)
         : type === 'function'
-          ? new View(redrawing, x)
-          : new View(redrawing, [x[1], x[0]])
+          ? new View(s.redrawing, x)
+          : new View(s.redrawing, [x[1], x[0]])
     )
 }
 
@@ -79,6 +80,7 @@ function bind(x, that) {
   return fn
 }
 
+s.redrawing = false
 s.sleep = (x, ...xs) => new Promise(r => setTimeout(r, x, ...xs))
 s.with = (x, fn) => x === undefined ? x : fn(x)
 s.isServer = false
@@ -201,6 +203,8 @@ function mount(dom, view, attrs = {}, context = {}) {
   if (s.isServer)
     return { view, attrs, context }
 
+  scrollRestoration()
+
   context.hydrating = shouldHydrate(dom.firstChild)
   const doc = {
     head: context.hydrating ? noop : head,
@@ -214,6 +218,16 @@ function mount(dom, view, attrs = {}, context = {}) {
   context.route = router(s, '', context)
   mounts.set(dom, { view, attrs, context })
   draw({ view, attrs, context }, dom)
+}
+
+function scrollRestoration() {
+  // window.history.scrollRestoration = 'manual' // test if needed (might prevent scrollTo 0 before scrollRestore)
+  history.state && history.state.scrollTop && scrollRestore(history.state.scrollLeft, history.state.scrollTop)
+  let scrollTimer
+  document.addEventListener('scroll', () => {
+    clearTimeout(scrollTimer)
+    scrollTimer = setTimeout(scrollSave, 100)
+  }, { passive: true })
 }
 
 function head(x) {
@@ -240,14 +254,14 @@ function globalRedraw() {
 }
 
 function draw({ view, attrs, context }, dom) {
-  redrawing = true
+  s.redrawing = true
   try {
     updates(dom, asArray(view(attrs)), context)
   } catch (error) {
     attrs.error = error
     updates(dom, asArray(context.error(error, attrs, [], context)), context)
   }
-  redrawing = false
+  s.redrawing = false
   afterRedraw()
 }
 

@@ -3,7 +3,7 @@ export const stackTrace = Symbol('stackTrace')
 export const hasOwn = {}.hasOwnProperty
 
 export function cleanSlash(x) {
-  return x && String(x).replace(/\/+/g, '/').replace(/(.)\/$/, '$1')
+  return x && String(x).replace(/\/+/g, '/').replace(/(.)\/$/, '$1').replace('/?', '?')
 }
 
 export function notValue(x) {
@@ -78,4 +78,22 @@ function classObject(x) {
   for (const k in x)
     c += (c ? ' ' : '') + (x[k] || '')
   return c
+}
+
+export function scrollRestore(x, y) {
+  x
+    ? document.documentElement.style.minWidth = (x + window.innerWidth) + 'px'
+    : document.documentElement.style.minWidth = ''
+  y
+    ? document.documentElement.style.minHeight = (y + window.innerHeight) + 'px'
+    : document.documentElement.style.minHeight = ''
+  window.scrollTo(x || 0, y || 0)
+}
+
+export function scrollSave() {
+  window.history.replaceState({
+    ...history.state,
+    scrollLeft: document.documentElement.scrollLeft || document.body.scrollLeft,
+    scrollTop: document.documentElement.scrollTop || document.body.scrollTop
+  }, '')
 }

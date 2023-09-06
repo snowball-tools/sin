@@ -4,6 +4,7 @@ import live, { signal } from './live.js'
 import window from './window.js'
 import router from './router.js'
 import { parse, alias, formatValue } from './style.js'
+import query from './query.js'
 import {
   scrollRestore,
   isObservable,
@@ -95,7 +96,7 @@ s.live = live
 s.signal = signal
 s.on = on
 s.trust = trust
-s.route = router(s, '', { location: window.location })
+s.route = router(s, '', { location: window.location, query: query(s, window.location) })
 s.window = window
 s.error = s((error) => {
   console.error(error) // eslint-disable-line
@@ -215,7 +216,7 @@ function mount(dom, view, attrs = {}, context = {}) {
   }
 
   context.doc = doc
-  context.route = router(s, '', context)
+  context.route = router(s, '', { doc: context.doc, location: context.location, query: s.route.query })
   mounts.set(dom, { view, attrs, context })
   draw({ view, attrs, context }, dom)
 }

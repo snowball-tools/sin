@@ -7,7 +7,10 @@ export default function Query(s, l) {
   let usp = new U(last)
   let temp
 
-  const query = { replace: x => (usp = new U(x), update()), clear: () => query.replace('') }
+  const query = s.live()
+  query.replace = x => (usp = new U(x), update())
+  query.clear = () => query.replace('')
+
   for (const key in U.prototype)
     query[key] = (...xs) => (temp = USP()[key](...xs), modifiers.includes(key) && update(), temp)
 
@@ -27,6 +30,7 @@ export default function Query(s, l) {
       null,
       target
     )
+    query(l.search)
     s.redraw()
   }
 }

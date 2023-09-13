@@ -44,8 +44,9 @@ const removing = new WeakSet()
     , keySymbol = Symbol('key')
     , sSymbol = Symbol('s')
 
-let idle = true
-  , afterUpdate = []
+let afterUpdate = []
+  , redrawer
+  , redrawed
 
 export default function s(...x) {
   const type = typeof x[0]
@@ -246,12 +247,17 @@ function shouldHydrate(dom) {
 }
 
 function redraw() {
-  idle && (requestAnimationFrame(globalRedraw), idle = false)
+  if (!redrawer) {
+    requestAnimationFrame(globalRedraw)
+    redrawer = new Promise(r => redrawed = r)
+  }
+  return redrawer
 }
 
 function globalRedraw() {
   mounts.forEach(draw)
-  idle = true
+  redrawed()
+  redrawer = null
 }
 
 function draw({ view, attrs, context }, dom) {

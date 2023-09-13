@@ -75,7 +75,7 @@ export default function router(s, root, rootContext) {
     ).replace(/(.)\/$/, '$1')
   }
 
-  function reroute(path, { state, replace = false } = {}) {
+  function reroute(path, { state, replace = false, preventScroll } = {}) {
     if (path === getPath(location) + location.search)
       return
 
@@ -86,10 +86,11 @@ export default function router(s, root, rootContext) {
         : window.history[replace ? 'replaceState' : 'pushState'](state, null, s.pathmode + path)
     routeState[path] = state
     path.indexOf(location.search) > -1 && rootContext.query(location.search)
-    s.redrawing
-      ? requestAnimationFrame(s.redraw)
-      : s.redraw()
-    scrollTo(0, 0)
+    s.redraw().then(() =>
+      preventScroll || s.route.preventScroll
+        ? s.route.preventScroll = false
+        : scrollTo(0, 0)
+    )
   }
 
   function popstate({ state = {} } = {}) {

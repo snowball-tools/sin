@@ -49,7 +49,13 @@ command !== 'server' && app.get(r => {
         body: command === 'ssr' ? '' : '<script type=module src="/' + entry + '"></script>'
       }),
       x.status || 200,
-      x.headers
+      {
+        ETag: null,
+        'Cache-Control': 'max-age=0, no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: new Date().toUTCString(),
+        ...x.headers
+      }
     )
   })
 })

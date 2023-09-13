@@ -102,11 +102,13 @@ async function getServer() {
 
 async function getMount() {
   const specifiesIndex = argv.find((x, i, xs) => x[0] !== '-' && x.endsWith('.js'))
-      , entry = specifiesIndex || 'index.js'
-      , absEntry = path.isAbsolute(entry) ? entry : path.join(cwd, entry)
-      , hasEntry = (await fsp.readFile(absEntry, 'utf8').catch(specifiesIndex ? undefined : (() => ''))).indexOf('export default ') !== -1
+      , index = specifiesIndex || 'index.js'
+      , absIndex = path.isAbsolute(index) ? index : path.join(cwd, index)
+      , stats = await fsp.stat(absIndex)
+      , hasIndex = (await fsp.readFile(absIndex, 'utf8').catch(specifiesIndex ? undefined : (() => ''))).indexOf('export default ') !== -1
+      , entry = index + '?ts=' + stats.mtimeMs.toFixed(0)
 
-  return hasEntry
-    ? { entry, mount: (await import(absEntry)).default }
+  return hasIndex
+    ? { entry, mount: (await import(absIndex)).default }
     : { entry }
 }

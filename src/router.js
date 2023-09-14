@@ -1,5 +1,5 @@
 import window from './window.js'
-import { isFunction, cleanSlash, scrollSave, scrollRestore } from './shared.js'
+import { isFunction, cleanSlash, scrollRestore } from './shared.js'
 
 let routing = false
 
@@ -41,7 +41,7 @@ export default function router(s, root, rootContext) {
       : resolve(view, attrs, context)
   })
 
-  const query = route.query = rootContext.query
+  route.query = rootContext.query
 
   route.toString = route
   route.has = x => x === '/'

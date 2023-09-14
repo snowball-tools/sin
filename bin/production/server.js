@@ -31,9 +31,8 @@ const app = ey()
 
 typeof server.default === 'function' && await server.default(app)
 
-app.get(app.files('+public'))
-
 app.get(app.files('+build'))
+app.get(app.files('+public'))
 
 command !== 'server' && app.get(r => {
   if ((r.headers.accept || '').indexOf('text/html') !== 0)

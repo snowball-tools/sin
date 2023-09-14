@@ -20,6 +20,7 @@ const argv = process.argv.slice(2)
     , httpRedirect = ssl && env.HTTP_REDIRECT !== 'no'
     , address = env.ADDRESS || '0.0.0.0'
     , { mount, entry } = await getMount()
+    , entryPath = resolveEntry(entry)
     , server = await getServer()
 
 let certChangeThrottle
@@ -42,10 +43,14 @@ command !== 'server' && app.get(r => {
     mount,
     {},
     { location: protocol + (r.headers.host || ('localhost' + port)) + r.url }
-  ).then(x => {
+  ).then(async x => {
+    const stats = await fsp.stat(entryPath)
+
     r.end(
       wrap(x, {
-        body: command === 'ssr' ? '' : '<script type=module src="/' + entry + '"></script>'
+        body: command === 'ssr' ? '' : '<script type=module src="/'
+           + (entry + '?ts=' + stats.mtimeMs.toFixed(0))
+           + '"></script>'
       }),
       x.status || 200,
       {
@@ -69,6 +74,17 @@ ssl && fs.watch(ssl.cert, () => {
     listenHttps()
   }, 5000)
 })
+
+function resolveEntry(x) {
+  const a = path.join(cwd, '+build', x)
+      , b = path.join(cwd, '+public', x)
+
+  return fs.existsSync(a)
+    ? a
+    : fs.existsSync(b)
+    ? b
+    : x
+}
 
 async function listen() {
   ssl && listenHttps()
@@ -101,11 +117,9 @@ async function getServer() {
 
 async function getMount() {
   const specifiesIndex = argv.find((x, i, xs) => x[0] !== '-' && x.endsWith('.js'))
-      , index = specifiesIndex || 'index.js'
-      , absIndex = path.isAbsolute(index) ? index : path.join(cwd, index)
-      , stats = await fsp.stat(absIndex)
+      , entry = specifiesIndex || 'index.js'
+      , absIndex = path.isAbsolute(entry) ? entry : path.join(cwd, entry)
       , hasIndex = (await fsp.readFile(absIndex, 'utf8').catch(specifiesIndex ? undefined : (() => ''))).indexOf('export default ') !== -1
-      , entry = index + '?ts=' + stats.mtimeMs.toFixed(0)
 
   return hasIndex
     ? { entry, mount: (await import(absIndex)).default }

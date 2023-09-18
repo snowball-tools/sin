@@ -126,9 +126,10 @@ export default function router(s, root, rootContext) {
           : acc
       }, [0])
 
-    const current = root + (match && match[0] === '/*'
-      ? '/'
-      : match.map((x, i) => pathTokens[i]).join(''))
+    const current = root + (match && match[0] !== '/*'
+      ? match.map((x, i) => pathTokens[i]).join('')
+      : '/'
+    )
 
     if (view === undefined || match[0] === '/?')
       rootContext.doc.status(404)

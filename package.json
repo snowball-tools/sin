@@ -44,7 +44,7 @@
   ],
   "dependencies": {
     "esbuild": "0.16.13",
-    "ey": "github:porsager/ey#dfeea9cc01d3d95f1d6af66389936994ee888e6e",
+    "ey": "github:porsager/ey#50f158323c613226d31afa1afe7464d8799ece2f",
     "prexit": "2.0.2",
     "ws": "8.11.0"
   }

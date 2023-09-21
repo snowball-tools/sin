@@ -8,6 +8,14 @@ const stackLine = ({ path, line, column }) => [path, line, column].join(':')
 
 const editors = ({
   darwin: {
+    zed: {
+      path: '/Applications/Zed.app/Contents/MacOS/cli',
+      args: stackLine
+    },
+    zedp: {
+      path: '/Applications/Zed Preview.app/Contents/MacOS/cli',
+      args: stackLine
+    },
     subl: {
       path: '/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl',
       args: stackLine

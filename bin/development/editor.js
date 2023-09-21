@@ -65,9 +65,10 @@ function findEditor(name) {
 
   editor = name
     ? editors[name]
-    : process.env.EDITOR
-    ? envEditor()
-    : editors[Object.keys(editors).find(editor => fs.existsSync(editors[editor].path))]
+    : (process.env.EDITOR
+      && envEditor()
+      || editors[Object.keys(editors).find(editor => fs.existsSync(editors[editor].path))]
+    )
 
   if (!editor)
     return console.log('Could not find any editor') // eslint-disable-line

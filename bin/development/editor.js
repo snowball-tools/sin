@@ -14,7 +14,8 @@ const editors = ({
     },
     mvim: {
       path: '/Applications/MacVim.app/Contents/bin/mvim',
-      args: ({ path, line }) => [`+${line}`, path]
+      spawn: '/usr/bin/open',
+      args: ({ path, line }) => ['mvim://open?url=file://' + encodeURI(path) + '&line=' + line]
     },
     code: {
       path: '/Applications/Visual Studio Code.app/Contents/MacOS/Electron',
@@ -53,7 +54,7 @@ const editors = ({
 })[os.platform()]
 
 export default function(target, name) {
-  findEditor(name) && cp.spawn(editor.path, [].concat(editor.args(target)), {
+  findEditor(name) && cp.spawn(editor.spawn || editor.path, [].concat(editor.args(target)), {
     stdio: 'ignore',
     detached: true
   }).unref()

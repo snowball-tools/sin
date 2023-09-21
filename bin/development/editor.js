@@ -15,7 +15,7 @@ const editors = ({
     mvim: {
       path: '/Applications/MacVim.app/Contents/bin/mvim',
       spawn: '/usr/bin/open',
-      args: ({ path, line }) => ['mvim://open?url=file://' + encodeURI(path) + '&line=' + line]
+      args: ({ path, line }) => ['mvim://open?url=file://' + encodeURI(encodeURI(path)) + '&line=' + line]
     },
     code: {
       path: '/Applications/Visual Studio Code.app/Contents/MacOS/Electron',

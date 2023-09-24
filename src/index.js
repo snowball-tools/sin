@@ -255,9 +255,9 @@ function redraw() {
 }
 
 function globalRedraw() {
+  redrawer = null
   mounts.forEach(draw)
   redrawed()
-  redrawer = null
 }
 
 function draw({ view, attrs, context }, dom) {

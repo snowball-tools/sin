@@ -20,7 +20,7 @@ const argv = process.argv.slice(2)
     , httpRedirect = ssl && env.HTTP_REDIRECT !== 'no'
     , address = env.ADDRESS || '0.0.0.0'
     , { mount, entry } = await getMount()
-    , entryPath = resolveEntry(entry)
+    , entryPath = resolveEntry(entry, command)
     , server = await getServer()
 
 let certChangeThrottle
@@ -75,15 +75,12 @@ ssl && fs.watch(ssl.cert, () => {
   }, 5000)
 })
 
-function resolveEntry(x) {
-  const a = path.join(cwd, '+build', x)
-      , b = path.join(cwd, '+public', x)
-
-  return fs.existsSync(a)
-    ? a
-    : fs.existsSync(b)
-    ? b
-    : x
+function resolveEntry(x, command) {
+  return [
+    path.join(cwd, command === 'ssr' ? '' : '+build', x),
+    path.join(cwd, '+public', x),
+    path.join(cwd, x)
+  ].find(x => fs.existsSync(x))
 }
 
 async function listen() {

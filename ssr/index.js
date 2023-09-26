@@ -87,13 +87,17 @@ export default async function({ view = () => '', attrs = {}, context = {} } = {}
     return await updateChildren([].concat(context.error(error, attrs, [], context)), context)
   })
 
+  const css = '<style class="sin">'
+    + cssRules().map(x => x.startsWith('@media') ? x + '}' : x).join('')
+    + '</style>'
+
   return {
     headers,
     links,
     status: context.doc.status(),
     title: context.doc.title(),
     lang: context.doc.lang(),
-    css: '<style class="sin">' + cssRules().join('') + '</style>', // perhaps remove classes according to names in html
+    css, // perhaps remove classes according to names in html
     html,
     head
   }

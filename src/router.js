@@ -9,20 +9,6 @@ function tokenizePath(x) {
   return x.split(/(?=\/)/)
 }
 
-function getScore(match, path) {
-  return match.reduce((acc, x, i) =>
-    acc + (
-      x === '/?' ? 1
-      : x === path[i] ? 6
-      : x && path[i] && x.toLowerCase() === path[i].toLowerCase() ? 5
-      : x[1] === ':' && path[i] && path[i].length > 1 ? 4
-      : x === '/' && !path[i] ? 3
-      : x === '*' || x === '/*' ? 2
-      : -Infinity
-    )
-  , 0)
-}
-
 function params(path, xs) {
   return path.reduce((acc, x, i) => {
     x[1] === ':' && (acc[x.slice(2)] = decodeURIComponent(xs[i].slice(1)))
@@ -116,16 +102,7 @@ export default function router(s, root, rootContext) {
     const path = getPath(location, root.length)
     const pathTokens = tokenizePath(path)
 
-    const [, match, view] = Object
-      .entries(routes)
-      .reduce((acc, [match, view]) => {
-        match.charCodeAt(0) === 47 || (match = '/' + match) // /
-        match = tokenizePath(cleanSlash(match))
-        const score = getScore(match, pathTokens)
-        return score > acc[0]
-          ? [score, match, view]
-          : acc
-      }, [0])
+    const { match, view } = matchRoutes(routes, pathTokens)
 
     const current = root + (match && match[0] !== '/*'
       ? match.map((x, i) => pathTokens[i]).join('')
@@ -144,4 +121,47 @@ export default function router(s, root, rootContext) {
       view
     )
   }
+}
+
+function matchRoutes(routes, paths) {
+  let max = 0
+  let match
+  let view
+
+  function tryMatch(m, v) {
+    m.charCodeAt(0) !== 47 && (m = '/' + m)
+    m = tokenizePath(cleanSlash(m))
+
+    if (typeof v === 'object' && v != null) {
+      for (let key in v)
+        tryMatch(m + key, v[key])
+      return
+    }
+
+    const score = getScore(m, paths)
+    if (score > max) {
+      max = score
+      match = m
+      view = v
+    }
+  }
+
+  for (const x in routes)
+    tryMatch(x, routes[x])
+
+  return { match, view }
+}
+
+function getScore(match, path) {
+  return match.reduce((acc, x, i) =>
+    acc + (
+      x === '/?' ? 1
+      : x === path[i] ? 6
+      : x && path[i] && x.toLowerCase() === path[i].toLowerCase() ? 5
+      : x[1] === ':' && path[i] && path[i].length > 1 ? 4
+      : x === '/' && !path[i] ? 3
+      : x === '*' || x === '/*' ? 2
+      : -Infinity
+    )
+  , 0)
 }

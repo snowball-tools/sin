@@ -106,12 +106,11 @@ s.error = s((error) => {
   ))
 })
 
-const trusted = s(({ key, values }) => {
+const trusted = s(({ strings, values = [] }) => {
   const div = document.createElement('div')
-  div.innerHTML = String.raw({ raw: key }, ...values)
-  const nodes = div.firstChild === div.lastChild
-    ? div.firstChild
-    : [...div.childNodes]
+  Array.isArray(strings.raw) || (strings = Object.assign([strings], { raw: [strings] }))
+  div.innerHTML = String.raw(strings, ...values)
+  const nodes = [...div.childNodes, document.createComment('<!--,-->')]
   return () => nodes
 })
 

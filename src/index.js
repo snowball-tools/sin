@@ -116,7 +116,7 @@ const trusted = s(({ strings, values = [] }) => {
 })
 
 function trust(strings, ...values) {
-  return trusted({ key: '' + strings, values })
+  return trusted({ key: '' + strings, strings, values })
 }
 
 function on(target, event, fn, options) {

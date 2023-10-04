@@ -269,11 +269,12 @@ function escapeAttrValue(x = '') {
   return s || x
 }
 
-function trust(raw, ...values) {
-  const html = String.raw({ raw }, ...values)
+function trust(strings, ...values) {
+  Array.isArray(strings.raw) || (strings = Object.assign([strings], { raw: [strings] }))
+  const html = String.raw(strings, ...values)
       , count = rootNodeCount(html)
 
-  return new window.Node((count > 1 ? '<!--[' + count + '-->' : '') + html)
+  return new window.Node('<!--[' + count + '-->' + html + '<!--,-->')
 }
 
 function rootNodeCount(x) {

@@ -115,7 +115,7 @@ export default function router(s, root, rootContext) {
     return routed({
       key: current || '?',
       route,
-      ...(root + path === current && routeState[root + path] || {}),
+      ...(root + path === current && routeState[root + path] || history.state || {}),
       ...params(match || [], pathTokens)
     },
       view

@@ -51,7 +51,7 @@ const cache = new Map()
     , hashed = new Set()
     , isServer = typeof window === 'undefined'
     , cssVars = isServer || (window.CSS && CSS.supports('color', 'var(--support-test)'))
-    , pxFunctions = ['perspective', 'blur', 'drop-shadow', 'inset', 'polygon']
+    , pxFunctions = ['perspective', 'blur', 'drop-shadow', 'inset', 'polygon', 'minmax']
     , nested = ['@media', '@supports', '@document', '@layer']
     , isNested = x => nested.some(n => x.indexOf(n) === 0)
     , isPxFunction = x => (x.indexOf('translate') === 0 || pxFunctions.indexOf(x) > -1)

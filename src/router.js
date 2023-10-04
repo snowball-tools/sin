@@ -20,6 +20,7 @@ export default function router(s, root, rootContext) {
   const location = route.location = rootContext.location
   const routed = s(({ key, route, ...attrs }, [view], context) => { // eslint-disable-line
     context.route = router(s, key.replace(/\/$/, ''), rootContext)
+    context.route.parent = route
     context.parent = route
     route.key = key
     context.root = route.parent ? route.parent.root : route
@@ -112,11 +113,14 @@ export default function router(s, root, rootContext) {
     if (view === undefined || match[0] === '/?')
       rootContext.doc.status(404)
 
+    route.params = params(match || [], pathTokens)
+
     return routed({
       key: current || '?',
       route,
+      ...(route.parent ? route.parent.params : {}),
       ...(root + path === current && routeState[root + path] || history.state || {}),
-      ...params(match || [], pathTokens)
+      ...route.params
     },
       view
     )

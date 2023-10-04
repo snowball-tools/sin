@@ -35,6 +35,7 @@ export default function router(s, root, rootContext) {
   const routed = s(({ key, route, ...attrs }, [view], context) => { // eslint-disable-line
     context.route = router(s, key.replace(/\/$/, ''), rootContext)
     context.parent = route
+    route.key = key
     context.root = route.parent ? route.parent.root : route
     return () => typeof view === 'string'
       ? import((view[0] === '/' ? '' : route) + view).then(x => resolve(x.default, attrs, context))

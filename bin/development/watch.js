@@ -5,8 +5,6 @@ import fs from 'fs'
 
 watch.loaded = new Set()
 
-globalThis.sinLoader.onmessage = e => [...e.data].forEach(x => watch.loaded.add(x))
-
 export default async function watch(scripts = {}) {
   const watcher = await Watcher(x => {
     console.log(x, 'Changed - restart') // eslint-disable-line

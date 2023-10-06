@@ -41,8 +41,7 @@ function start() {
     {
       cwd: process.cwd(),
       execArgv: [
-        '--no-warnings',
-        '--experimental-loader', url.pathToFileURL(path.join(here, '/loader.js'))
+        '--import', url.pathToFileURL(path.join(here, '/import.js'))
       ]
     }
   )

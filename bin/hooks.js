@@ -2,9 +2,17 @@ import path from 'path'
 import fs from 'fs'
 import url from 'url'
 
-const loaded = new Set()
-
 const cwd = process.cwd()
+let watch
+let dev
+
+export async function initialize(x) {
+  dev = x
+  if (dev) {
+    watch = new Set()
+    dev.on('message', () => dev.postMessage(watch))
+  }
+}
 
 export async function resolve(specifier, context, nextResolve) {
   if (path.isAbsolute(specifier) && !specifier.startsWith(cwd))
@@ -17,8 +25,9 @@ export async function resolve(specifier, context, nextResolve) {
     : null
 
   if (x) {
-    x.indexOf(cwd) === 0 && loaded.add(x)
-    return nextResolve(extensionless(specifier, x), context)
+    const result = await nextResolve(extensionless(specifier, x), context)
+    dev && x.indexOf(cwd) === 0 && (watch.add(url.fileURLToPath(result.url)), dev.postMessage(watch))
+    return result
   }
 
   return nextResolve(specifier, context)
@@ -37,9 +46,4 @@ function canRead(x) {
   } catch (_) {
     return
   }
-}
-
-export function globalPreload({ port }) {
-  port.onmessage = (evt) => port.postMessage(loaded)
-  return 'globalThis.sinLoader = port'
 }

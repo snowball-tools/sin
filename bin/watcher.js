@@ -12,6 +12,7 @@ export default async function Watcher(fn) {
   }
 
   function add(x) {
+    // if (!x) return
     x = normalize(x)
     if (watched.has(x))
       return
@@ -42,6 +43,8 @@ export default async function Watcher(fn) {
   }
 
   function remove(x) {
+    // if (!x) return
+
     x = normalize(x)
     if (!watched.has(x))
       return

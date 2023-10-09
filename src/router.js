@@ -119,7 +119,7 @@ export default function router(s, root, rootContext) {
       key: current || '?',
       route,
       ...(route.parent ? route.parent.params : {}),
-      ...(root + path === current && routeState[root + path] || history.state || {}),
+      ...(root + path === current && routeState[root + path] || window.history.state || {}),
       ...route.params
     },
       view

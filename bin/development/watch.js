@@ -5,8 +5,8 @@ import fs from 'fs'
 
 watch.loaded = new Set()
 
-export default async function watch(scripts = {}) {
-  const watcher = await Watcher(x => {
+export default function watch(scripts = {}) {
+  const watcher = Watcher(x => {
     console.log(x, 'Changed - restart') // eslint-disable-line
     prexit.exit(123)
   })

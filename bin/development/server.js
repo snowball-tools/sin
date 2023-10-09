@@ -8,6 +8,7 @@ import Url from 'url'
 import ey from 'ey'
 import prexit from 'prexit'
 import Watcher from '../watcher.js'
+import { gracefulRead, jail } from './shared.js'
 
 import ssr, { wrap } from '../../ssr/index.js'
 
@@ -35,7 +36,7 @@ const env = process.env
     , staticImportDir = /(?:`[^`]*`)|((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: from )?\s*['"])((?:\.\/|\.\.\/|\/)+?[a-zA-Z0-9@./_-]+?(?<!\.[tj]s))(['"])/g // eslint-disable
     , dynamicImportDir = /(?:`[^`]*`)|([^$.]import\(\s?['"])((?:\.\/|\.\.\/|\/)+?[a-zA-Z0-9@/._-]+?(?<!\.[tj]s))(['"]\s?\))/g
     , resolveCache = Object.create(null)
-    , watcher = await Watcher(changed)
+    , watcher = Watcher(changed)
     , scriptsPath = path.join(chromeHome, '.sin-scripts')
     , scripts = (await gracefulRead(scriptsPath).then(x => JSON.parse(x)).catch(() => {}) || {})
     , seen = {}
@@ -153,12 +154,6 @@ async function changed(x) {
   changed && saveScripts(x)
 }
 
-async function gracefulRead(x) {
-  return fsp.readFile(x, 'utf8')
-    .catch(async() => (await new Promise(r => setTimeout(r, 10)), fsp.readFile(x, 'utf8')))
-    .catch(async() => (await new Promise(r => setTimeout(r, 20)), fsp.readFile(x, 'utf8')))
-}
-
 chrome = command !== 'server' && await startChrome()
 
 async function startChrome() {
@@ -254,12 +249,12 @@ function saveScripts() {
 }
 
 function modify(x, path) {
-  return x
+  return jail(x
     .replace(staticImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
     .replace(dynamicImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
     .replace(staticImportDir, (_, a, b, c) => a ? a + extensionless(b, path) + c : _)
     .replace(dynamicImportDir, (_, a, b, c) => a ? a + extensionless(b, path) + c : _)
-    .replace(/((function.*?\)|=>)\s*{)/g, '$1eval(0);') // jail
+  )
 }
 
 async function loadServer() {

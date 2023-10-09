@@ -3,11 +3,12 @@
 // https://chromedevtools.github.io/devtools-protocol/
 
 import path from 'path'
-import net from 'net'
 import cp from 'child_process'
 import fs from 'fs'
 import fsp from 'fs/promises'
 import WS from 'ws'
+
+import { getPort } from './shared.js'
 
 import '../../ssr/index.js'
 import s from '../../src/index.js'
@@ -91,7 +92,7 @@ export default async function(home, url, scriptParsed) {
     socket.onopen = onopen
     socket.onmessage = onmessage
     socket.onerror = onerror
-    socket.onclose = (x) => !errored && setTimeout(connect, 100)
+    socket.onclose = () => !errored && setTimeout(connect, 100)
     return open || new Promise((resolve, reject) => open = { resolve, reject })
   }
 
@@ -175,15 +176,6 @@ async function getTabs(url, retries = 0) {
     await new Promise(r => setTimeout(r, 500))
     return getTabs(url, ++retries)
   }
-}
-
-async function getPort() {
-  return new Promise(resolve => {
-    const server = net.createServer().listen(0, () => {
-      const x = server.address().port
-      server.close(() => resolve(x))
-    })
-  })
 }
 
 function getPath() {

@@ -2,6 +2,8 @@ import path from 'path'
 import fs from 'fs'
 import url from 'url'
 
+import { jail } from './development/shared.js'
+
 const cwd = process.cwd()
 let watch
 let dev
@@ -31,6 +33,13 @@ export async function resolve(specifier, context, nextResolve) {
   }
 
   return nextResolve(specifier, context)
+}
+
+export async function load(url, context, nextLoad) {
+  const result = await nextLoad(url, context);
+  if (result.source && (context.format === 'commonjs' || context.format === 'module'))
+    result.source = jail(result.source.toString())
+  return result
 }
 
 function extensionless(x, full) {

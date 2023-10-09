@@ -3,7 +3,7 @@ import fs from 'fs'
 
 const start = Date.now()
 
-export default async function Watcher(fn) {
+export default function Watcher(fn) {
   const watched = new Map()
 
   return {

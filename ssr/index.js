@@ -91,7 +91,7 @@ export default async function({ view = () => '', attrs = {}, context = {} } = {}
   })
 
   const css = '<style class="sin">'
-    + cssRules().map(x => x.startsWith('@media') ? x + '}' : x).join('')
+    + cssRules().join('')
     + '</style>'
 
   return {

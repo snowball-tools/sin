@@ -358,10 +358,11 @@ function endBlock() {
     rule += propValue(rule, 'animation', animation + ' ' + temp)
     animation = ''
   } else {
+    const closing = selectors.map(x => x.charCodeAt(0) === 64 ? '}' : '').join('')
     selectors.pop()
     selectors.length && selectors[0].indexOf('@keyframes') === 0
       ? rules[selectors[0]] = (rules[selectors[0]] || '') + selector + '{' + rule + '}'
-      : (rule && (rules[path] = rule.trim() + selectors.map(x => x.charCodeAt(0) === 64 ? '}' : '').join('')))
+      : rule && (rules[path] = rule.trim() + closing)
     path = getPath(selectors)
     rule = rules[path] || ''
   }
@@ -446,11 +447,12 @@ function getPath(selectors) {
   if (selectors.length === 0)
     return '&&'
 
+  let n = 0
   return selectors.reduce((acc, x, i, xs) => {
     const char = x.charCodeAt(0)
-    return char === 64 && isNested(x)
-      ? x + '{' + (i === xs.length - 1 ? '&&' : '') + acc
-      : acc + (raw || i ? '' : char === 32 ? '&' : '&&') + x
+    return char === 64 && isNested(x) // @
+      ? (n++, x + '{' + (i === xs.length - 1 ? '&&' : '') + acc)
+      : acc + (raw || (i - n) ? '' : char === 32 ? '&' : '&&') + x
   }, '')
 }
 

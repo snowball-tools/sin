@@ -164,7 +164,7 @@ function getScore(match, path) {
       : x && path[i] && x.toLowerCase() === path[i].toLowerCase() ? 5
       : x[1] === ':' && path[i] && path[i].length > 1 ? 4
       : x === '/' && !path[i] ? 3
-      : x === '*' || x === '/*' ? 2
+      : x === '/*' ? 2
       : -Infinity
     )
   , 0)

@@ -12,7 +12,9 @@ const doc = window.document
     , unitCache = {}
 
 export const cssRules = () => style.sheet.cssRules
-export const alias = x => Object.entries(x).forEach(([k, v]) => aliasCache['@' + k] = v)
+export const alias = (k, v) => typeof v === 'string'
+  ? aliasCache['@' + k] = v
+  : Object.entries(k).forEach(([k, v]) => alias(k, v))
 
 const pxCache = {
   flex: '',

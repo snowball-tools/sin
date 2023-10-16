@@ -4,6 +4,7 @@ import { hasOwn } from '../src/shared.js'
 import px from './px.js'
 
 const noop = () => { /* noop */ }
+const rules = new Set()
 
 class Node {
   constructor(x) {
@@ -42,9 +43,14 @@ Object.assign(window, {
       }
       x === 'style' && Object.assign(dom, {
         sheet: {
-          insertRule: (rule, index) => index
-            ? dom.sheet.cssRules.splice(index, 0, rule)
-            : dom.sheet.cssRules.push(rule),
+          insertRule: (rule, index) => {
+            if (rule.indexOf('@keyframes') === 0 && rules.has(rule))
+              return
+            rules.add(rule)
+            return index
+              ? dom.sheet.cssRules.splice(index, 0, rule)
+              : dom.sheet.cssRules.push(rule)
+          },
           cssRules: []
         }
       })

@@ -1,6 +1,6 @@
 import window from './window.js'
 import View from '../src/view.js'
-import { cleanSlash, className, ignoredAttr, isEvent, isFunction, asArray, notValue, hasOwn } from '../src/shared.js'
+import { cleanSlash, className, ignoredAttr, isEvent, isFunction, asArray, notValue, hasOwn, mergeTag } from '../src/shared.js'
 import { asLocation, wrap } from './shared.js'
 import { formatValue, cssRules } from '../src/style.js'
 import router from '../src/router.js'
@@ -227,6 +227,7 @@ function updateComment(view) {
 async function updateComponent(view, context) {
   lastWasText = false
   let x = view.component[0](view.attrs, view.children, context)
+  mergeTag(x, view)
   const isAsync = x && isFunction(x.then) && ('<!--a' + context[uidSymbol]++ + '-->') || ''
   isAsync && (x = await x)
   x && hasOwn.call(x, 'default') && (x = x.default)

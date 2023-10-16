@@ -15,6 +15,7 @@ import {
   scrollSave,
   className,
   styleProp,
+  mergeTag,
   isTagged,
   notValue,
   isEvent,
@@ -789,25 +790,6 @@ function resolveError(instance, view, error) {
   return hasOwn.call(instance.error, sSymbol)
     ? instance.error().component[0](error, view.attrs, view.children, instance.context)
     : instance.error(error, view.attrs, view.children, instance.context)
-}
-
-function mergeTag(a, b) {
-  if (!b || !b.tag)
-    return a
-
-  if (!a || !a.tag)
-    return (a.tag = b.tag, a)
-
-  a.tag = {
-    id: b.tag.id || a.tag.id,
-    name: b.tag.name || a.tag.name,
-    classes: (a.tag.classes ? a.tag.classes + ' ' : '') + b.tag.classes,
-    args: b.tag.args,
-    vars: b.tag.vars,
-    parent: a.tag
-  }
-
-  return a
 }
 
 function attributes(dom, view, context) {

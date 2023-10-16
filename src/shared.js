@@ -31,7 +31,7 @@ export function isTagged(x) {
 }
 
 export function asCssVar(x) {
-  return x.charCodeAt(0) === 36 // 36
+  return x.charCodeAt(0) === 36 // $
     ? '--' + x.slice(1)
     : x.charCodeAt(0) === 45 && x.charCodeAt(1) === 45 // -
     ? x

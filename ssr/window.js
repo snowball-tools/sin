@@ -177,13 +177,12 @@ function XMLHttpRequest(options) {
         })
         req.on('error', error)
         xhr.timeout && (req.setTimeout(xhr.timeout), req.on('timeout', () => req.abort()))
-        data && req.write(data)
+        data !== undefined && req.write(data)
         req.end()
       } catch (e) {
         error(e)
       }
     }
-
   }
 
   return xhr

@@ -163,7 +163,7 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
   for (let j = 0; j < xs.length; j++) {
     rules
       ? parseStyles(0, j === xs.length - 1)
-      : parseSelector(xs, j, args, parent)
+      : parseSelector(xs, j, parent)
 
     x = xs[j + 1]
     if (j < args.length) {
@@ -216,7 +216,7 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
   return result
 }
 
-function parseSelector(xs, j, args, parent) {
+function parseSelector(xs, j, parent) {
   for (let i = 0; i <= x.length; i++) {
     char = x.charCodeAt(i)
     i < x.length && (hash = Math.imul(31, hash) + char | 0)

@@ -200,10 +200,9 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
       for (let i = 0; i < nesting; i++)
         specificity += '.' + temp
 
-      hashed.has(temp) || Object.entries(rules).forEach(([k, v]) => {
-        insert(
-          k.replace(/&/g, '.' + temp + specificity) + '{' + v + '}')
-      })
+      hashed.has(temp) || Object.entries(rules).forEach(([k, v]) =>
+        insert(k.replace(/&/g, '.' + temp + specificity) + '{' + v + '}')
+      )
     }
   }
 

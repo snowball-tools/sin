@@ -336,8 +336,12 @@ function startBlock(i) {
     value = prop = ''
     selectors.push(
       (noSpace(startChar) ? '' : ' ')
-      + (selector === '@font-face' ? Array(++fontFaces + 1).join(' ') : '') // unique font-face selector for rules
       + selector
+      + (
+        selector === '@font-face' && ++fontFaces
+          ? '/*' + Array(fontFaces).join(' ') + '*/' // unique font-face selector for rules
+          : ''
+      )
     )
     path = getPath(selectors)
     rule = rules[path] || ''
@@ -357,7 +361,7 @@ function endBlock() {
     rule += propValue(rule, 'animation', animation + ' ' + temp)
     animation = ''
   } else {
-    const closing = selectors.map(x => x.charCodeAt(0) === 64 ? '}' : '').join('')
+    const closing = selectors.map(x => x.charCodeAt(0) === 64 && x.indexOf('@font-face') === -1 ? '}' : '').join('')
     selectors.pop()
     selectors.length && selectors[0].indexOf('@keyframes') === 0
       ? rules[selectors[0]] = (rules[selectors[0]] || '') + selector + '{' + rule + '}'
@@ -449,7 +453,7 @@ function getPath(selectors) {
   let n = 0
   return selectors.reduce((acc, x, i, xs) => {
     const char = x.charCodeAt(0)
-    return char === 64 && isNested(x) // @
+    return char === 64 && (x.indexOf('@font-face') === 0 && i++, isNested(x)) // @
       ? (n++, x + '{' + (i === xs.length - 1 ? '&&' : '') + acc)
       : acc + (raw || (i - n) ? '' : char === 32 ? '&' : '&&') + x
   }, '')

@@ -169,16 +169,21 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
 
     x = xs[j + 1]
     if (j < args.length) {
+      const before = xs[j].slice(valueStart)
       if (cssVars && valueStart >= 0) {
-        const before = xs[j].slice(valueStart)
         temp = prefix + Math.abs(hash).toString(31)
         vars[varName = '--' + temp + j] = { property: prop, unit: getUnit(prop, last(fn)), index: j }
         value += before + 'var(' + varName + ')'
         valueStart = 0
       } else {
-        args[j] && (x = args[j] + x)
+        if (j < args.length) {
+          const x = args[j] + getUnit(prop, last(fn))
+          value += before + x
+          for (let i = 0; i < x.length; i++)
+            hash = Math.imul(31, hash) + x.charCodeAt(i) | 0
+        }
         cacheable = false
-        valueStart = -1
+        valueStart = cssVars ? -1 : 0
       }
     }
   }

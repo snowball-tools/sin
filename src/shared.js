@@ -97,3 +97,22 @@ export function scrollSave() {
     scrollTop: document.documentElement.scrollTop || document.body.scrollTop
   }, '')
 }
+
+export function mergeTag(a, b) {
+  if (!b || !b.tag)
+    return a
+
+  if (!a || !a.tag)
+    return (a.tag = b.tag, a)
+
+  a.tag = {
+    id: b.tag.id || a.tag.id,
+    name: b.tag.name || a.tag.name,
+    classes: (a.tag.classes ? a.tag.classes + ' ' : '') + b.tag.classes,
+    args: b.tag.args,
+    vars: b.tag.vars,
+    parent: a.tag
+  }
+
+  return a
+}

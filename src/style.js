@@ -177,8 +177,8 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
         valueStart = 0
       } else {
         if (j < args.length) {
-          const x = args[j] + getUnit(prop, last(fn))
-          value += before + x
+          const x = before + args[j] + getUnit(prop, last(fn))
+          value += x
           for (let i = 0; i < x.length; i++)
             hash = Math.imul(31, hash) + x.charCodeAt(i) | 0
         }

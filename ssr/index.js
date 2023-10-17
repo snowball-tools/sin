@@ -8,11 +8,12 @@ import s from '../src/index.js'
 import mimes from 'ey/src/mimes.js'
 import query from '../src/query.js'
 
+
 export { wrap }
 
 class TimeoutError extends Error {}
 
-s.isServer = true
+s.isServer = window.isServer = true
 s.mimes = mimes
 s.trust = trust
 

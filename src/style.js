@@ -51,8 +51,7 @@ const vendorMap = properties.reduce((acc, x) => {
 
 const cache = new Map()
     , hashed = new Set()
-    , isServer = typeof window === 'undefined'
-    , cssVars = isServer || (window.CSS && CSS.supports('color', 'var(--support-test)'))
+    , cssVars = window.CSS && window.CSS.supports('color', 'var(--support-test)')
     , pxFunctions = ['perspective', 'blur', 'drop-shadow', 'inset', 'polygon', 'minmax']
     , nested = ['@media', '@supports', '@document', '@layer']
     , isNested = x => nested.some(n => x.indexOf(n) === 0)
@@ -425,7 +424,7 @@ export function formatValue(v, { property, unit }) {
   if (!v && v !== 0)
     return ''
 
-  isFunction(v) && !isObservable(v) && (v = isServer ? '' : v())
+  isFunction(v) && !isObservable(v) && (v = window.isServer ? null : v())
   if (typeof v === 'number')
     return v + unit
 

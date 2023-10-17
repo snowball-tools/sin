@@ -764,7 +764,7 @@ function updateComponent(
       context.hydrating = false,
       instance.recreate = true,
       instance.promise = false,
-      setTimeout(redraw, 17) // There is a race condition here to be looked closer at re ssr
+      setTimeout(redraw, 33) // There is a race condition here to be looked closer at re ssr
     ))
 
   const changed = dom !== instance.next.first

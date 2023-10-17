@@ -90,14 +90,6 @@ export function scrollRestore(x, y) {
   window.scrollTo(x || 0, y || 0)
 }
 
-export function scrollSave() {
-  window.history.replaceState({
-    ...history.state,
-    scrollLeft: document.documentElement.scrollLeft || document.body.scrollLeft,
-    scrollTop: document.documentElement.scrollTop || document.body.scrollTop
-  }, '')
-}
-
 export function mergeTag(a, b) {
   if (!b || !b.tag)
     return a

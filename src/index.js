@@ -12,7 +12,6 @@ import {
   stackTrace,
   cleanSlash,
   isFunction,
-  scrollSave,
   className,
   styleProp,
   mergeTag,
@@ -231,6 +230,14 @@ function scrollRestoration() {
     clearTimeout(scrollTimer)
     scrollTimer = setTimeout(scrollSave, 100)
   }, { passive: true })
+}
+
+function scrollSave() {
+  window.history.replaceState({
+    ...history.state,
+    scrollLeft: document.documentElement.scrollLeft || document.body.scrollLeft,
+    scrollTop: document.documentElement.scrollTop || document.body.scrollTop
+  }, null, location.pathname + location.search + location.hash)
 }
 
 function head(x) {

@@ -37,8 +37,9 @@ export default async function(home, url, scriptParsed) {
     , socket
     , chrome
     , open
+    , ready
 
-  wsUrl
+  ready = wsUrl
     ? connect()
     : spawn()
 
@@ -92,10 +93,18 @@ export default async function(home, url, scriptParsed) {
     socket.onopen = onopen
     socket.onmessage = onmessage
     socket.onerror = onerror
-    socket.onclose = () => !errored && setTimeout(connect, 100)
+    socket.onclose = onclose
     return open || new Promise((resolve, reject) => open = { resolve, reject })
   }
 
+  function onclose() {
+    errored || (ready = reconnect())
+  }
+
+  async function reconnect() {
+    await new Promise(r => setTimeout(r, 100))
+    await connect()
+  }
 
   function onerror(x) {
     errored = x
@@ -113,6 +122,7 @@ export default async function(home, url, scriptParsed) {
   }
 
   async function send(method, params) {
+    await ready
     return socket.readyState === 1 && new Promise((resolve, reject) => {
       const message = {
         id: id++,
@@ -128,16 +138,20 @@ export default async function(home, url, scriptParsed) {
 
   async function onopen() {
     open.resolve()
-    await send('Runtime.enable')
-    await send('Runtime.evaluate', { expression: hmr })
-    await send('Debugger.enable')
-    await send('Network.enable')
-    await send('Network.setCacheDisabled', { cacheDisabled: true })
-    await send('Page.enable')
-    await send('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
-    print.debug(launched
-      ? 'Reconnected to Chrome'
-      : 'Connected to Chrome') // eslint-disable-line
+    try {
+      await send('Runtime.enable')
+      await send('Runtime.evaluate', { expression: hmr })
+      await send('Debugger.enable').catch(print.debug)
+      await send('Network.enable')
+      await send('Network.setCacheDisabled', { cacheDisabled: true })
+      await send('Page.enable')
+      await send('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
+      print.debug(launched
+        ? 'Reconnected to Chrome'
+        : 'Connected to Chrome') // eslint-disable-line
+    } catch(error) {
+      print.debug('Error Connecting to Chrome', error)
+    }
     launched = true
   }
 

@@ -803,7 +803,7 @@ function attributes(dom, view, context) {
   let tag = view.tag
     , value
 
-  const prev = dom[attrSymbol]
+  const prev = dom[attrSymbol] || (context.hydrating && getAttributes(dom))
       , create = !prev
 
   hasOwn.call(view.attrs, 'id') === false
@@ -877,6 +877,17 @@ function attributes(dom, view, context) {
   hasOwn.call(view, stackTrace) && (dom[stackTrace] = view[stackTrace])
 
   dom[attrSymbol] = view.attrs
+}
+
+function getAttributes(dom) {
+  if (!dom || !dom.hasAttributes())
+    return
+
+  const attrs = {}
+  for (const attr of dom.attributes) {
+    attrs[attr.name] = attr.value || true
+  }
+  return attrs
 }
 
 function updateStyle(dom, style, old) {

@@ -15,6 +15,7 @@ const argv = process.argv.slice(2)
     , generated = new Set()
     , noscript = argv.some(x => x === '--noscript')
 
+await fs.rm('+build', { recursive: true })
 noscript || await import('../build/index.js')
 const start = performance.now()
 await generate()

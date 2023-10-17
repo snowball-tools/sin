@@ -18,6 +18,7 @@ const argv = process.argv.slice(2)
 await fs.rm('+build', { recursive: true })
 noscript || await import('../build/index.js')
 const start = performance.now()
+await fs.cp('+public', '+build', { recursive: true })
 await generate()
 console.log('Finished generating in', performance.now() - start)
 

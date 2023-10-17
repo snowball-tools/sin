@@ -19,6 +19,7 @@ s.trust = trust
 
 let lastWasText = false
 
+const noscript = process.argv.includes('--noscript')
 const ignoredServerAttr = x => x !== 'href' && x !== 'type' && ignoredAttr(x)
 const uidSymbol = Symbol('uid')
 const defaultTimeout = 1000 * 60 * 2
@@ -83,7 +84,7 @@ export default async function({ view = () => '', attrs = {}, context = {} } = {}
     x = context.error(error, attrs, [], context)
   }
 
-  const html = '<!--h-->' + await Promise.race([
+  const html = (noscript ? '' : '<!--h-->') + await Promise.race([
     updateChildren(asArray(x), context),
     new Promise((r, e) => setTimeout(e, 'timeout' in context ? context.timeout : defaultTimeout, new TimeoutError()).unref())
   ]).catch(async error => {
@@ -211,11 +212,12 @@ async function updateChildren(xs, context) {
 
 async function updateArray(xs, context) {
   lastWasText = false
-  return '<!--[' + xs.length + '-->' + (await Promise.all(xs.map(x => update(x, context)))).join('')
+  return (noscript ? '' : '<!--[' + xs.length + '-->')
+    + (await Promise.all(xs.map(x => update(x, context)))).join('')
 }
 
 function updateText(view) {
-  const x = (lastWasText ? '<!--,-->' : '') + escape(view)
+  const x = (lastWasText && !noscript ? '<!--,-->' : '') + escape(view)
   lastWasText = true
   return x
 }
@@ -233,7 +235,9 @@ async function updateComponent(view, context) {
   isAsync && (x = await x)
   x && hasOwn.call(x, 'default') && (x = x.default)
   isFunction(x) && (x = x(view.attrs, view.children, context))
-  return isAsync + (await update(x, context)) + isAsync.replace('a', '/a')
+  return (noscript ? '' : isAsync)
+    + (await update(x, context))
+    + (noscript ? '' : isAsync.replace('a', '/a'))
 }
 
 function escape(x = '') {
@@ -279,7 +283,11 @@ function trust(strings, ...values) {
   const html = String.raw(strings, ...values)
       , count = rootNodeCount(html)
 
-  return new window.Node('<!--[' + count + '-->' + html + '<!--,-->')
+  return new window.Node(
+      (noscript ? '' : '<!--[' + count + '-->')
+    + html
+    + (noscript ? '' : '<!--,-->')
+  )
 }
 
 function rootNodeCount(x) {

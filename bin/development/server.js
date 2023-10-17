@@ -154,32 +154,7 @@ async function changed(x) {
   changed && saveScripts(x)
 }
 
-chrome = command !== 'server' && await startChrome()
-
-async function startChrome() {
-  return (await import('./chrome.js')).default(chromeHome, url, async x => {
-    if (x.url.indexOf(url) !== 0)
-      return
-
-    const filePath = extensionless(path.join(cwd, new URL(x.url).pathname))
-
-    if (scripts[filePath]) {
-      scripts[filePath].scriptId = x.scriptId
-    } else {
-      const original = await gracefulRead(filePath).catch(() => null)
-      if (original === null)
-        return
-
-      watch({
-        path: filePath,
-        original,
-        source: modify(original, filePath),
-        scriptId: x.scriptId
-      })
-    }
-    saveScripts()
-  })
-}
+chrome = command !== 'server' && await (await import('./chrome.js')).default(chromeHome, url, scriptParsed)
 
 const { unlisten } = await app.listen(port)
 console.log('Listening on', port)
@@ -192,6 +167,29 @@ prexit(async(signal, code) => {
   unlisten()
   sockets.forEach(x => x.close())
 })
+
+async function scriptParsed(x) {
+  if (x.url.indexOf(url) !== 0)
+    return
+
+  const filePath = extensionless(path.join(cwd, new URL(x.url).pathname))
+
+  if (scripts[filePath]) {
+    scripts[filePath].scriptId = x.scriptId
+  } else {
+    const original = await gracefulRead(filePath).catch(() => null)
+    if (original === null)
+      return
+
+    watch({
+      path: filePath,
+      original,
+      source: modify(original, filePath),
+      scriptId: x.scriptId
+    })
+  }
+  saveScripts()
+}
 
 function extensionless(x, root = '') {
   x.indexOf('file:') === 0 && (x = x.slice(5))

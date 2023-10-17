@@ -26,6 +26,9 @@ Object.assign(window, {
     },
     state: null
   },
+  CSS: {
+    supports: () => true
+  },
   document: {
     body: {},
     querySelector: () => null,

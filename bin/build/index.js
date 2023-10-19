@@ -16,4 +16,4 @@ await build(
     : {}
 )
 
-console.log('Finished building   in', performance.now())
+console.log('Finished building in', performance.now())

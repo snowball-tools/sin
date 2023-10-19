@@ -149,7 +149,7 @@ export default async function(home, url, scriptParsed) {
       print.debug(launched
         ? 'Reconnected to Chrome'
         : 'Connected to Chrome') // eslint-disable-line
-    } catch(error) {
+    } catch (error) {
       print.debug('Error Connecting to Chrome', error)
     }
     launched = true

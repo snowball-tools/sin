@@ -36,7 +36,7 @@ export async function resolve(specifier, context, nextResolve) {
 }
 
 export async function load(url, context, nextLoad) {
-  const result = await nextLoad(url, context);
+  const result = await nextLoad(url, context)
   if (result.source && (context.format === 'commonjs' || context.format === 'module'))
     result.source = jail(result.source.toString())
   return result

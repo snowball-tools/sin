@@ -121,9 +121,9 @@ async function update(view, context) {
           ? view.trusted
           : Array.isArray(view)
             ? updateArray(view, context)
-            : view || view === 0 || view === ''
-              ? updateText(view)
-              : updateComment(view)
+            : typeof view === 'boolean' || view == null
+              ? updateComment(view)
+              : updateText(view)
 }
 
 function tagName(view) {

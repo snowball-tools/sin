@@ -109,7 +109,7 @@ async function getServer() {
 }
 
 async function getMount() {
-  const specifiesIndex = argv.find((x, i, xs) => x[0] !== '-' && x.endsWith('.js'))
+  const specifiesIndex = argv.find(x => x[0] !== '-' && x.endsWith('.js'))
       , entry = specifiesIndex || 'index.js'
       , absIndex = path.isAbsolute(entry) ? entry : path.join(cwd, entry)
       , hasIndex = (await fsp.readFile(absIndex, 'utf8').catch(specifiesIndex ? undefined : (() => ''))).indexOf('export default ') !== -1

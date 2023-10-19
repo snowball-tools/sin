@@ -6,12 +6,14 @@ import path from 'path'
 import cp from 'child_process'
 import fs from 'fs'
 import fsp from 'fs/promises'
-import WS from 'ws'
 
 import { getPort } from './shared.js'
 
 import '../../ssr/index.js'
 import s from '../../src/index.js'
+
+import { createRequire } from 'module'
+const { WebSocket } = createRequire(import.meta.url)('internal/deps/undici/undici')
 
 const requests = new Map()
 const hmr = 'if(window.self === window.top)window.hmr=1;'
@@ -89,7 +91,7 @@ export default async function(home, url, scriptParsed) {
 
   async function connect() {
     errored = null
-    socket = new WS(wsUrl)
+    socket = new WebSocket(wsUrl)
     socket.onopen = onopen
     socket.onmessage = onmessage
     socket.onerror = onerror

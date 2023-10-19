@@ -1,8 +1,9 @@
 /* eslint no-console: 0 */
 
-import WS from 'ws'
-
 import { getPort } from './shared.js'
+
+import { createRequire } from 'module'
+const { WebSocket } = createRequire(import.meta.url)('internal/deps/undici/undici')
 
 const requests = new Map()
 
@@ -21,7 +22,7 @@ export default async function(url, scriptParsed) {
 
   async function connect() {
     errored = null
-    socket = new WS(url)
+    socket = new WebSocket(url)
     socket.onopen = onopen
     socket.onmessage = onmessage
     socket.onerror = onerror

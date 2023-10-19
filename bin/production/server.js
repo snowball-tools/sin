@@ -16,7 +16,7 @@ const argv = process.argv.slice(2)
     , ssl = env.SSL_CERT && { cert: env.SSL_CERT, key: env.SSL_KEY }
     , protocol = ssl ? 'https://' : 'http://'
     , port = env.PORT ? parseInt(env.PORT) : (ssl ? 443 : 80)
-    , portHttp = env.PORT_HTTP ? parseInt(env.PORT_HTTP) : (ssl ? 80 : port)
+    , portHttp = env.NO_HTTP ? 0 : env.PORT_HTTP ? parseInt(env.PORT_HTTP) : (ssl ? 80 : port)
     , httpRedirect = ssl && env.HTTP_REDIRECT !== 'no'
     , address = env.ADDRESS || '0.0.0.0'
     , { mount, entry } = await getMount()
@@ -84,7 +84,7 @@ function resolveEntry(x, command) {
 
 async function listen() {
   ssl && listenHttps()
-  listenHttp()
+  portHttp && listenHttp()
 }
 
 async function listenHttp() {

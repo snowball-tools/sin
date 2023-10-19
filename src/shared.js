@@ -82,11 +82,11 @@ function classObject(x) {
 
 export function scrollRestore(x, y) {
   x
-    ? document.documentElement.style.minWidth = (x + window.innerWidth) + 'px'
-    : document.documentElement.style.minWidth = ''
+    ? document.documentElement.style.setProperty('min-width', (x + window.innerWidth) + 'px')
+    : document.documentElement.style.removeProperty('min-width')
   y
-    ? document.documentElement.style.minHeight = (y + window.innerHeight) + 'px'
-    : document.documentElement.style.minHeight = ''
+    ? document.documentElement.style.setProperty('min-height', (y + window.innerHeight) + 'px')
+    : document.documentElement.style.removeProperty('min-height')
   window.scrollTo(x || 0, y || 0)
 }
 

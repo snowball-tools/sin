@@ -1,4 +1,4 @@
-#! /usr/bin/env node --expose-internals --no-warnings
+#! /usr/bin/env -S node --expose-internals --no-warnings
 
 /* eslint no-console: 0 */
 

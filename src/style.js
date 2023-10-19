@@ -169,19 +169,19 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
     x = xs[j + 1]
     if (j < args.length) {
       const before = xs[j].slice(valueStart)
-      if (cssVars && valueStart >= 0) {
+      let arg = args[j]
+      window.isServer && isFunction(arg) && !isObservable(arg) && (arg = '6invalidate')
+      if (cssVars && valueStart >= 0 && arg !== '6invalidate') {
         temp = prefix + Math.abs(hash).toString(31)
         vars[varName = '--' + temp + j] = { property: prop, unit: getUnit(prop, last(fn)), index: j }
         value += before + 'var(' + varName + ')'
         valueStart = 0
       } else {
-        if (j < args.length) {
-          const x = before + args[j] + getUnit(prop, last(fn))
-          value += x
-          for (let i = 0; i < x.length; i++)
-            hash = Math.imul(31, hash) + x.charCodeAt(i) | 0
-          cacheable = false
-        }
+        const x = before + arg + getUnit(prop, last(fn))
+        value += x
+        for (let i = 0; i < x.length; i++)
+          hash = Math.imul(31, hash) + x.charCodeAt(i) | 0
+        cacheable = false
         valueStart = cssVars ? -1 : 0
       }
     }
@@ -313,7 +313,7 @@ function addRule(i) {
 function afterValue(i) {
   numberStart !== -1
     ? addUnit(i)
-    :cssVar !== -1 && addCssVar(i)
+    : cssVar !== -1 && addCssVar(i)
 }
 
 function startBlock(i) {
@@ -424,7 +424,7 @@ export function formatValue(v, { property, unit }) {
   if (!v && v !== 0)
     return ''
 
-  isFunction(v) && !isObservable(v) && (v = window.isServer ? null : v())
+  isFunction(v) && !isObservable(v) && (v = v())
   if (typeof v === 'number')
     return v + unit
 

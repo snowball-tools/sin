@@ -824,7 +824,18 @@ function attributes(dom, view, context) {
 
   for (const attr in view.attrs) {
     if (ignoredAttr(attr)) {
-      attr === 'deferrable' && (dom[deferrableSymbol] = view.attrs[attr])
+      if (attr === 'deferrable') {
+        dom[deferrableSymbol] = view.attrs[attr]
+      } else if (attr === 'href' && (context.hydrating || !prev || prev.href !== view.attrs.href)) {
+        value = view.attrs.href
+        const internal = !String(value).match(/^[a-z]+:|\/\//)
+        internal && (value = cleanSlash(view.attrs.href))
+        updateAttribute(dom, view.attrs, attr, prev && prev.href, value, create)
+        if (value && internal) {
+          view.attrs.href = s.pathmode + value
+          link(dom, context.route)
+        }
+      }
     } else if (attr === 'value' && tag.name === 'input' && dom.value !== '' + view.attrs.value) {
       value = view.attrs[attr]
       let start
@@ -839,17 +850,6 @@ function attributes(dom, view, context) {
     } else if (!prev || prev[attr] !== view.attrs[attr]) {
       value = view.attrs[attr]
       updateAttribute(dom, view.attrs, attr, prev && prev[attr], value, create)
-    }
-  }
-
-  if (hasOwn.call(view.attrs, 'href')) {
-    value = view.attrs.href
-    const internal = !String(value).match(/^[a-z]+:|\/\//)
-    internal && (value = cleanSlash(view.attrs.href))
-    updateAttribute(dom, view.attrs, 'href', prev && prev.href, value, create)
-    if (value && internal) {
-      view.attrs.href = s.pathmode + value
-      link(dom, context.route)
     }
   }
 
@@ -868,12 +868,14 @@ function attributes(dom, view, context) {
   const reapply = updateStyle(dom, view.attrs.style, prev && prev.style)
 
   if (view.tag) {
-    setVars(dom, view.tag.vars, view.tag.args, create, reapply)
+    setVars(dom, view.tag.vars, view.tag.args, create || context.hydrating, reapply)
     while ((tag = tag.parent))
-      setVars(dom, tag.vars, tag.args, create, reapply)
+      setVars(dom, tag.vars, tag.args, create || context.hydrating, reapply)
   }
 
-  create && view.attrs.dom && giveLife(dom, view.attrs, view.children, context, view.attrs.dom)
+  if ((create || context.hydrating) && view.attrs.dom)
+    giveLife(dom, view.attrs, view.children, context, view.attrs.dom)
+
   hasOwn.call(view, stackTrace) && (dom[stackTrace] = view[stackTrace])
 
   dom[attrSymbol] = view.attrs

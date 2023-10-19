@@ -36,9 +36,6 @@ app.get(app.files('+build'))
 app.get(app.files('+public'))
 
 command !== 'server' && app.get(r => {
-  if ((r.headers.accept || '').indexOf('text/html') !== 0)
-    return
-
   return ssr(
     mount,
     {},

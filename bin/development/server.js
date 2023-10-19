@@ -94,14 +94,14 @@ await loadServer()
 app.get(
   r => {
     r.header('Cache-Control', 'no-store')
-    // Don't serve _ (server) folder or hidden paths
-    if (r.url.charCodeAt(1) === 46 || r.url.indexOf('/.') !== -1) // _
+    if (r.url.indexOf('/.') !== -1) // Don't serve hidden paths or dir up hacks
       return r.status(403).end()
   },
+  app.files('+public', {
+    compressions: false,
+    cache: false
+  }),
   async r => {
-    if ((r.headers.accept || '').indexOf('text/html') !== 0 || path.extname(r.url))
-      return
-
     const x = await ssr(
       mount,
       {},
@@ -113,10 +113,6 @@ app.get(
       body: command === 'ssr' ? '' : '<script type=module async defer src="/' + entry + '"></script>'
     }), x.status || 200, x.headers)
   },
-  app.files('+public', {
-    compressions: false,
-    cache: false
-  })
 )
 
 app.get('/node_modules/sin', app.files(sinRoot, {

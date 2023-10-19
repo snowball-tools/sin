@@ -1,4 +1,4 @@
-#! /usr/bin/env node
+#! /usr/bin/env node --expose-internals --no-warnings
 
 /* eslint no-console: 0 */
 
@@ -69,7 +69,9 @@ function start() {
       cwd,
       execArgv: [
         '--import', url.pathToFileURL(path.join(here, '/import.js')),
-        dev && '--inspect=' + nodePort
+        dev && '--inspect=' + nodePort,
+        dev && '--expose-internals',
+        dev && '--no-warnings'
       ].filter(x => x)
     }
   )

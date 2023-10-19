@@ -57,7 +57,6 @@ if (command === 'clear') {
   process.exit(0)
 }
 
-globalThis.sinLoader.postMessage('get')
 Object.values(scripts).forEach(watchAdd)
 
 fs.mkdirSync(home, { recursive: true })

@@ -105,9 +105,9 @@ export default function router(s, root, rootContext) {
 
     const { match, view } = matchRoutes(routes, pathTokens)
 
-    const current = root + (match && match[0] !== '/*'
+    const current = root + (match
       ? match.map((x, i) => pathTokens[i]).join('')
-      : '/'
+      : '?'
     )
 
     if (view === undefined || match[0] === '/?')

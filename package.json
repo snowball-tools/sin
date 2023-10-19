@@ -43,7 +43,7 @@
     "javascript"
   ],
   "dependencies": {
-    "esbuild": "0.16.13",
+    "esbuild": "0.19.5",
     "ey": "github:porsager/ey#bf3b07d7ce865669f15dbf0cbf8c23c8400a81dd",
     "prexit": "2.0.2",
     "ws": "8.11.0"

@@ -91,28 +91,17 @@ app.ws('/sindev', {
 
 await loadServer()
 
+app.get(r => {
+  r.header('Cache-Control', 'no-store')
+  if (r.url.indexOf('/.') !== -1) // Don't serve hidden paths or dir up hacks
+    return r.status(403).end()
+})
+
 app.get(
-  r => {
-    r.header('Cache-Control', 'no-store')
-    if (r.url.indexOf('/.') !== -1) // Don't serve hidden paths or dir up hacks
-      return r.status(403).end()
-  },
   app.files('+public', {
     compressions: false,
     cache: false
-  }),
-  async r => {
-    const x = await ssr(
-      mount,
-      {},
-      { location: 'http://' + (r.headers.host || url) + r.url }
-    )
-
-    r.end(wrap(x, {
-      head: '<script type=module src="/node_modules/sin/bin/development/browser.js"></script>',
-      body: command === 'ssr' ? '' : '<script type=module async defer src="/' + entry + '"></script>'
-    }), x.status || 200, x.headers)
-  },
+  })
 )
 
 app.get('/node_modules/sin', app.files(sinRoot, {
@@ -121,11 +110,6 @@ app.get('/node_modules/sin', app.files(sinRoot, {
   transform
 }))
 
-app.get(r => {
-  if (!r.url.endsWith('.js') && !r.url.endsWith('.ts'))
-    return r.status(404).end('Not Found')
-})
-
 app.get(
   app.files({
     compressions: false,
@@ -133,6 +117,19 @@ app.get(
     transform
   })
 )
+
+app.get(async r => {
+  const x = await ssr(
+    mount,
+    {},
+    { location: 'http://' + (r.headers.host || url) + r.url }
+  )
+
+  r.end(wrap(x, {
+    head: '<script type=module src="/node_modules/sin/bin/development/browser.js"></script>',
+    body: command === 'ssr' ? '' : '<script type=module async defer src="/' + entry + '"></script>'
+  }), x.status || 200, x.headers)
+})
 
 async function changed(x) {
   const file = scripts[x]

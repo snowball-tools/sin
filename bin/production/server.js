@@ -6,6 +6,7 @@ import fsp from 'fs/promises'
 
 import ey from 'ey'
 
+import { tryPromise } from '../../src/shared.js'
 import ssr, { wrap } from '../../ssr/index.js'
 
 const argv = process.argv.slice(2)
@@ -21,6 +22,7 @@ const argv = process.argv.slice(2)
     , address = env.ADDRESS || '0.0.0.0'
     , { mount, entry } = await getMount()
     , entryPath = resolveEntry(entry, command)
+    , entryStat = await fsp.stat(entryPath)
     , server = await getServer()
 
 let certChangeThrottle
@@ -36,29 +38,30 @@ app.get(app.files('+build'))
 app.get(app.files('+public'))
 
 command !== 'server' && app.get(r => {
-  return ssr(
-    mount,
-    {},
-    { location: protocol + (r.headers.host || ('localhost' + port)) + r.url }
-  ).then(async x => {
-    const stats = await fsp.stat(entryPath)
-
-    r.end(
-      wrap(x, {
-        body: command === 'ssr' ? '' : '<script type=module src="/'
-           + (entry + '?ts=' + stats.mtimeMs.toFixed(0))
-           + '"></script>'
-      }),
-      x.status || 200,
-      {
-        ETag: null,
-        'Cache-Control': 'max-age=0, no-cache, no-store, must-revalidate',
-        Pragma: 'no-cache',
-        Expires: new Date().toUTCString(),
-        ...x.headers
-      }
-    )
-  })
+  return tryPromise(
+    ssr(
+      mount,
+      {},
+      { location: protocol + (r.headers.host || ('localhost' + port)) + r.url }
+    ),
+    x => {
+      r.end(
+        wrap(x, {
+          body: command === 'ssr' ? '' : '<script type=module src="/'
+            + (entry + '?ts=' + entryStat.mtimeMs.toFixed(0))
+            + '"></script>'
+        }),
+        x.status || 200,
+        {
+          ETag: null,
+          'Cache-Control': 'max-age=0, no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: new Date().toUTCString(),
+          ...x.headers
+        }
+      )
+    }
+  )
 })
 
 listen()

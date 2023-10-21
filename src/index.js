@@ -256,7 +256,7 @@ function shouldHydrate(dom) {
 
 function redraw() {
   if (!redrawer) {
-    requestAnimationFrame(globalRedraw)
+    window.requestAnimationFrame(globalRedraw)
     redrawer = new Promise(r => redrawed = r)
   }
   return redrawer

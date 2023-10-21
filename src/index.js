@@ -826,15 +826,6 @@ function attributes(dom, view, context) {
     if (ignoredAttr(attr)) {
       if (attr === 'deferrable') {
         dom[deferrableSymbol] = view.attrs[attr]
-      } else if (attr === 'href' && (context.hydrating || !prev || prev.href !== view.attrs.href)) {
-        value = view.attrs.href
-        const internal = !String(value).match(/^[a-z]+:|\/\//)
-        internal && (value = cleanSlash(view.attrs.href))
-        updateAttribute(dom, view.attrs, attr, prev && prev.href, value, create)
-        if (value && internal) {
-          view.attrs.href = s.pathmode + value
-          link(dom, context.route)
-        }
       }
     } else if (attr === 'value' && tag.name === 'input' && dom.value !== '' + view.attrs.value) {
       value = view.attrs[attr]
@@ -850,6 +841,17 @@ function attributes(dom, view, context) {
     } else if (!prev || prev[attr] !== view.attrs[attr]) {
       value = view.attrs[attr]
       updateAttribute(dom, view.attrs, attr, prev && prev[attr], value, create)
+    }
+  }
+
+  if (hasOwn.call(view.attrs, 'href') && (context.hydrating || !prev || prev.href !== view.attrs.href)) {
+    value = view.attrs.href
+    const internal = !String(value).match(/^[a-z]+:|\/\//)
+    internal && (value = cleanSlash(view.attrs.href))
+    updateAttribute(dom, view.attrs, 'href', prev && prev.href, value, create)
+    if (value && internal) {
+      view.attrs.href = s.pathmode + value
+      link(dom, context.route)
     }
   }
 

@@ -20,10 +20,8 @@ Object.assign(window, {
   addEventListener: noop,
   location: asLocation(new URL('', 'http://localhost')),
   history: {
-    pushState(state, title, path) {
-      window.history.state = state
-      window.location = asLocation(new URL(path, window.location.origin || 'http://localhost'))
-    },
+    pushState: routeChange,
+    replaceState: routeChange,
     state: null
   },
   CSS: {
@@ -61,6 +59,11 @@ Object.assign(window, {
     }
   }
 })
+
+function routeChange(state, title, path) {
+  window.history.state = state
+  window.location = asLocation(new URL(path, window.location.origin || 'http://localhost'))
+}
 
 function XMLHttpRequest(options) {
   const body = []

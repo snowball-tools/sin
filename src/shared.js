@@ -22,12 +22,22 @@ export function isFunction(x) {
   return typeof x === 'function'
 }
 
+export function isPromise(x) {
+  return x && isFunction(x.then)
+}
+
 export function isEvent(x) {
   return x.charCodeAt(0) === 111 && x.charCodeAt(1) === 110 // on
 }
 
 export function isTagged(x) {
   return x && Array.isArray(x.raw)
+}
+
+export function tryPromise(x, fn) {
+  return isPromise(x)
+    ? x.then(x => fn(x, true))
+    : fn(x)
 }
 
 export function asCssVar(x) {

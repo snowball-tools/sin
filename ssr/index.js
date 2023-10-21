@@ -1,6 +1,18 @@
 import window from './window.js'
 import View from '../src/view.js'
-import { cleanSlash, className, ignoredAttr, isEvent, isFunction, asArray, notValue, hasOwn, mergeTag } from '../src/shared.js'
+import {
+  cleanSlash,
+  className,
+  ignoredAttr,
+  tryPromise,
+  isPromise,
+  isEvent,
+  isFunction,
+  asArray,
+  notValue,
+  hasOwn,
+  mergeTag
+} from '../src/shared.js'
 import { asLocation, wrap } from './shared.js'
 import { formatValue, cssRules } from '../src/style.js'
 import router from '../src/router.js'
@@ -40,7 +52,7 @@ const voidTags = new Set([
   'wbr'
 ])
 
-export default async function({ view = () => '', attrs = {}, context = {} } = {}, serverAttrs = {}, serverContext = {}) {
+export default function({ view = () => '', attrs = {}, context = {} } = {}, serverAttrs = {}, serverContext = {}) {
   serverContext.location = window.location = asLocation(
     typeof serverContext.location === 'string'
       ? new URL(serverContext.location, 'http://localhost/')
@@ -63,7 +75,7 @@ export default async function({ view = () => '', attrs = {}, context = {} } = {}
     title: s.live(''),
     status: s.live(200),
     links: s.live('', x => links.add(x)),
-    head: s.live('', x => [].concat(x).forEach(x => head += x instanceof View ? headElement(x) : x)),
+    head: s.live('', x => [].concat(x).forEach(x => head += typeof x === 'string' ? x : update(x, { ...context, noscript: true }))),
     headers: s.live({}, x => Object.assign(headers, x))
   }
 
@@ -71,6 +83,7 @@ export default async function({ view = () => '', attrs = {}, context = {} } = {}
   context = {
     ...context,
     ...serverContext,
+    noscript,
     doc,
     [uidSymbol]: 1
   }
@@ -84,7 +97,38 @@ export default async function({ view = () => '', attrs = {}, context = {} } = {}
     x = context.error(error, attrs, [], context)
   }
 
-  const html = (noscript ? '' : '<!--h-->') + await Promise.race([
+  let result = updateChildren(asArray(x), context)
+  isPromise(result) && (result =
+    Promise.race([
+      result,
+      new Promise((r, e) => setTimeout(e, 'timeout' in context ? context.timeout : defaultTimeout, new TimeoutError()).unref())
+    ]).catch(error => {
+      context.doc.status(error instanceof TimeoutError ? 408 : 500)
+      return tryPromise(updateChildren([].concat(context.error(error, attrs, [], context)), context), x => x)
+    })
+  )
+
+  return tryPromise(result, (x, was) => {
+    console.log('promise', was)
+    const css = '<style class="sin">'
+      + cssRules().join('')
+      + '</style>'
+
+    return {
+      headers,
+      links,
+      status: context.doc.status(),
+      title: context.doc.title(),
+      lang: context.doc.lang(),
+      css, // perhaps remove classes according to names in html
+      html: (context.noscript ? '' : '<!--h-->') + x,
+      head
+    }
+  })
+}
+
+async function old() {
+  const html = (context.noscript ? '' : '<!--h-->') + await Promise.race([
     updateChildren(asArray(x), context),
     new Promise((r, e) => setTimeout(e, 'timeout' in context ? context.timeout : defaultTimeout, new TimeoutError()).unref())
   ]).catch(async error => {
@@ -108,7 +152,7 @@ export default async function({ view = () => '', attrs = {}, context = {} } = {}
   }
 }
 
-async function update(view, context) {
+function update(view, context) {
   return isFunction(view)
     ? update(view(), context)
     : view instanceof View
@@ -122,15 +166,15 @@ async function update(view, context) {
           : Array.isArray(view)
             ? updateArray(view, context)
             : typeof view === 'boolean' || view == null
-              ? updateComment(view)
-              : updateText(view)
+              ? updateComment(view, context)
+              : updateText(view, context)
 }
 
 function tagName(view) {
   return (view.tag.name || 'div').toLowerCase()
 }
 
-async function updateElement(view, context) {
+function updateElement(view, context) {
   lastWasText = false
   const tag = tagName(view)
   const internal = !String(view.attrs.href).match(/^[a-z]+:|\/\//)
@@ -139,30 +183,20 @@ async function updateElement(view, context) {
     view.attrs.href = cleanSlash(view.attrs.href)
     context.doc.links(view.attrs.href)
   }
+  return tryPromise(updateChildren(view.children, context), x =>
+    elementString(view, tag, x)
+  )
+}
+
+function elementString(view, tag, content) {
   return openingTag(view, tag)
     + (voidTags.has(tag)
       ? ''
       : (view.children && view.children.length
-        ? await updateChildren(view.children, context)
+        ? content
         : ''
       ) + '</' + tag + '>'
     )
-}
-
-function headElement(view) {
-  const tag = tagName(view)
-  return openingTag(view, tag)
-      + (voidTags[tag]
-        ? ''
-        : (view.children
-          ? view.children.join('')
-          : ''
-        ) + (
-          voidTags.has(tag)
-            ? ''
-            : '</' + tag + '>'
-        )
-      )
 }
 
 function openingTag(view, tag) {
@@ -205,19 +239,36 @@ function getClassName(view) {
     : ''
 }
 
-async function updateChildren(xs, context) {
+function updateChildren(xs, context) {
   lastWasText = false
-  return (await Promise.all(xs.map(x => update(x, context)))).join('')
+  let async = false
+  const results = xs.map(x => {
+    const result = update(x, context)
+    isPromise(result) && (async = true)
+    return result
+  })
+  return async
+    ? Promise.all(results).then(xs => xs.join(''))
+    : results.join('')
 }
 
-async function updateArray(xs, context) {
+function updateArray(xs, context) {
   lastWasText = false
-  return (noscript ? '' : '<!--[' + xs.length + '-->')
-    + (await Promise.all(xs.map(x => update(x, context)))).join('')
+  let async = false
+  const results = xs.map(x => {
+    const result = update(x, context)
+    isPromise(result) && (async = true)
+    return result
+  })
+
+  const first = (context.noscript ? '' : '<!--[' + xs.length + '-->')
+  return async
+    ? Promise.all(results).then(x => first + x.join(''))
+    : first + results.join('')
 }
 
-function updateText(view) {
-  const x = (lastWasText && !noscript ? '<!--,-->' : '') + escape(view)
+function updateText(view, context) {
+  const x = (lastWasText && !context.noscript ? '<!--,-->' : '') + escape(view)
   lastWasText = true
   return x
 }
@@ -227,17 +278,20 @@ function updateComment(view) {
   return '<!--' + view + '-->'
 }
 
-async function updateComponent(view, context) {
+function updateComponent(view, context) {
   lastWasText = false
   let x = view.component[0](view.attrs, view.children, context)
   mergeTag(x, view)
-  const isAsync = x && isFunction(x.then) && ('<!--a' + context[uidSymbol]++ + '-->') || ''
-  isAsync && (x = await x)
-  x && hasOwn.call(x, 'default') && (x = x.default)
-  isFunction(x) && (x = x(view.attrs, view.children, context))
-  return (noscript ? '' : isAsync)
-    + (await update(x, context))
-    + (noscript ? '' : isAsync.replace('a', '/a'))
+  return tryPromise(x, (x, wasPromise) => {
+    const asyncId = wasPromise && ('<!--a' + context[uidSymbol]++ + '-->') || ''
+    x && hasOwn.call(x, 'default') && (x = x.default) // we might be able to move check above
+    isFunction(x) && (x = x(view.attrs, view.children, context))
+    return tryPromise(update(x, context), x => (
+      context.noscript ? '' : asyncId)
+      + x
+      + (context.noscript ? '' : asyncId.replace('a', '/a'))
+    )
+  })
 }
 
 function escape(x = '') {

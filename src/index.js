@@ -224,7 +224,7 @@ function mount(dom, view, attrs = {}, context = {}) {
 
 function scrollRestoration() {
   // window.history.scrollRestoration = 'manual' // test if needed (might prevent scrollTo 0 before scrollRestore)
-  history.state && history.state.scrollTop && scrollRestore(history.state.scrollLeft, history.state.scrollTop)
+  scrollRestore(history.state?.scrollLeft, history.state?.scrollTop)
   let scrollTimer
   document.addEventListener('scroll', () => {
     clearTimeout(scrollTimer)

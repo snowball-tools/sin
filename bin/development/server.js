@@ -131,6 +131,20 @@ app.get(async r => {
   }), x.status || 200, x.headers)
 })
 
+chrome = command !== 'server' && await (await import('./chrome.js')).default(chromeHome, url, scriptParsed)
+
+const { unlisten } = await app.listen(port)
+console.log('Listening on', port)
+
+argv.includes('--live') && live(chromeHome, port)
+
+prexit(async(signal) => {
+  signal === 'SIGHUP' && !process.exitCode && (process.exitCode = 123)
+  process.exitCode !== 123 && await chrome.send('Browser.close')
+  unlisten()
+  sockets.forEach(x => x.close())
+})
+
 async function changed(x) {
   const file = scripts[x]
       , source = await gracefulRead(x)
@@ -145,20 +159,6 @@ async function changed(x) {
     : app.publish('update', 'forceReload')
   changed && saveScripts(x)
 }
-
-chrome = command !== 'server' && await (await import('./chrome.js')).default(chromeHome, url, scriptParsed)
-
-const { unlisten } = await app.listen(port)
-console.log('Listening on', port)
-
-argv.includes('--live') && live(chromeHome, port)
-
-prexit(async(signal, code) => {
-  signal === 'SIGHUP' && !process.exitCode && (process.exitCode = 123)
-  process.exitCode !== 123 && await chrome.send('Browser.close')
-  unlisten()
-  sockets.forEach(x => x.close())
-})
 
 async function scriptParsed(x) {
   if (x.url.indexOf(url) !== 0)

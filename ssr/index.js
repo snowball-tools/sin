@@ -127,31 +127,6 @@ export default function({ view = () => '', attrs = {}, context = {} } = {}, serv
   })
 }
 
-async function old() {
-  const html = (context.noscript ? '' : '<!--h-->') + await Promise.race([
-    updateChildren(asArray(x), context),
-    new Promise((r, e) => setTimeout(e, 'timeout' in context ? context.timeout : defaultTimeout, new TimeoutError()).unref())
-  ]).catch(async error => {
-    context.doc.status(error instanceof TimeoutError ? 408 : 500)
-    return await updateChildren([].concat(context.error(error, attrs, [], context)), context)
-  })
-
-  const css = '<style class="sin">'
-    + cssRules().join('')
-    + '</style>'
-
-  return {
-    headers,
-    links,
-    status: context.doc.status(),
-    title: context.doc.title(),
-    lang: context.doc.lang(),
-    css, // perhaps remove classes according to names in html
-    html,
-    head
-  }
-}
-
 function update(view, context) {
   return isFunction(view)
     ? update(view(), context)

@@ -1,4 +1,5 @@
 import { wrap } from './shared.js'
+import { tryPromise } from '../src/shared.js'
 import ssr from './index.js'
 
 export default function(app, attrs = {}, context = {}, {

@@ -146,6 +146,7 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
     const prev = cache.get(xs)
     return {
       ...prev,
+      parent,
       args
     }
   }

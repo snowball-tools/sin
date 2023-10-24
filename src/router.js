@@ -24,9 +24,7 @@ export default function router(s, root, rootContext) {
     context.parent = route
     route.key = key
     context.root = route.parent ? route.parent.root : route
-    return () => typeof view === 'string'
-      ? import((view[0] === '/' ? '' : route) + view).then(x => resolve(x.default, attrs, context))
-      : resolve(view, attrs, context)
+    return () => resolve(view, attrs, context)
   })
 
   route.query = rootContext.query

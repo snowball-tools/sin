@@ -18,8 +18,8 @@ function params(path, xs) {
 
 export default function router(s, root, rootContext) {
   const location = route.location = rootContext.location
-  const routed = s(({ key, route, ...attrs }, [view], context) => { // eslint-disable-line
-    context.route = router(s, key.replace(/\/$/, ''), rootContext)
+  const routed = s(({ key, path, route, ...attrs }, [view], context) => { // eslint-disable-line
+    context.route = router(s, path.replace(/\/$/, ''), rootContext)
     context.route.parent = route
     context.parent = route
     route.key = key
@@ -117,6 +117,7 @@ export default function router(s, root, rootContext) {
 
     return routed({
       key: current || '?',
+      path: match[0] === '/*' ? '' : current,
       route,
       ...(route.parent ? route.parent.params : {}),
       ...(root + path === current && routeState[root + path] || window.history.state || {}),

@@ -807,13 +807,13 @@ function attributes(dom, view, context) {
       , create = !prev
 
   hasOwn.call(view.attrs, 'id') === false
-    && view.tag.id
-    && (view.attrs.id = view.tag.id)
+    && tag.id
+    && (view.attrs.id = tag.id)
 
-  if ((create && view.tag.classes) ||
+    if ((create && tag.classes) ||
      view.attrs.class !== (prev && prev.class) ||
      view.attrs.className !== (prev && prev.className) ||
-     dom.className !== view.tag.classes
+     dom.className !== tag.classes
   )
     setClass(dom, view)
 
@@ -869,8 +869,8 @@ function attributes(dom, view, context) {
 
   const reapply = updateStyle(dom, view.attrs.style, prev && prev.style)
 
-  if (view.tag) {
-    setVars(dom, view.tag.vars, view.tag.args, create || context.hydrating, reapply)
+  if (tag) {
+    setVars(dom, tag.vars, tag.args, create || context.hydrating, reapply)
     while ((tag = tag.parent))
       setVars(dom, tag.vars, tag.args, create || context.hydrating, reapply)
   }

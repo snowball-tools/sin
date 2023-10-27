@@ -115,7 +115,7 @@ export default function router(s, root, rootContext) {
 
     return routed({
       key: current || '?',
-      path: match[0] === '/*' ? '' : current,
+      path: match && match[0] === '/*' ? '' : current,
       route,
       ...(route.parent ? route.parent.params : {}),
       ...(root + path === current && routeState[root + path] || window.history.state || {}),

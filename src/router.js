@@ -80,8 +80,9 @@ export default function router(s, root, rootContext) {
   }
 
   function popstate({ state = {} } = {}) {
-    s.redraw()
-    state && requestAnimationFrame(() => scrollRestore(state.scrollLeft, state.scrollTop))
+    s.redraw().then(() =>
+      scrollRestore(state.scrollLeft || 0, state.scrollTop || 0)
+    )
   }
 
   function route(routes, options = {}) {

@@ -59,7 +59,7 @@ export default function router(s, root, rootContext, parent) {
     ).replace(/(.)\/$/, '$1')
   }
 
-  function reroute(path, { state, replace = false, preventScroll } = {}) {
+  function reroute(path, { state, replace = false, scroll = true } = {}) {
     if (path === getPath(location) + location.search)
       return
 
@@ -71,8 +71,8 @@ export default function router(s, root, rootContext, parent) {
     routeState[path] = state
     path.indexOf(location.search) > -1 && rootContext.query(location.search)
     s.redraw().then(() =>
-      preventScroll || s.route.preventScroll
-        ? s.route.preventScroll = false
+      scroll === false || s.route.scroll === false
+        ? s.route.scroll = undefined
         : scrollTo(0, 0)
     )
   }

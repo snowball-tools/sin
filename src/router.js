@@ -95,7 +95,7 @@ export default function router(s, root, rootContext) {
     if (!routing) {
       routing = true
       s.pathmode[0] === '#'
-        ? window.addEventListener('hashchange', s.redraw, { passive: true })
+        ? window.addEventListener('hashchange', popstate, { passive: true })
         : isFunction(window.history.pushState) && window.addEventListener('popstate', popstate, { passive: true })
     }
 

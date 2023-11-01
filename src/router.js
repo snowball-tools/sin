@@ -16,19 +16,17 @@ function params(path, xs) {
   }, {})
 }
 
-export default function router(s, root, rootContext) {
+export default function router(s, root, rootContext, parent) {
   const location = route.location = rootContext.location
   const routed = s(({ key, path, route, ...attrs }, [view], context) => { // eslint-disable-line
-    context.route = router(s, path.replace(/\/$/, ''), rootContext)
-    context.route.parent = route
-    context.parent = route
+    context.route = router(s, path.replace(/\/$/, ''), rootContext, route)
     route.key = key
-    context.root = route.parent ? route.parent.root : route
     return () => resolve(view, attrs, context)
   })
 
+  route.root = parent ? parent.root : route
+  route.parent = parent || route
   route.query = rootContext.query
-
   route.toString = route
   route.has = x => x === '/'
     ? (getPath(location) === root || (getPath(location) === '/' && root === ''))

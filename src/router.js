@@ -70,7 +70,8 @@ export default function router(s, root, rootContext, parent) {
         : window.history[replace ? 'replaceState' : 'pushState'](state, null, s.pathmode + path)
     routeState[path] = state
     path.indexOf(location.search) > -1 && rootContext.query(location.search)
-    s.redraw().then(() =>
+
+    return s.redraw().then(() =>
       scroll === false || s.route.scroll === false
         ? s.route.scroll = undefined
         : scrollTo(0, 0)

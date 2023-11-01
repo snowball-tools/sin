@@ -1,5 +1,5 @@
 import window from './window.js'
-import { isFunction, cleanSlash, scrollRestore } from './shared.js'
+import { isFunction, isPromise, cleanSlash, scrollRestore } from './shared.js'
 
 let routing = false
 
@@ -47,7 +47,7 @@ export default function router(s, root, rootContext) {
 
   function resolve(view, attrs, context) {
     let result = isFunction(view) ? view(attrs, [], context) : view
-    return result && isFunction(result.then)
+    return isPromise(result)
       ? s(() => result)(attrs)
       : result
   }

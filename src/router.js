@@ -112,15 +112,14 @@ export default function router(s, root, rootContext) {
     if (view === undefined || match[0] === '/?')
       rootContext.doc.status(404)
 
-    route.params = params(match || [], pathTokens)
+    route.params = { ...route.parent.params, ...params(match || [], pathTokens) }
 
     return routed({
       key: current || '?',
       path: match && match[0] === '/*' ? '' : current,
       route,
-      ...(route.parent ? route.parent.params : {}),
-      ...(root + path === current && routeState[root + path] || window.history.state || {}),
-      ...route.params
+      ...route.params,
+      ...(root + path === current && routeState[root + path] || window.history.state || {})
     },
       view
     )

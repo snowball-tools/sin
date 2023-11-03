@@ -74,7 +74,7 @@ export default function router(s, root, rootContext, parent) {
     return s.redraw().then(() =>
       scroll === false || s.route.scroll === false
         ? s.route.scroll = undefined
-        : scrollTo(0, 0)
+        : window.scrollTo(0, 0)
     )
   }
 

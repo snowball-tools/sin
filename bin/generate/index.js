@@ -1,4 +1,5 @@
-import fs from 'fs/promises'
+import fs from 'fs'
+import fsp from 'fs/promises'
 import path from 'path'
 
 import '../env.js'
@@ -10,21 +11,26 @@ const argv = process.argv.slice(2)
     , root = path.isAbsolute(entry) ? entry : path.join(process.cwd(), entry)
     , file = root.endsWith('.js')
     , rootFile = file ? root : path.join(root, 'index.js')
-    , hasEntry = (await fs.readFile(rootFile, 'utf8')).indexOf('export default ') !== -1
+    , hasEntry = fs.readFileSync(rootFile, 'utf8').indexOf('export default ') !== -1
     , mount = hasEntry ? (await import(rootFile)).default : {}
     , generated = new Set()
     , noscript = argv.some(x => x === '--noscript')
 
-await fs.rm('+build', { recursive: true })
+let rendering = new Set()
+
+fs.rmSync('+build', { recursive: true, force: true })
+fs.mkdirSync('+build', { recursive: true })
 noscript || await import('../build/index.js')
 const start = performance.now()
-await fs.cp('+public', '+build', { recursive: true })
+fs.cpSync('+public', '+build', { recursive: true, force: true })
 await generate()
 console.log('Finished generating in', performance.now() - start)
 
 async function generate(location = '/') {
   if (generated.has(location))
     return
+
+  generated.add(location)
 
   const x = await ssr(mount, {}, { location })
       , indexPath = path.join('+build', ...location.split('/'), 'index.html')
@@ -35,8 +41,7 @@ async function generate(location = '/') {
       : '<script type=module async defer src="/index.js"></script>'
   })
 
-  await fs.mkdir(path.dirname(indexPath), { recursive: true })
-  await fs.writeFile(indexPath, html)
-  generated.add(location)
+  await fsp.mkdir(path.dirname(indexPath), { recursive: true, force: true })
+  await fsp.writeFile(indexPath, html)
   await Promise.all([...x.links].map(generate))
 }

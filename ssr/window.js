@@ -17,6 +17,7 @@ export default window
 Object.assign(window, {
   Node,
   XMLHttpRequest,
+  scrollTo: noop,
   requestAnimationFrame: noop,
   addEventListener: noop,
   location: asLocation(new URL('', 'http://localhost')),

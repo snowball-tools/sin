@@ -259,7 +259,9 @@ function redraw() {
     window.requestAnimationFrame(globalRedraw)
     redrawer = new Promise(r => redrawed = r)
   }
-  return redrawer
+  return s.isServer
+    ? Promise.resolve()
+    : redrawer
 }
 
 function globalRedraw() {

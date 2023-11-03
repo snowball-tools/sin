@@ -153,7 +153,7 @@ function updateElement(view, context) {
   const tag = tagName(view)
   const internal = !String(view.attrs.href).match(/^[a-z]+:|\/\//)
   hasOwn.call(view.attrs, 'id') === false && view.tag.id && (view.attrs.id = view.tag.id)
-  if (hasOwn.call(view.attrs, 'href') && internal) {
+  if (view.tag.name === 'a' && hasOwn.call(view.attrs, 'href') && internal) {
     view.attrs.href = cleanSlash(view.attrs.href)
     context.doc.links(view.attrs.href)
   }

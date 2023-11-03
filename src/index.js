@@ -489,8 +489,9 @@ function fromComment(dom) {
     last = last.nextSibling
     if (last.nodeType === 8) {
       char = last.nodeValue.charCodeAt(0)
-      l += char === 91 ? parseInt(last.nodeValue.slice(1)) - 1
-         : char === 97 ? 1
+      l += char === 91 ? parseInt(last.nodeValue.slice(1)) - 1 // [
+         : char === 97 ? 1 // a
+         : char === 47 ? -1 // /a
          : 0
     } else {
       l--

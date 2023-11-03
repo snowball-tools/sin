@@ -1,7 +1,7 @@
 import window from './window.js'
 import View from '../src/view.js'
 import {
-  cleanSlash,
+  cleanHref,
   className,
   ignoredAttr,
   tryPromise,
@@ -154,7 +154,7 @@ function updateElement(view, context) {
   const internal = !String(view.attrs.href).match(/^[a-z]+:|\/\//)
   hasOwn.call(view.attrs, 'id') === false && view.tag.id && (view.attrs.id = view.tag.id)
   if (view.tag.name === 'a' && hasOwn.call(view.attrs, 'href') && internal) {
-    view.attrs.href = cleanSlash(view.attrs.href)
+    view.attrs.href = cleanHref(view.attrs.href)
     context.doc.links(view.attrs.href)
   }
   return tryPromise(updateChildren(view.children, context), x =>

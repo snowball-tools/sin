@@ -1,5 +1,5 @@
 import window from './window.js'
-import { isFunction, isPromise, cleanSlash, scrollRestore } from './shared.js'
+import { isFunction, isPromise, cleanSlash, cleanHref, scrollRestore } from './shared.js'
 
 let routing = false
 
@@ -18,8 +18,8 @@ function params(path, xs) {
 
 export default function router(s, root, rootContext, parent) {
   const location = route.location = rootContext.location
-  const routed = s(({ key, path, route, ...attrs }, [view], context) => { // eslint-disable-line
-    context.route = router(s, path.replace(/\/$/, ''), rootContext, route)
+  const routed = s(({ key, route, ...attrs }, [view], context) => { // eslint-disable-line
+    context.route = router(s, key.replace(/\/$/, ''), rootContext, route)
     route.key = key
     return () => resolve(view, attrs, context)
   })
@@ -30,7 +30,7 @@ export default function router(s, root, rootContext, parent) {
   route.toString = route
   route.has = x => x === '/'
     ? (getPath(location) === root || (getPath(location) === '/' && root === ''))
-    : getPath(location).indexOf(cleanSlash(root + '/' + x)) === 0
+    : getPath(location).indexOf(cleanHref(root + '/' + x)) === 0
 
   Object.defineProperty(route, 'path', {
     get() {
@@ -89,7 +89,7 @@ export default function router(s, root, rootContext, parent) {
       return root + '/'
 
     if (typeof routes === 'string')
-      return reroute(cleanSlash(routes[0] === '/' ? routes : '/' + routes), options)
+      return reroute(cleanHref(routes[0] === '/' ? routes : '/' + routes), options)
 
     if (!routing) {
       routing = true
@@ -99,14 +99,9 @@ export default function router(s, root, rootContext, parent) {
     }
 
     const path = getPath(location, root.length)
-    const pathTokens = tokenizePath(path)
-
-    const { match, view } = matchRoutes(routes, pathTokens)
-
-    const current = root + (match
-      ? match.map((x, i) => pathTokens[i]).join('')
-      : '?'
-    )
+        , pathTokens = tokenizePath(path)
+        , { match, view } = matchRoutes(routes, pathTokens)
+        , key = root + (match ? match.map((x, i) => x === '/*' || x === '/?' ? '' : pathTokens[i]).join('') : '?')
 
     if (view === undefined || match[0] === '/?')
       rootContext.doc.status(404)
@@ -114,11 +109,10 @@ export default function router(s, root, rootContext, parent) {
     route.params = { ...route.parent.params, ...params(match || [], pathTokens) }
 
     return routed({
-      key: current || '?',
-      path: match && match[0] === '/*' ? '' : current,
+      key,
       route,
       ...route.params,
-      ...(root + path === current && routeState[root + path] || window.history.state || {})
+      ...(root + path === key && routeState[root + path] || window.history.state || {})
     },
       view
     )
@@ -158,10 +152,11 @@ function getScore(match, path) {
   return match.reduce((acc, x, i) =>
     acc + (
       x === '/?' ? 1
-      : x === path[i] ? 6
-      : x && path[i] && x.toLowerCase() === path[i].toLowerCase() ? 5
-      : x[1] === ':' && path[i] && path[i].length > 1 ? 4
-      : x === '/' && !path[i] ? 3
+      : x === path[i] ? 7
+      : x && path[i] && x.toLowerCase() === path[i].toLowerCase() ? 6
+      : x[1] === ':' && path[i] && path[i].length > 1 ? 5
+      : x === '/' && !path[i] ? 4
+      : x.indexOf('/...') === 0 ? 3
       : x === '/*' ? 2
       : -Infinity
     )

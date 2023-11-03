@@ -300,13 +300,11 @@ function devPort() {
 }
 
 async function getMount() {
-  const specifiesIndex = argv.find(x => x[0] !== '-' && x.endsWith('.js'))
-      , entry = specifiesIndex || 'index.js'
-      , absEntry = path.isAbsolute(entry) ? entry : path.join(cwd, entry)
-      , hasEntry = (await gracefulRead(absEntry).catch(specifiesIndex ? undefined : (() => ''))).indexOf('export default ') !== -1
+  const entry = path.basename(process.env.SIN_ENTRY)
+      , hasMount = (await gracefulRead(process.env.SIN_ENTRY)).indexOf('export default ') !== -1
 
-  return hasEntry
-    ? { entry, mount: (await import(absEntry)).default }
+  return hasMount
+    ? { entry, mount: (await import(process.env.SIN_ENTRY)).default }
     : { entry }
 }
 

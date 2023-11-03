@@ -22,8 +22,24 @@ let retries = 0
   , node
   , scripts = {}
 
+const argv = process.argv.slice(2)
+
+const entry = argv.slice(1).find(x => x.startsWith('./') || x.endsWith('.js'))
+  || argv.slice(1).filter(x => !'clear ssr raw server'.includes(x) && x[0] !== '-').pop()
+  || ''
+
+const root = path.isAbsolute(entry)
+  ? entry
+  : fs.existsSync(entry)
+    ? path.join(process.cwd(), entry)
+    : fs.existsSync(entry + '.js')
+    ? path.join(process.cwd(), entry + '.js')
+    : process.cwd()
+
+const file = root.endsWith('.js')
+process.chdir(process.env.PWD = file ? path.dirname(root) : root)
+
 const cwd = process.cwd()
-    , argv = process.argv.slice(2)
     , local = path.join(cwd, 'node_modules', 'sin', 'bin')
     , here = fs.existsSync(local) ? local : url.fileURLToPath(new URL('.', import.meta.url))
     , commands = fs.readdirSync(here).filter(x => fs.existsSync(path.join(here, x, 'index.js')))

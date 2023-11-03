@@ -8,15 +8,21 @@ if (!fs.readdirSync(process.cwd()).some(x => x[0] !== '.'))
   await import('../create/index.js')
 
 const argv = process.argv.slice(2)
-const entry = argv.find(x => x.startsWith('./') || x.endsWith('.js')) || ''
-const root = path.isAbsolute(entry) ? entry : path.join(process.cwd(), entry)
-const file = root.endsWith('.js')
+const entry = argv.find(x => !'clear ssr raw server'.includes(x) && x[0] !== '-') || ''
 
-process.chdir(process.env.PWD = file ? path.dirname(root) : root)
+const root = process.env.SIN_ENTRY = path.isAbsolute(entry)
+  ? entry
+  : path.join(process.cwd(),
+    entry !== path.basename(process.cwd()) && fs.existsSync(entry + '.js')
+      ? entry + '.js'
+      : entry !== path.basename(process.cwd())
+        ? path.join(entry, entry.endsWith('.js') ? '' : 'index.js')
+        : 'index.js'
+  )
 
 await import('./watch.js').then(x => x.default())
 await import('../log.js')
 
 argv[0] === 'raw'
-  ? import(file ? root : path.join(root, 'index.js'))
+  ? import(root)
   : import('./server.js')

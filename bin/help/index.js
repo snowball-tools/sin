@@ -3,7 +3,7 @@
 import './usage'
 import s from '../style.js'
 
-console.log(`
+false && console.log(`
 ${ s.bold`development` }
 // Todo
 

@@ -35,7 +35,8 @@ const removing = new WeakSet()
     , observableSymbol = Symbol('observable')
     , componentSymbol = Symbol('component')
     , eventSymbol = Symbol('event')
-    , arraySymbol = Symbol('array')
+    , arrayEnd = Symbol('arrayEnd')
+    , arrayStart = Symbol('arrayStart')
     , liveSymbol = Symbol('live')
     , sizeSymbol = Symbol('size')
     , lifeSymbol = Symbol('life')
@@ -491,18 +492,23 @@ function fromComment(dom) {
       char = last.nodeValue.charCodeAt(0)
       l += char === 91 ? parseInt(last.nodeValue.slice(1)) - 1 // [
          : char === 97 ? 1 // a
-         : char === 47 ? -1 // /a
+         : char === 47 ? -1 // /
          : 0
     } else {
       l--
     }
   }
-  dom[arraySymbol] = last
+  markArray(dom, last)
   return last
 }
 
+function markArray(first, last) {
+  first[arrayEnd] = last
+  last[arrayStart] = first
+}
+
 function getArray(dom) {
-  return dom && hasOwn.call(dom, arraySymbol) ? dom[arraySymbol] : fromComment(dom)
+  return dom && hasOwn.call(dom, arrayEnd) ? dom[arrayEnd] : fromComment(dom)
 }
 
 function updateArray(dom, view, context, parent, create) {
@@ -514,14 +520,14 @@ function updateArray(dom, view, context, parent, create) {
     updates(parent, view, context, comment.first, last)
 
     const nextLast = after ? after.previousSibling : parent.lastChild
-    last !== nextLast && (comment.first[arraySymbol] = nextLast)
+    last !== nextLast && markArray(comment.first, nextLast)
     return Ret(comment.dom, comment.first, nextLast)
   }
 
   parent = new DocumentFragment()
   parent.appendChild(comment.dom)
   updates(parent, view, context, comment.first, last)
-  comment.first[arraySymbol] = parent.lastChild
+  markArray(comment.first, parent.lastChild)
   return Ret(parent, comment.first, parent.lastChild)
 }
 
@@ -710,6 +716,7 @@ function hydrate(dom) {
     last = last.nextSibling
 
   const x = Ret(dom.nextSibling, dom.nextSibling, last.previousSibling)
+  hasOwn.call(arrayStart, last) && markArray(last[arrayStart], last.previousSibling)
   dom.remove()
   last.remove()
   return x

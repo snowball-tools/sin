@@ -435,9 +435,8 @@ export function formatValue(v, { property, unit }) {
 
   x = v
   value = ''
-  valueStart = 0
+  valueStart = fn.length = 0
   numberStart = lastSpace = -1
-  fn.length = 0
   prop = property
   for (let i = 0; i <= v.length; i++) {
     char = v.charCodeAt(i)

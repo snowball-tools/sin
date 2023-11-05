@@ -1,9 +1,8 @@
 import window from '../src/window.js'
 import { asLocation } from './shared.js'
-import { hasOwn } from '../src/shared.js'
+import { hasOwn, noop } from '../src/shared.js'
 import px from './px.js'
 
-const noop = () => { /* noop */ }
 const rules = new Set()
 
 class Node {

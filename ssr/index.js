@@ -30,6 +30,7 @@ s.mimes = mimes
 s.trust = trust
 
 let lastWasText = false
+  , wasText = false
 
 const noscript = process.argv.includes('--noscript')
 const ignoredServerAttr = x => x !== 'href' && x !== 'type' && ignoredAttr(x)
@@ -127,7 +128,9 @@ export default function({ view = () => '', attrs = {}, context = {} } = {}, serv
 }
 
 function update(view, context) {
-  return isFunction(view)
+  wasText = false
+
+  const x = isFunction(view)
     ? update(view(), context)
     : view instanceof View
       ? view.component
@@ -141,7 +144,10 @@ function update(view, context) {
             ? updateArray(view, context)
             : typeof view === 'boolean' || view == null
               ? updateComment(view, context)
-              : updateText(view, context)
+              : (wasText = true, updateText(view, context))
+
+  lastWasText = wasText
+  return x
 }
 
 function tagName(view) {
@@ -149,7 +155,6 @@ function tagName(view) {
 }
 
 function updateElement(view, context) {
-  lastWasText = false
   const tag = tagName(view)
   const internal = !String(view.attrs.href).match(/^[a-z]+:|\/\//)
   hasOwn.call(view.attrs, 'id') === false && view.tag.id && (view.attrs.id = view.tag.id)
@@ -214,7 +219,6 @@ function getClassName(view) {
 }
 
 function updateChildren(xs, context) {
-  lastWasText = false
   let async = false
   const results = xs.map(x => {
     const result = update(x, context)
@@ -227,7 +231,6 @@ function updateChildren(xs, context) {
 }
 
 function updateArray(xs, context) {
-  lastWasText = false
   let async = false
   const results = xs.map(x => {
     const result = update(x, context)
@@ -243,17 +246,14 @@ function updateArray(xs, context) {
 
 function updateText(view, context) {
   const x = (lastWasText && !context.noscript ? '<!--,-->' : '') + escape(view)
-  lastWasText = true
   return x
 }
 
 function updateComment(view) {
-  lastWasText = false
   return '<!--' + view + '-->'
 }
 
 function updateComponent(view, context) {
-  lastWasText = false
   let x = view.component[0](view.attrs, view.children, context)
   mergeTag(x, view)
   return tryPromise(x, (x, wasPromise) => {
@@ -320,10 +320,11 @@ function trust(strings, ...values) {
 
 function rootNodeCount(x) {
   let char = -1
-  , start = -1
-  , end = -1
-  , count = 0
-  , depth = 0
+    , last = -1
+    , start = -1
+    , end = -1
+    , count = 0
+    , depth = 0
 
   for (let i = 0; i < x.length; i++) {
     char = x.charCodeAt(i)
@@ -334,7 +335,7 @@ function rootNodeCount(x) {
         --depth || count++
         end = -1
       } else if (start >= 0) {
-        voidTags.has(x.slice(start, i).toLowerCase())
+        last === 47 || voidTags.has(x.slice(start, i).toLowerCase())
           ? depth === 0 && count++
           : depth++
         start = -1
@@ -342,6 +343,7 @@ function rootNodeCount(x) {
     } else if (char === 47) {
       start === i && (start = -1, end = i + 1)
     }
+    last = char
   }
   return count
 }

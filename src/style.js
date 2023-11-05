@@ -422,10 +422,10 @@ function getUnit(prop, fn = '') {
 }
 
 export function formatValue(v, { property, unit }) {
+  isFunction(v) && (v = v())
   if (!v && v !== 0)
     return ''
 
-  isFunction(v) && !isObservable(v) && (v = v())
   if (typeof v === 'number')
     return v + unit
 

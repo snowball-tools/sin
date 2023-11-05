@@ -14,6 +14,7 @@ import {
   isFunction,
   className,
   styleProp,
+  resolved,
   mergeTag,
   isTagged,
   notValue,
@@ -258,11 +259,11 @@ function shouldHydrate(dom) {
 function redraw() {
   if (!redrawer) {
     window.requestAnimationFrame(globalRedraw)
-    redrawer = new Promise(r => redrawed = r)
+    redrawer = s.isServer
+      ? resolved
+      : new Promise(r => redrawed = r)
   }
-  return s.isServer
-    ? Promise.resolve()
-    : redrawer
+  return redrawer
 }
 
 function globalRedraw() {
@@ -971,7 +972,7 @@ function setVar(dom, id, value, cssVar, init, reapply, after) {
   }
 
   if (isFunction(value))
-    return Promise.resolve().then(() => setVar(dom, id, value(dom), cssVar, init, reapply, after))
+    return resolved.then(() => setVar(dom, id, value(dom), cssVar, init, reapply, after))
 
   dom.style.setProperty(id, formatValue(value, cssVar))
   after && afterUpdate.push(() => dom.style.setProperty(id, formatValue(value, cssVar)))

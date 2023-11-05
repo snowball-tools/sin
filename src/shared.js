@@ -1,5 +1,7 @@
 export const stackTrace = Symbol('stackTrace')
 
+export const resolved = Promise.resolve()
+
 export const hasOwn = {}.hasOwnProperty
 
 export function cleanSlash(x) {

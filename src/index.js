@@ -492,19 +492,14 @@ function fromComment(dom) {
       char = last.nodeValue.charCodeAt(0)
       l += char === 91 ? parseInt(last.nodeValue.slice(1)) - 1 // [
          : char === 97 ? 1 // a
-         : char === 47 ? -1 // /
-         : 0
+         : char === 44 ? 0 // ,
+         : -1
     } else {
       l--
     }
   }
-  markArray(dom, last)
+  dom[arrayEnd] = last
   return last
-}
-
-function markArray(first, last) {
-  first[arrayEnd] = last
-  last[arrayStart] = first
 }
 
 function getArray(dom) {
@@ -520,14 +515,14 @@ function updateArray(dom, view, context, parent, create) {
     updates(parent, view, context, comment.first, last)
 
     const nextLast = after ? after.previousSibling : parent.lastChild
-    last !== nextLast && markArray(comment.first, nextLast)
+    last !== nextLast && (comment.first[arrayEnd] = nextLast)
     return Ret(comment.dom, comment.first, nextLast)
   }
 
   parent = new DocumentFragment()
   parent.appendChild(comment.dom)
   updates(parent, view, context, comment.first, last)
-  markArray(comment.first, parent.lastChild)
+  comment.first[arrayEnd] = parent.lastChild
   return Ret(parent, comment.first, parent.lastChild)
 }
 
@@ -716,7 +711,6 @@ function hydrate(dom) {
     last = last.nextSibling
 
   const x = Ret(dom.nextSibling, dom.nextSibling, last.previousSibling)
-  hasOwn.call(arrayStart, last) && markArray(last[arrayStart], last.previousSibling)
   dom.remove()
   last.remove()
   return x

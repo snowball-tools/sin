@@ -269,16 +269,19 @@ function updateComponent(view, context) {
 }
 
 function escape(x = '') {
+  x = '' + x
   let s = ''
   let c = -1
   let l = -1
   for (let i = 0; i < x.length; i++) {
     c = x.charCodeAt(i)
     c === 60 ? s += x.slice(l + 1, l = i) + '&lt;' : // <
-      c === 62 ? s += x.slice(l + 1, l = i) + '&gt;' : // >
-      c === 38 && (s += x.slice(l + 1, l = i) + '&amp;') // &
+    c === 62 ? s += x.slice(l + 1, l = i) + '&gt;' : // >
+    c === 38 && (s += x.slice(l + 1, l = i) + '&amp;') // &
   }
-  return s || x
+  return l !== -1
+    ? s + x.slice(l + 1)
+    : x
 }
 
 function escapeAttr(x = '') {

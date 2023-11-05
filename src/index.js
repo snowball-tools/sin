@@ -264,7 +264,14 @@ function head(x) {
 }
 
 function shouldHydrate(dom) {
-  return dom && dom.nodeType === 8 && dom.nodeValue === 'h' && (dom.remove(), true)
+  const hydrate = dom && dom.nodeType === 8 && dom.nodeValue === 'h' && (dom.remove(), true)
+  if (hydrate) {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_COMMENT)
+    let node
+    while(node = walker.nextNode())
+      node.data === ',' && node.remove()
+  }
+  return hydrate
 }
 
 function redraw() {
@@ -346,10 +353,8 @@ function nonKeyed(parent, context, next, keys, dom, after = null) {
       dom = temp.last
       i++
     }
-    if (dom !== null) {
+    if (dom !== null)
       dom = dom.nextSibling
-      dom !== null && dom.nodeType === 8 && dom.nodeValue === ',' && (dom = remove(dom, parent))
-    }
   }
 
   while (dom && dom !== after)
@@ -504,7 +509,6 @@ function fromComment(dom) {
       char = last.nodeValue.charCodeAt(0)
       l += char === 91 ? parseInt(last.nodeValue.slice(1)) - 1 // [
          : char === 97 ? 1 // a
-         : char === 44 ? 0 // ,
          : -1
     } else {
       l--

@@ -514,8 +514,13 @@ function fromComment(dom) {
       l--
     }
   }
-  dom[arrayEnd] = last
+  markArray(dom, last)
   return last
+}
+
+function markArray(first, last) {
+  (last || first)[arrayStart] = first
+  first[arrayEnd] = last
 }
 
 function getArray(dom) {
@@ -531,14 +536,14 @@ function updateArray(dom, view, context, parent, create) {
     updates(parent, view, context, comment.first, last)
 
     const nextLast = after ? after.previousSibling : parent.lastChild
-    last !== nextLast && (comment.first[arrayEnd] = nextLast)
+    last !== nextLast && markArray(comment.first, nextLast)
     return Ret(comment.dom, comment.first, nextLast)
   }
 
   parent = new DocumentFragment()
   parent.appendChild(comment.dom)
   updates(parent, view, context, comment.first, last)
-  comment.first[arrayEnd] = parent.lastChild
+  markArray(comment.first, parent.lastChild)
   return Ret(parent, comment.first, parent.lastChild)
 }
 
@@ -727,9 +732,23 @@ function hydrate(dom) {
     last = last.nextSibling
 
   const x = Ret(dom.nextSibling, dom.nextSibling, last.previousSibling)
+  hasOwn.call(last, arrayStart) && markArray(last[arrayStart], last.previousSibling)
+  hasOwn.call(dom, componentSymbol) && (x.first[componentSymbol] = dom[componentSymbol])
+  if (hasOwn.call(dom, keysSymbol)) {
+    x.first[keysSymbol] = dom[keysSymbol]
+    dom[keysSymbol].length && (dom[keysSymbol][0].dom = x.first)
+  }
   dom.remove()
   last.remove()
   return x
+}
+
+function bounds(dom) {
+  const id = '/' + dom.nodeValue
+  let last = dom.nextSibling
+  while (last && (last.nodeType !== 8 || last.nodeValue !== id))
+    last = last.nextSibling
+  return Ret(dom, dom, last)
 }
 
 function updateComponent(
@@ -755,7 +774,7 @@ function updateComponent(
   const hydratingAsync = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 97 // a
 
   if (hydratingAsync) {
-    instance.next = hydrate(dom)
+    instance.next = bounds(dom)
   } else {
     let view = catchInstance(create, instance, component)
     view && hasOwn.call(view, sSymbol) && (view = view(component.attrs, component.children, instance.context))
@@ -781,10 +800,11 @@ function updateComponent(
       instance.view = resolveError(instance, component, error)
     })
     .then(() => hasOwn.call(instance.next.first, componentSymbol) && stack.xs[i] === instance && (
+      hydratingAsync && (stack.dom = hydrate(dom)),
       context.hydrating = false,
       instance.recreate = true,
       instance.promise = false,
-      setTimeout(redraw, 33) // There is a race condition here to be looked closer at re ssr
+      redraw()
     ))
 
   const changed = dom !== instance.next.first

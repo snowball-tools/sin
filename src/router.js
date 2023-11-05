@@ -1,5 +1,11 @@
 import window from './window.js'
-import { isFunction, isPromise, cleanSlash, cleanHref, scrollRestore } from './shared.js'
+import {
+  isFunction,
+  isPromise,
+  cleanSlash,
+  cleanHref,
+  scrollRestore
+} from './shared.js'
 
 let routing = false
 
@@ -71,17 +77,15 @@ export default function router(s, root, rootContext, parent) {
     routeState[path] = state
     path.indexOf(location.search) > -1 && rootContext.query(location.search)
 
-    return s.redraw().then(() =>
+    return s.redraw().then(() => {
       scroll === false || s.route.scroll === false
         ? s.route.scroll = undefined
-        : window.scrollTo(0, 0)
-    )
+        : scrollRestore()
+    })
   }
 
   function popstate({ state = {} } = {}) {
-    s.redraw().then(() =>
-      scrollRestore(state.scrollLeft || 0, state.scrollTop || 0)
-    )
+    s.redraw().then(() => scrollRestore(...(state.scroll || [])))
   }
 
   function route(routes, options = {}) {

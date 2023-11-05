@@ -225,20 +225,27 @@ function mount(dom, view, attrs = {}, context = {}) {
 }
 
 function scrollRestoration() {
-  // window.history.scrollRestoration = 'manual' // test if needed (might prevent scrollTo 0 before scrollRestore)
-  scrollRestore(history.state?.scrollLeft, history.state?.scrollTop)
+  // test if needed (might prevent scrollTo 0 before scrollRestore)
+  window.history.scrollRestoration = 'manual'
+  scrollRestore(...(history.state?.scroll || []))
   let scrollTimer
-  document.addEventListener('scroll', () => {
+  document.addEventListener('scroll', save, { passive: true })
+  document.addEventListener('resize', save, { passive: true })
+  function save() {
     clearTimeout(scrollTimer)
     scrollTimer = setTimeout(scrollSave, 100)
-  }, { passive: true })
+  }
 }
 
 function scrollSave() {
   window.history.replaceState({
     ...history.state,
-    scrollLeft: document.documentElement.scrollLeft || document.body.scrollLeft,
-    scrollTop: document.documentElement.scrollTop || document.body.scrollTop
+    scroll: [
+      document.documentElement.scrollLeft || document.body.scrollLeft,
+      document.documentElement.scrollTop || document.body.scrollTop,
+      document.documentElement.scrollWidth,
+      document.documentElement.scrollHeight
+    ]
   }, null, location.pathname + location.search + location.hash)
 }
 

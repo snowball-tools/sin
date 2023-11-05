@@ -310,14 +310,13 @@ function escapeAttrValue(x = '') {
 }
 
 function trust(strings, ...values) {
-  Array.isArray(strings.raw) || (strings = Object.assign([strings], { raw: [strings] }))
-  const html = String.raw(strings, ...values)
-      , count = rootNodeCount(html)
+  const html = String.raw({ raw: Array.isArray(strings.raw) ? strings.raw : [strings] }, ...values)
+      , count = rootNodeCount(html) + 1
 
   return new window.Node(
       (noscript ? '' : '<!--[' + count + '-->')
-    + html
-    + (noscript ? '' : '<!--,-->')
+    + html.trim()
+    + (noscript ? '' : '<!--trust-->')
   )
 }
 

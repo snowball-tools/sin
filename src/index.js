@@ -111,9 +111,13 @@ s.error = s((error) => {
 
 const trusted = s(({ strings, values = [] }) => {
   const div = document.createElement('div')
-  Array.isArray(strings.raw) || (strings = Object.assign([strings], { raw: [strings] }))
-  div.innerHTML = String.raw(strings, ...values)
-  const nodes = [...div.childNodes, document.createComment('<!--,-->')]
+  const raw = Array.isArray(strings.raw)
+    ? [...strings.raw]
+    : [strings.trim()]
+  raw[0] = raw[0].trimStart()
+  raw[raw.length - 1] = raw[raw.length - 1].trimEnd()
+  div.innerHTML = String.raw({ raw }, ...values)
+  const nodes = [...div.childNodes, document.createComment('trust')]
   return () => nodes
 })
 

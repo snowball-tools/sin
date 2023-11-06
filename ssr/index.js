@@ -128,7 +128,6 @@ export default function({ view = () => '', attrs = {}, context = {} } = {}, serv
 
 function update(view, context) {
   wasText = false
-
   const x = isFunction(view)
     ? update(view(), context)
     : view instanceof View
@@ -143,9 +142,9 @@ function update(view, context) {
             ? updateArray(view, context)
             : typeof view === 'boolean' || view == null
               ? updateComment(view, context)
-              : (wasText = true, updateText(view, context))
-
+              : (wasText = updateText(view, context))
   lastWasText = wasText
+  wasText = false
   return x
 }
 
@@ -244,8 +243,7 @@ function updateArray(xs, context) {
 }
 
 function updateText(view, context) {
-  const x = (lastWasText && !context.noscript ? '<!--,-->' : '') + escape(view)
-  return x
+  return (lastWasText && !context.noscript ? '<!--,-->' : '') + escape(view)
 }
 
 function updateComment(view) {

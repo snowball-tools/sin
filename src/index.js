@@ -266,10 +266,12 @@ function head(x) {
 function shouldHydrate(dom) {
   const hydrate = dom && dom.nodeType === 8 && dom.data === 'h' && (dom.remove(), true)
   if (hydrate) {
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_COMMENT)
     let node
+    const nodes = []
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_COMMENT)
     while ((node = walker.nextNode()))
-      node.data === ',' && node.remove()
+      node.data === ',' && nodes.push(node)
+    nodes.forEach(x => x.remove())
   }
   return hydrate
 }

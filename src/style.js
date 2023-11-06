@@ -361,7 +361,7 @@ function endBlock() {
     rule += propValue(rule, 'animation', animation + ' ' + temp)
     animation = ''
   } else {
-    const closing = selectors.map(x => x.charCodeAt(0) === 64 && x.indexOf('@font-face') === -1 ? '}' : '').join('')
+    const closing = selectors.map(x => x.charCodeAt(0) === 64 && isNested(x) ? '}' : '').join('')
     selectors.pop()
     selectors.length && selectors[0].indexOf('@keyframes') === 0
       ? rules[selectors[0]] = (rules[selectors[0]] || '') + selector + '{' + rule + '}'

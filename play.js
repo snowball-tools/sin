@@ -2,7 +2,394 @@
 
 import s from 'sin'
 
-reloadAsync()
+async function ssrfun() {
+  s.css`
+    * {
+      animation 3s {
+        from { o 0 }
+      }
+    }
+  `
+
+  s.isServer || await s.sleep(2000)
+
+  //export default
+  s.mount(({}, [], { route }) => [
+    s`button`({
+      onclick: s.redraw,
+      key: 2
+    }, 'redraw'),
+    route({
+      '/': s(async() => {
+        p('init', 1)
+        s.isServer || await s.sleep(2000)
+        return () => s(async() => {
+          p('init', 2)
+          s.isServer || await s.sleep(2000)
+          return () => '-1'
+        })
+      })
+    }),
+    s(() => {
+      console.log('init', Date.now())
+      return () => s`h1`('b')
+    })({ key: 4 })
+  ])
+}
+
+function routingSpam() {
+  s.mount(({}, [], { route }) =>
+    s`main`(
+      s`a`({
+        href: '/'
+      },
+        '/'
+      ),
+      s`a`({
+        href: '/wat'
+      },
+        '/wat'
+      ),
+      s`a`({
+        href: '/dat'
+      },
+        '/dat'
+      ),
+      route({
+        '/...': s(({ wat, init = performance.now() }, [], { route }) => () => s`h1`('anything', route.path, init))
+      }),
+      route({
+        '/*': s(({ wat, init = performance.now() }, [], { route }) => () => s`h1`('anything', route.path, init))
+      }),
+      route({
+        '/?': s(({ wat, init = performance.now() }, [], { route }) => () => s`h1`('anything', route.path, init))
+      })
+    )
+  )
+}
+
+function sTrust() {
+  s.css`
+    * { animation 1s { from { o 0 } } }
+  `
+  const xs = []
+  const xs2 = []
+
+  s.mount(() => [
+    s`button`({
+      onclick: () => xs2.push(xs.push(xs.length)),
+      key: Math.random()
+    }, 'add'),
+    xs.map(x => s`li`(x)),
+    xs.length % 2
+      ? s.trust('<h1>hej</h1><p>wat</p>')
+      : s.trust('<h1>hej</h1><p>wat</p>'), // should do nothing
+    xs2.map(x => s`li`(x)),
+    xs.length % 2
+      ? s.trust('<h1>hej</h1><p>wat</p>')
+      : s.trust('<h2>hej</h2><p>wat</p>'), // should recreate
+    xs2.map(x => s`li`(x)),
+  ])
+}
+
+function parentTagArgsInherit() {
+  const xs = [10,20,30]
+
+  // width is not 50, 60 and 70 but just 50
+  s.mount(() =>
+    xs.map(x =>
+      s`
+        bc blue
+        w ${ '20px' }
+        h ${ '20px' }
+      ``
+        w ${ x + 40 + 'px' }
+        h ${ x + 40 + 'px' }
+      ``
+        border 10px solid blue
+      ``
+        bc yellow
+        h ${ x + 50 + 'px' }
+      `('hej')
+    )
+  )
+}
+
+function autosizeTextarea() {
+  s.css`
+    html {
+      box-sizing: border-box;
+    }
+    *, *:before, *:after {
+      box-sizing: inherit;
+    }
+  `
+
+
+  let value = 'Initial text'
+
+  const textareaAutosize = s((attrs, children) =>
+    s`textarea
+      resize none
+      overflow hidden
+    `({
+      ...attrs,
+      oninput: (e, dom) => {
+        dom.style.height = 'auto'
+        dom.style.height = dom.scrollHeight + (dom.offsetHeight - dom.clientHeight) + 'px'
+        attrs.oninput
+          ? attrs.oninput(e, dom)
+          : e.redraw = false
+      }
+    },
+      children
+    )
+  )
+
+  s.mount(() => [
+    Date.now(),
+    textareaAutosize`
+      border none
+      bs 0 0 10 black
+    `({
+    }, value)
+  ])
+}
+
+function scrollHistory() {
+  s.mount(({}, [], { route }) => [
+    s`main
+      position relative
+      pb 50vh
+    `(
+      s`a`({
+        href: '/'
+      }, 'home'),
+      s`a`({
+        href: '/next'
+      }, 'next'),
+      s(async() => {
+        await s.sleep(500)
+        return () => [
+          route({
+            '/': () => s(async() => {
+              await s.sleep(2000)
+              return () => [...Array(100)].map((x, i) => s`h1`('home ', i, Math.round(Math.random() * 10)))
+            }),
+            '/next': () => [...Array(100)].map((x, i) => s`h1`('next', i))
+          })
+        ]
+      })
+    )
+  ])
+}
+
+function virtBAD() {
+  s.css`
+    html, body {
+      height 100%
+      min-height 100%
+    }
+  `
+  const virtual = s(({
+    data,
+    rows,
+    columns
+  }, [view]) => {
+    const from = s.live(0)
+    const size = s.live(1)
+    const height = s.live(0)
+    const items = s.live.from(from, size, (from, size) =>
+      data(from, from + size).map(x =>
+        view({
+          dom,
+          data: x,
+          i: from + x
+        })
+      )
+    )
+
+    function dom(x) {
+      if (!x.parentNode)
+        return
+
+      const h = x.offsetHeight
+      const ch = x.parentNode.offsetHeight
+      height(height + h)
+      height() < ch && size(size + 1)
+      return () => height(height - h)
+    }
+
+    return () => items
+  })
+
+  const xs = [...Array(10000)].map((x, i) => i)
+
+  s.mount(() =>
+    virtual({
+      data: (from, to) => xs.slice(from, to)
+    },
+      s(({ data, i }) => s``({ id: i }, 'Hello', data, i))
+    )
+  )
+
+  function occlu() {
+    const watso = s(({ data, count, height: defaultHeight }, [view]) => {
+      const length = 8
+          , heights = new Array(count).fill(null)
+          , height = x => heights.slice(0, x).reduce((a, b) => a + (b === null ? defaultHeight : b), 0)
+          , scroll = s.live(0)
+          , translate = s.live(0)
+          , offset = s.live.from(scroll, x => {
+            let index = 0
+            let height = heights[index]
+            while (height < x)
+              height += heights[++index] || defaultHeight
+            translate(Math.max(0, height - (heights[index] || defaultHeight)))
+            return index
+          })
+          , items = s.live.from(offset, x =>
+            data(Math.max(0, x), Math.min(x + length, count)).map((item, i) =>
+              view({ dom, key: item, item, index: x + i })
+            )
+          )
+
+      const doms = [
+        x => x.parentNode.style.minHeight = height(count) + 'px',
+        s.on(
+          document,
+          'scroll',
+          scroll.set(() => document.documentElement.scrollTop || document.body.scrollTop),
+          { passive: true }
+        )
+      ]
+
+      function dom(dom, { index }) {
+        heights[index] = (dom.offsetTop + dom.offsetHeight - (
+            dom.previousElementSibling
+              ? (dom.previousElementSibling.offsetTop + dom.offsetHeight)
+              : 0
+          )) || defaultHeight
+      }
+
+      return () =>
+        s`
+          transform translateY(${ translate })
+        `({
+          dom: doms
+        },
+          items
+        )
+    })
+
+    const xs = [...Array(10000)].map((x, i) => i)
+
+    let watsoi = false
+    s.css`
+      body { m 0 }
+    `
+
+    const child = s(({ item, index }, [], { redraw }) =>
+      s`
+        h 100
+        bc lightblue
+        ta center
+        p 40
+        will-change transform
+        animation 0.5s {
+          from {
+            transform rotateX(-90deg)
+            opacity 0
+          }
+        }
+      `({
+        id: 'a' + index
+      },
+        index + 'is good', Date.now(),
+        s``({ onclick: redraw }, 'yas')
+      )
+    )
+
+    s.mount(() => [
+      watsoi ? xs.map(x => child({ index: x })) : watso`
+        d grid
+        gap 20
+      `({
+        height: 200,
+        count: xs.length,
+        data: (from, to) => xs.slice(from, to)
+      },
+        child
+      ),
+      s`button
+        position fixed
+        top 0
+        right 0
+      `({
+        onclick: () => watsoi = !watsoi
+      },
+        'switch'
+      )
+    ])
+  }
+}
+
+function lively() {
+  const lively = s.live(0)
+      , many = s.live.from(lively, x => [...Array(x)].map((x, i) => s`li`(i)))
+
+  s.mount(() => [
+    lively,
+    s`
+      background hsl(${ lively.get(x => x * 20) }, 100%, 50%)
+    `('yo'),
+    s``({ onclick: lively.set(() => lively + 1) }, 'inc'),
+    s``({ onclick: lively.set(() => lively - 1) }, 'dec')
+  ])
+}
+
+function diffMoves() {
+  const xs = s.live([1, 2, 3])
+      , wats = s.live.from(xs, xs =>
+        xs.map(x =>
+          s`
+          animation 1s {
+            from { transform scale(0) }
+          }
+        `({ key: x, dom: () => p('init', x) },
+          x
+        ))
+      )
+
+  s.mount(() =>
+    s``(wats)
+  )
+
+  setTimeout(() => {
+    xs([0, 1, 2])
+    s.redraw()
+  }, 2000)
+}
+
+function nestedInsideMediaIssue(fixed) {
+  s.mount(() =>
+    s`
+      span {
+        bc hotpink
+      }
+
+      @media screen and (max-width: 600px) {
+        span {
+          bc yellow
+        }
+      }
+    `(
+      s`span
+        p 40
+      `('hej')
+    )
+  )
+}
 
 function wat() {
   let checked = false
@@ -88,16 +475,6 @@ function cssComments() {
   `
 }
 
-function format_time(time) {
-  time = Math.round(time)
-  let minutes = Math.floor(time / 60)
-    , seconds = time - minutes * 60
-
-  seconds = seconds < 10 ? '0' + seconds : seconds
-
-  return minutes + ":" + seconds
-}
-
 function onremoveTest() {
   let show = false
   s.mount(() => [
@@ -137,7 +514,7 @@ function cssDom() {
       }
 
       [animate=exit] {
-        transition max-height 5s
+        transition max-height 3s
       }
     `({
       dom: s.animate,
@@ -212,7 +589,7 @@ function imbaFunSample() {
       s`input`({ value: title, oninput: e => title = e.target.value }),
       s`label`(`Mouse is at ${ x } ${ y }`),
       mark` transform translate(${ x }, ${ y }) rotate(${ x + y })`('Item'),
-      s`div`(xs.slice(0, y).map(x =>
+      s`div`(xs.slice(0, y * 4).map(x =>
         li(x % 12 ? x : title)
       ))
     )
@@ -342,6 +719,7 @@ function reloadAsync() {
 }
 
 function testCSSParsing() {
+  // @charset "utf-8" - cannot be inserted dynamically
   s.css`
     @import 'custom.css'
 
@@ -511,7 +889,7 @@ function dndLists() {
   ])
 }
 
-function keyIssue() {
+function keyIssue(fixed) {
   let wat = false
   const wats = []
 
@@ -531,7 +909,7 @@ function keyIssue() {
   ))
 }
 
-function routeIssue() {
+function routeIssue(fixed) {
   const routers = []
 
   s.mount((a, c, { route }) => [
@@ -946,7 +1324,10 @@ function udomdiffTest() {
 
   let current = 0
   s.mount(() => [
-    s`button`({ onclick: start }, ''),
+    s`button
+      w 30
+      h 30
+    `({ onclick: start }, ''),
     xs[current].split('').map(key => s`div`({ key, id: key }, key))
   ])
 
@@ -954,24 +1335,24 @@ function udomdiffTest() {
     current = 0
     console.time('udomdiff')
     s.redraw()
-    Promise.resolve().then(run)
+    requestAnimationFrame(run)
   }
 
   function run() {
     if (document.body.textContent !== xs[current]) {
-      p('OH NO', current, xs[current], '!==', document.body.textContent)
+      console.log('OH NO', current, xs[current], '!==', document.body.textContent)
       console.timeEnd('udomdiff')
       return
     }
 
     if (current + 1 === xs.length) {
       console.timeEnd('udomdiff')
-      p('all good')
+      console.log('all good')
       return
     }
 
     current++
     s.redraw()
-    Promise.resolve().then(run)
+    requestAnimationFrame(run)
   }
 }

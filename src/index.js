@@ -264,7 +264,7 @@ function head(x) {
 }
 
 function shouldHydrate(dom) {
-  const hydrate = dom && dom.nodeType === 8 && dom.nodeValue === 'h' && (dom.remove(), true)
+  const hydrate = dom && dom.nodeType === 8 && dom.data === 'h' && (dom.remove(), true)
   if (hydrate) {
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_COMMENT)
     let node
@@ -497,17 +497,17 @@ function Ret(dom, first = dom, last = first) {
 }
 
 function fromComment(dom) {
-  if (!dom || dom.nodeType !== 8 || dom.nodeValue.charCodeAt(0) !== 91)
+  if (!dom || dom.nodeType !== 8 || dom.data.charCodeAt(0) !== 91)
     return
 
-  let l = parseInt(dom.nodeValue.slice(1))
+  let l = parseInt(dom.data.slice(1))
   let last = dom
   let char
   while (l && last.nextSibling) {
     last = last.nextSibling
     if (last.nodeType === 8) {
-      char = last.nodeValue.charCodeAt(0)
-      l += char === 91 ? parseInt(last.nodeValue.slice(1)) - 1 // [
+      char = last.data.charCodeAt(0)
+      l += char === 91 ? parseInt(last.data.slice(1)) - 1 // [
          : char === 97 ? 1 // a
          : -1
     } else {
@@ -564,8 +564,8 @@ function updateValue(
     parent
   )
 
-  if (!nodeChange && dom.nodeValue !== '' + view)
-    dom.nodeValue = view
+  if (!nodeChange && dom.data !== '' + view)
+    dom.data = view
 
   return Ret(dom)
 }
@@ -726,9 +726,9 @@ function onremoves(stack, instance, x) {
 }
 
 function hydrate(dom) {
-  const id = '/' + dom.nodeValue
+  const id = '/' + dom.data
   let last = dom.nextSibling
-  while (last && (last.nodeType !== 8 || last.nodeValue !== id))
+  while (last && (last.nodeType !== 8 || last.data !== id))
     last = last.nextSibling
 
   const x = Ret(dom.nextSibling, dom.nextSibling, last.previousSibling)
@@ -744,9 +744,9 @@ function hydrate(dom) {
 }
 
 function bounds(dom) {
-  const id = '/' + dom.nodeValue
+  const id = '/' + dom.data
   let last = dom.nextSibling
-  while (last && (last.nodeType !== 8 || last.nodeValue !== id))
+  while (last && (last.nodeType !== 8 || last.data !== id))
     last = last.nextSibling
   return Ret(dom, dom, last)
 }
@@ -771,7 +771,7 @@ function updateComponent(
 
   component.key !== undefined && (create || context.hydrating) && (instance.key = component.key)
 
-  const hydratingAsync = instance.promise && dom && dom.nodeType === 8 && dom.nodeValue.charCodeAt(0) === 97 // a
+  const hydratingAsync = instance.promise && dom && dom.nodeType === 8 && dom.data.charCodeAt(0) === 97 // a
 
   if (hydratingAsync) {
     instance.next = bounds(dom)
@@ -1130,14 +1130,14 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
     return after
 
   if (dom.nodeType === 8) {
-    if (dom.nodeValue.charCodeAt(0) === 97) { // a
+    if (dom.data.charCodeAt(0) === 97) { // a
       after = dom.nextSibling
       removeChild(parent, dom)
       if (!after)
         return after
       dom = after
       after = dom.nextSibling
-    } else if (dom.nodeValue.charCodeAt(0) === 91) { // [
+    } else if (dom.data.charCodeAt(0) === 91) { // [
       after = removeArray(dom, parent, root, promises, deferrable)
     }
   }

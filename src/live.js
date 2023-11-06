@@ -1,7 +1,7 @@
 import { noop, isFunction } from './shared.js'
 
-export function signal() {
-  const observers = new Set()
+export function signal(fn) {
+  const observers = new Set(fn ? [fn] : [])
   signal.observe = fn => (observers.add(fn), () => observers.delete(fn))
   return signal
 

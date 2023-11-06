@@ -671,17 +671,17 @@ class Stack {
       context.hydrating
     )
 
-    const update = (e, recreate, optimisic) => {
+    const update = (e, recreate, optimistic) => {
       e instanceof Event && (e.redraw = false)
       const keys = this.dom.first[keysSymbol]
-      updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, recreate, optimistic)
+      updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, recreate, optimistic, true)
       hasOwn.call(this.dom.first, keysSymbol) || (this.dom.first[keysSymbol] = keys)
       keys && keys.rev.has(view.key) && (keys[keys.rev.get(view.key)].dom = this.dom.first)
       afterRedraw()
     }
 
     const redraw = e => {
-      update(e, false)
+      update(e, false, true, true)
     }
     const reload = e => {
       instance.onremoves && (instance.onremoves.forEach(x => x()), instance.onremoves = undefined)
@@ -763,13 +763,14 @@ function updateComponent(
   parent,
   stack = dom && dom[componentSymbol] || new Stack(),
   create = stack.changed(component, context),
-  optimistic = false
+  optimistic = false,
+  local = false
 ) {
   const instance = create
     ? stack.add(component, context, optimistic)
     : stack.next()
 
-  if (!create && instance.ignore) {
+  if (!create && instance.ignore && !local) {
     stack.pop()
     return stack.dom
   }
@@ -809,7 +810,7 @@ function updateComponent(
       context.hydrating = false,
       instance.recreate = true,
       instance.promise = false,
-      redraw()
+      instance.ignore ? instance.context.redraw() : redraw()
     ))
 
   const changed = dom !== instance.next.first

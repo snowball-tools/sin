@@ -1,7 +1,5 @@
 /* eslint no-console: 0 */
 
-import { getPort } from './shared.js'
-
 import { createRequire } from 'module'
 const { WebSocket } = createRequire(import.meta.url)('internal/deps/undici/undici')
 

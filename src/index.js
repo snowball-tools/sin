@@ -268,7 +268,7 @@ function shouldHydrate(dom) {
   if (hydrate) {
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_COMMENT)
     let node
-    while(node = walker.nextNode())
+    while ((node = walker.nextNode()))
       node.data === ',' && node.remove()
   }
   return hydrate

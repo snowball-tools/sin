@@ -20,7 +20,6 @@ import s from '../src/index.js'
 import mimes from 'ey/src/mimes.js'
 import query from '../src/query.js'
 
-
 export { wrap }
 
 class TimeoutError extends Error {}
@@ -337,12 +336,12 @@ function rootNodeCount(x) {
         --depth || count++
         end = -1
       } else if (start >= 0) {
-        last === 47 || voidTags.has(x.slice(start, i).toLowerCase())
+        last === 47 || voidTags.has(x.slice(start, i).toLowerCase()) // /
           ? depth === 0 && count++
           : depth++
         start = -1
       }
-    } else if (char === 47) {
+    } else if (char === 47) { // /
       start === i && (start = -1, end = i + 1)
     }
     last = char

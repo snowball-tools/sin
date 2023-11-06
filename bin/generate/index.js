@@ -16,8 +16,6 @@ const argv = process.argv.slice(2)
     , generated = new Set()
     , noscript = argv.some(x => x === '--noscript')
 
-let rendering = new Set()
-
 fs.rmSync('+build', { recursive: true, force: true })
 fs.mkdirSync('+build', { recursive: true })
 noscript || await import('../build/index.js')

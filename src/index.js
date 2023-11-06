@@ -42,6 +42,7 @@ const removing = new WeakSet()
     , sizeSymbol = Symbol('size')
     , lifeSymbol = Symbol('life')
     , attrSymbol = Symbol('attr')
+    , keyIndexSymbol = Symbol('keyIndex')
     , keysSymbol = Symbol('keys')
     , keySymbol = Symbol('key')
     , sSymbol = Symbol('s')
@@ -336,6 +337,7 @@ function getNext(before, parent) {
 function Ref(keys, dom, key, i) {
   keys[i] = { dom, key }
   dom[keysSymbol] = keys
+  dom[keyIndexSymbol] = i
   keys.rev.set(key, i)
 }
 
@@ -737,8 +739,9 @@ function hydrate(dom) {
   hasOwn.call(last, arrayStart) && markArray(last[arrayStart], last.previousSibling)
   hasOwn.call(dom, componentSymbol) && (x.first[componentSymbol] = dom[componentSymbol])
   if (hasOwn.call(dom, keysSymbol)) {
-    x.first[keysSymbol] = dom[keysSymbol]
-    dom[keysSymbol].length && (dom[keysSymbol][0].dom = x.first)
+    const keys = dom[keysSymbol]
+    x.first[keysSymbol] = keys
+    keys[dom[keyIndexSymbol]].dom = x.first
   }
   dom.remove()
   last.remove()

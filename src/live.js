@@ -1,11 +1,11 @@
 import { noop, isFunction } from './shared.js'
 
-export function signal(fn) {
+export function event(fn) {
   const observers = new Set(fn ? [fn] : [])
-  signal.observe = fn => (observers.add(fn), () => observers.delete(fn))
-  return signal
+  event.observe = fn => (observers.add(fn), () => observers.delete(fn))
+  return event
 
-  function signal(...xs) {
+  function event(...xs) {
     [...observers].forEach(fn => fn(...xs))
   }
 }

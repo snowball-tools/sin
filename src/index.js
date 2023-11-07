@@ -1,6 +1,6 @@
 import View from './view.js'
 import http from './http.js'
-import live, { signal } from './live.js'
+import live, { event } from './live.js'
 import window from './window.js'
 import router from './router.js'
 import { parse, alias, formatValue } from './style.js'
@@ -98,7 +98,7 @@ s.css.alias = alias
 s.animate = animate
 s.http = http
 s.live = live
-s.signal = signal
+s.event = event
 s.on = on
 s.trust = trust
 s.route = router(s, '', { location: window.location, query: query(s, window.location) })

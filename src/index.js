@@ -1121,7 +1121,7 @@ function removeArray(dom, parent, root, promises, deferrable) {
 
 function removeChild(parent, dom) {
   const x = hasOwn.call(dom, componentSymbol) && dom[componentSymbol]
-  x && x.i <= x.top && (x.i ? x.xs.slice(i) : x.xs).forEach(x => x.onremoves.forEach(x => x()))
+  x && x.i <= x.top && (x.i ? x.xs.slice(i) : x.xs).forEach(x => x.onremoves && x.onremoves.forEach(x => x()))
   hasOwn.call(dom, observableSymbol) && dom[observableSymbol].forEach(x => x())
   parent.removeChild(dom)
 }

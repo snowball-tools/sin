@@ -646,7 +646,6 @@ class Instance {
 
 class Stack {
   constructor() {
-    this.life = []
     this.xs = []
     this.i = 0
     this.top = 0
@@ -659,8 +658,10 @@ class Stack {
 
     const instance = this.xs[this.i]
     const x = (instance.key !== view.key && !context.hydrating) || (instance.init && instance.init !== view.component[0])
+    x && instance.onremoves && instance.onremoves.forEach(x => x())
     return x
   }
+
   add(view, context, optimistic) {
     const [init, options] = view.component
     const instance = new Instance(
@@ -693,7 +694,7 @@ class Stack {
     }
     instance.context = Object.create(context, {
       hydrating: { value: context.hydrating, writable: true },
-      onremove: { value: fn => { onremoves(this, instance, fn) } },
+      onremove: { value: fn => { onremoves(instance, fn) } },
       ignore: { value: x => { instance.ignore = x } },
       refresh: { value: refresh },
       redraw: { value: redraw },
@@ -702,9 +703,9 @@ class Stack {
 
     const next = catchInstance(true, instance, view)
 
-    isObservable(view.attrs.reload) && onremoves(this, instance, view.attrs.reload.observe(reload))
-    isObservable(view.attrs.redraw) && onremoves(this, instance, view.attrs.redraw.observe(redraw))
-    isObservable(view.attrs.refresh) && onremoves(this, instance, view.attrs.refresh.observe(refresh))
+    isObservable(view.attrs.reload) && onremoves(instance, view.attrs.reload.observe(reload))
+    isObservable(view.attrs.redraw) && onremoves(instance, view.attrs.redraw.observe(redraw))
+    isObservable(view.attrs.refresh) && onremoves(instance, view.attrs.refresh.observe(refresh))
 
     instance.promise = next && isFunction(next.then) && next
     instance.stateful = instance.promise || (isFunction(next) && !next[sSymbol])
@@ -720,13 +721,10 @@ class Stack {
   }
 }
 
-function onremoves(stack, instance, x) {
-  if (!instance.onremoves) {
-    instance.onremoves = new Set([x])
-    stack.life.push(() => () => instance.onremoves.forEach(x => x()))
-  } else {
-    instance.onremoves.add(x)
-  }
+function onremoves(instance, x) {
+  instance.onremoves
+    ? instance.onremoves.add(x)
+    : instance.onremoves = new Set([x])
 }
 
 function hydrate(dom) {
@@ -818,10 +816,6 @@ function updateComponent(
   if (stack.pop() && (changed || create)) {
     stack.dom = instance.next
     instance.next.first[componentSymbol] = stack
-    if (instance.next.first.nodeType === 1) {
-      hasOwn.call(component.attrs, 'dom') && giveLife(instance.next.first, component.attrs, component.children, instance.context, component.attrs.dom)
-      giveLife(instance.next.first, component.attrs, component.children, instance.context, stack.life)
-    }
   }
 
   return instance.next
@@ -1126,6 +1120,8 @@ function removeArray(dom, parent, root, promises, deferrable) {
 }
 
 function removeChild(parent, dom) {
+  const x = hasOwn.call(dom, componentSymbol) && dom[componentSymbol]
+  x && x.i <= x.top && (x.i ? x.xs.slice(i) : x.xs).forEach(x => x.onremoves.forEach(x => x()))
   hasOwn.call(dom, observableSymbol) && dom[observableSymbol].forEach(x => x())
   parent.removeChild(dom)
 }

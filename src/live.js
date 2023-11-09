@@ -1,15 +1,5 @@
 import { noop, isFunction } from './shared.js'
 
-export function event(fn) {
-  const observers = new Set(fn ? [fn] : [])
-  event.observe = fn => (observers.add(fn), () => observers.delete(fn))
-  return event
-
-  function event(...xs) {
-    [...observers].forEach(fn => fn(...xs))
-  }
-}
-
 export default function Live(value, ...fns) {
   const observers = new Set()
   fns.forEach(fn => isFunction(fn) && observers.add(fn))

@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "sin dev play.js",
     "lint": "eslint . --ignore-pattern sin.js --ignore-pattern sin.min.js --ignore-pattern play.js",
-    "build": "pnpm build:min && pnpm build:bundle && pnpm build:gzip",
+    "build": "bun build:min && bun build:bundle && bun build:gzip",
     "build:min": "esbuild src/index.js --minify --format=esm --bundle --outfile=sin.min.js",
     "build:bundle": "esbuild src/index.js --format=esm --bundle --outfile=sin.js",
     "build:gzip": "gzip -c sin.min.js > sin.min.js.gz && ls -l sin.min.js.gz && rm sin.min.js.gz"

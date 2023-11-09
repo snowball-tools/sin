@@ -1,6 +1,6 @@
 import View from './view.js'
 import http from './http.js'
-import live, { event } from './live.js'
+import live from './live.js'
 import window from './window.js'
 import router from './router.js'
 import { parse, alias, formatValue } from './style.js'
@@ -121,6 +121,16 @@ const trusted = s(({ strings, values = [] }) => {
   const nodes = [...div.childNodes, document.createComment('trust')]
   return () => nodes
 })
+
+function event(fn) {
+  const observers = new Set(fn ? [fn] : [])
+  event.observe = fn => (observers.add(fn), () => observers.delete(fn))
+  return event
+
+  function event(...xs) {
+    [...observers].forEach(fn => fn(...xs))
+  }
+}
 
 function trust(strings, ...values) {
   return trusted({ key: '' + strings, strings, values })

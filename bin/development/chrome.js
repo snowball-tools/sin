@@ -13,7 +13,6 @@ import '../../ssr/index.js'
 import s from '../../src/index.js'
 
 import { createRequire } from 'module'
-const { WebSocket } = createRequire(import.meta.url)('internal/deps/undici/undici')
 
 const requests = new Map()
 const hmr = 'if(window.self === window.top)window.hmr=1;'
@@ -22,6 +21,8 @@ const args = process.argv.slice(2).concat((process.env.SIN_DEV_ARGS || '').split
 let id = 1
 
 export default async function(home, url, scriptParsed) {
+  const { WebSocket } = createRequire(import.meta.url)('internal/deps/undici/undici')
+
   const chromePath = getPath()
       , urlPath = path.join(home, '.sin-url')
       , wsUrlPath = path.join(home, '.sin-chrome-ws')

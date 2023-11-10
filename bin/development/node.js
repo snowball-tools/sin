@@ -1,13 +1,14 @@
 /* eslint no-console: 0 */
 
 import { createRequire } from 'module'
-const { WebSocket } = createRequire(import.meta.url)('internal/deps/undici/undici')
 
 const requests = new Map()
 
 let id = 1
 
 export default async function(url, scriptParsed) {
+  const { WebSocket } = createRequire(import.meta.url)('internal/deps/undici/undici')
+
   let errored = null
     , opened = false
     , socket

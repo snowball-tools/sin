@@ -77,7 +77,7 @@ ssl && fs.watch(ssl.cert, () => {
 
 function resolveEntry(x, command) {
   return [
-    path.join(cwd, command === 'ssr' ? '' : '+build', x),
+    path.join(cwd, command === 'ssr' || command === 'server' ? '' : '+build', x),
     path.join(cwd, '+public', x)
   ].find(x => fs.existsSync(x))
 }

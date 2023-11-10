@@ -68,7 +68,6 @@ const cache = new Map()
     , strict = x => x === 59 || x === 125
     , last = xs => xs[xs.length - 1]
     , selectors = []
-    , fn = []
 
 let start = -1
   , valueStart = -1
@@ -104,6 +103,7 @@ let start = -1
   , hasRules = false
   , hash = 0
   , raw = false
+  , fn = []
 
 function shorthand(x) {
   return shorthands[x] || x
@@ -153,8 +153,9 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
 
   raw = root
   const vars = {}
+  fn = []
   name = id = classes = rule = value = prop = ''
-  selectors.length = fn.length = hash = 0
+  selectors.length = hash = 0
   lastSpace = valueStart = fontFaces = startChar = cssVar = -1
   rules = raw ? {} : null
   hasRules = false
@@ -174,7 +175,7 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
       window.isServer && isFunction(arg) && !isObservable(arg) && (arg = '6invalidate')
       if (cssVars && valueStart >= 0 && arg !== '6invalidate') {
         temp = prefix + Math.abs(hash).toString(31)
-        vars[varName = '--' + temp + j] = { property: prop, unit: getUnit(prop, last(fn)), index: j }
+        vars[varName = '--' + temp + j] = { property: prop, fns: fn.slice(-1), unit: getUnit(prop, last(fn)), index: j }
         value += before + 'var(' + varName + ')'
         valueStart = 0
       } else {
@@ -421,7 +422,7 @@ function getUnit(prop, fn = '') {
   )
 }
 
-export function formatValue(v, { property, unit }) {
+export function formatValue(v, { property, fns, unit }) {
   isFunction(v) && (v = v())
   if (!v && v !== 0)
     return ''
@@ -435,9 +436,10 @@ export function formatValue(v, { property, unit }) {
 
   x = v
   value = ''
-  valueStart = fn.length = 0
+  valueStart = 0
   numberStart = lastSpace = -1
   prop = property
+  fn = fns
   for (let i = 0; i <= v.length; i++) {
     char = v.charCodeAt(i)
     handleValue(i)

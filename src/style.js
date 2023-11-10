@@ -83,7 +83,7 @@ let start = -1
   , temp = ''
   , specificity = ''
   , prop = ''
-  , path = '&'
+  , path = '&&'
   , selector = ''
   , animation = ''
   , keyframe = ''
@@ -154,6 +154,7 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
   raw = root
   const vars = {}
   fn = []
+  path = '&&'
   name = id = classes = rule = value = prop = ''
   selectors.length = hash = 0
   lastSpace = valueStart = fontFaces = startChar = cssVar = -1
@@ -202,7 +203,7 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
         specificity += '.' + temp
 
       hashed.has(temp) || Object.entries(rules).forEach(([k, v]) =>
-        insert(k.replace(/&/g, '.' + temp + specificity) + '{' + v + '}')
+        insert(k.replace(/&/g, '.' + temp) + specificity + '{' + v + '}')
       )
     }
   }

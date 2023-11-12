@@ -9,6 +9,7 @@ import {
   scrollRestore,
   isObservable,
   ignoredAttr,
+  scrollSize,
   stackTrace,
   cleanSlash,
   isFunction,
@@ -35,6 +36,7 @@ const removing = new WeakSet()
     , deferrableSymbol = Symbol('deferrable')
     , observableSymbol = Symbol('observable')
     , componentSymbol = Symbol('component')
+    , asyncSymbol = Symbol('cycle')
     , eventSymbol = Symbol('event')
     , arrayEnd = Symbol('arrayEnd')
     , arrayStart = Symbol('arrayStart')
@@ -103,6 +105,7 @@ s.on = on
 s.trust = trust
 s.route = router(s, '', { location: window.location, query: query(s, window.location) })
 s.window = window
+s.scroll = true
 s.error = s((error) => {
   console.error(error) // eslint-disable-line
   return () => s`pre;all initial;d block;c white;bc #ff0033;p 8 12;br 6;overflow auto;fs 12`(s`code`(
@@ -222,7 +225,7 @@ function mount(dom, view, attrs = {}, context = {}) {
   if (s.isServer)
     return { view, attrs, context }
 
-  scrollRestoration()
+  s.scroll && scrollRestoration(context)
 
   context.hydrating = shouldHydrate(dom.firstChild)
   const doc = {
@@ -239,13 +242,19 @@ function mount(dom, view, attrs = {}, context = {}) {
   draw({ view, attrs, context }, dom)
 }
 
-function scrollRestoration() {
-  // test if needed (might prevent scrollTo 0 before scrollRestore)
+function scrollRestoration(context) {
+  let depth = 0
+  context[asyncSymbol] = x => depth !== -1 && (depth += x) || (depth = -1, scrollSize(0, 0))
   window.history.scrollRestoration = 'manual'
   scrollRestore(...(history.state?.scroll || []))
   let scrollTimer
-  document.addEventListener('scroll', save, { passive: true })
-  document.addEventListener('resize', save, { passive: true })
+
+  setTimeout(() => {
+    document.addEventListener('scroll', save, { passive: true })
+    document.addEventListener('resize', save, { passive: true })
+    depth === 0 && (depth = -1, scrollSize(0, 0))
+  }, 200)
+
   function save() {
     clearTimeout(scrollTimer)
     scrollTimer = setTimeout(scrollSave, 100)
@@ -691,7 +700,7 @@ class Stack {
       afterRedraw()
     }
 
-    const redraw = e => {
+    const redraw = async e => {
       update(e, false, true, true)
     }
     const reload = e => {
@@ -807,19 +816,22 @@ function updateComponent(
   }
 
   let i = stack.i - 1
-  create && instance.promise && instance.promise
-    .then(view => instance.view = view && hasOwn.call(view, 'default') ? view.default : view)
-    .catch(error => {
-      instance.caught = error
-      instance.view = resolveError(instance, component, error)
-    })
-    .then(() => hasOwn.call(instance.next.first, componentSymbol) && stack.xs[i] === instance && (
-      hydratingAsync && (stack.dom = hydrate(dom)),
-      context.hydrating = false,
-      instance.recreate = true,
-      instance.promise = false,
-      instance.ignore ? instance.context.redraw() : redraw()
-    ))
+  if (create && instance.promise) {
+    context[asyncSymbol](1)
+    instance.promise
+      .then(view => instance.view = view && hasOwn.call(view, 'default') ? view.default : view)
+      .catch(error => {
+        instance.caught = error
+        instance.view = resolveError(instance, component, error)
+      })
+      .then(() => hasOwn.call(instance.next.first, componentSymbol) && stack.xs[i] === instance && (
+        hydratingAsync && (stack.dom = hydrate(dom)),
+        context.hydrating = false,
+        instance.recreate = true,
+        instance.promise = false,
+        (instance.ignore ? instance.context.redraw() : redraw()).then(() => context[asyncSymbol](-1))
+      ))
+  }
 
   const changed = dom !== instance.next.first
 

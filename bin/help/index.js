@@ -1,6 +1,6 @@
 /* eslint no-console: 0 */
 
-import './usage'
+import './usage.js'
 import s from '../style.js'
 
 false && console.log(`

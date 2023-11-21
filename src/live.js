@@ -28,7 +28,7 @@ export default function Live(value, ...fns) {
 
     const prev = value
     live.value = value = x
-    observers.forEach(fn => live.value !== prev && fn(live.value, prev))
+    observers.forEach(fn => live.value !== prev && fn(live.value, prev, () => observers.delete(fn)))
     return live.value
   }
 

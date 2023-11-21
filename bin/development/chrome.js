@@ -20,7 +20,7 @@ const args = process.argv.slice(2).concat((process.env.SIN_DEV_ARGS || '').split
 
 let id = 1
 
-export default async function(home, url, scriptParsed) {
+export default async function(home, log, url, scriptParsed) {
   const { WebSocket } = createRequire(import.meta.url)('internal/deps/undici/undici')
 
   const chromePath = getPath()
@@ -145,10 +145,20 @@ export default async function(home, url, scriptParsed) {
       await send('Runtime.enable')
       await send('Runtime.evaluate', { expression: hmr })
       await send('Debugger.enable').catch(print.debug)
+      !process.env.DEBUG
+        && await send('Debugger.setBlackboxPatterns', { patterns: ['sin/src/', 'sin/bin/'] })
       await send('Network.enable')
       await send('Network.setCacheDisabled', { cacheDisabled: true })
       await send('Page.enable')
       await send('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
+      false && setTimeout(() => {
+        send('Emulation.setDeviceMetricsOverride', {
+          width: 320,
+          height: 480,
+          deviceScaleFactor: 2,
+          mobile: true
+        }).then(console.log,console.error)
+      }, 2000)
       print.debug(launched
         ? 'Reconnected to Chrome'
         : 'Connected to Chrome') // eslint-disable-line
@@ -168,7 +178,10 @@ export default async function(home, url, scriptParsed) {
       return fs.writeFileSync(urlPath, params.url)
 
     if (method === 'Page.frameNavigated' && !params.frame.parentId && params.frame.url.indexOf(url) === 0)
-      return fs.writeFileSync(urlPath, params.frame.url)
+      return navigated(params)
+
+    if (method === 'Runtime.consoleAPICalled')
+      return log(params)
 
     if (!requests.has(id))
       return
@@ -179,6 +192,11 @@ export default async function(home, url, scriptParsed) {
     error
       ? reject(error)
       : resolve(result)
+  }
+
+  function navigated(params) {
+
+    fs.writeFileSync(urlPath, params.frame.url)
   }
 
 }

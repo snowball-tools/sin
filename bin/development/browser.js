@@ -1,8 +1,7 @@
 import '../log.js'
 import s from '../../src/index.js'
 import window from '../../src/window.js'
-import { stackTrace } from '../../src/shared.js'
-import goto from './inspect.js'
+import { goto, log, hmr, parseStackTrace } from './inspect.js'
 
 const unquoteFilename = navigator.platform.toLowerCase().includes('win')
   ? /"([^<>:"/\\|?*]+)":/ig
@@ -17,8 +16,8 @@ function connect() {
   ws.onerror = console.log
 }
 
-function send(x) {
-  ws && ws.readyState === 1 && ws.send(x)
+function send(name, x) {
+  ws && ws.readyState === 1 && ws.send(name + '.' + JSON.stringify(x))
 }
 
 function onmessage({ data }) {
@@ -26,10 +25,14 @@ function onmessage({ data }) {
     ? location.reload()
     : data === 'reload'
     ? window.hmr || location.reload()
-    : data === 'redraw' && window.hmr && s.redraw()
+    : data === 'redraw'
+    ? window.hmr && hmr()
+    : data.startsWith('log.')
+    ? log(JSON.parse(data.slice(4)))
+    : null
 }
 
-goto.observe(x => send(JSON.stringify(parseStackTrace(x)[3])))
+goto.observe(x => send('goto', x))
 
 s.error = s((error) => {
   console.error(error) // eslint-disable-line
@@ -41,13 +44,19 @@ s.error = s((error) => {
       s`code`(
         '' + error,
         stack.map(({ name, file, line, column }) =>
-          s` o 0.75`(
+          s`
+            c #ccc
+          `(
             '    at ',
             name && (name + ' '),
-            s`span c white;td underline`({
+            s`span
+              :hover { c white }
+              td underline
+              cursor pointer
+            `({
               onclick: (e) => {
                 e.redraw = false
-                send(JSON.stringify({ file, line, column }))
+                send('goto', { file, line, column })
               }
             },
               file + ':' + line + ':' + column
@@ -59,16 +68,3 @@ s.error = s((error) => {
     )
   }
 })
-
-function parseStackTrace(x) {
-  return String(x).split('\n').reduce((acc, x) => (
-    x = x.match(/( +at )?([^/]*)[@(](.+):([0-9]+):([0-9]+)/i), // check if really unnecessary escape char
-    x && acc.push({
-      name: x[2].trim(),
-      file: x[3].replace(window.location.origin, ''),
-      line: parseInt(x[4]),
-      column: parseInt(x[5])
-    }),
-    acc
-  ), [])
-}

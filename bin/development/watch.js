@@ -1,7 +1,8 @@
-import Watcher from '../watcher.js'
 import prexit from 'prexit'
 import path from 'path'
 import fs from 'fs'
+
+import Watcher from './watcher.js'
 
 watch.loaded = new Set()
 

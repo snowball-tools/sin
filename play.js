@@ -25,6 +25,423 @@ function inheritTest() {
   ])
 }
 
+function fucked() {
+  let size = 500
+  let offset = size * 2
+
+  s.css`*{m 0;box-sizing border-box}`
+
+  s.mount(() =>
+    s`
+      w ${ size }
+      h ${ size }
+      overflow scroll
+      bc gray
+      overscroll-behavior contain
+    `({
+      dom: x => {
+        x.scrollTop = size * 2
+        x.firstChild.firstChild.style.transform = 'translateY(' + (offset - size) + 'px)'
+      },
+      onscroll: (e, dom) => {
+        const x = dom.firstChild
+
+        if (dom.scrollTop < size) {
+          offset -= size
+          dom.scrollTop += size
+          x.firstChild.style.transform = 'translateY(' + (offset - size) + 'px)'
+        } else if (dom.scrollTop > size * 3) {
+          offset += size
+          dom.scrollTop -= size
+          x.firstChild.style.transform = 'translateY(' + (offset - size) + 'px)'
+        }
+        p(offset)
+        //top < offset && (offset += size)
+      }
+    },
+      s`
+        position relative
+        w ${ size }
+        h ${ size * 5 }
+      `(
+        s`h1
+          position absolute
+          t 0
+          l 0
+          w 1500
+          h 1500
+          bs inset 0 0 0 1 black
+        `(offset)
+      )
+    )
+  )
+}
+
+function lal() {
+  s.css`*{m 0;box-sizing border-box}`
+
+  s.mount(() => {
+    const xs = [...Array(1000)]
+    let dom
+      , min = 37
+      , start = 0
+      , count = 2
+      , offset = 0
+      , height = 0
+      , first = 0
+
+    return () => s`main
+      w 500
+      h 500
+      overflow scroll
+      bc gray
+    `({
+      dom: x => dom = x,
+      onscroll: (e, dom) => {
+        e.redraw = false
+        if (dom.scrollTop - offset >= first) {
+          start++
+          offset += dom.firstChild.firstChild.clientHeight
+          height -= dom.firstChild.lastChild.clientHeight
+          e.redraw = true
+        } else if (dom.scrollTop < offset) {
+          start--
+          offset -= dom.firstChild.firstChild.clientHeight
+          height -= dom.firstChild.lastChild.clientHeight
+          e.redraw = true
+        }
+      }
+    },
+      s`
+        min-height ${ offset + height }
+        transform translateY(${ offset })
+      `(
+        range().map((x, i, xs) =>
+          s`h1`({
+            key: start + i,
+            dom: x => {
+              height += x.clientHeight
+              if (i === 0) {
+                first = x.clientHeight
+                if (height < dom.clientHeight) {
+                  p(dom.clientHeight, height, count, (dom.clientHeight - height) / min)
+                  count += Math.floor((dom.clientHeight - height) / min)
+                  s.redraw()
+                }
+              }
+            }
+          }, start + i)
+        )
+      )
+    )
+
+    function get(from, to) {
+      return xs.slice(from, to)
+    }
+
+    function range() {
+      if (!dom || height < dom.clientHeight)
+        count++
+      return get(start, start + count)
+    }
+  })
+}
+
+function virt2() {
+  s.css`
+    body {
+      margin 0
+    }
+  `
+
+  s.mount(() =>
+    s(({}, [], { redraw }) => {
+      let io
+      const xs = [1, 2, 3]
+          , start = () => p(xs.unshift(xs[0] - 1))
+          , end = () => p(xs.push(xs[xs.length - 1] + 1))
+
+      return () =>
+        s`
+          d grid
+          gap 20
+          p 0 200
+        `({
+          dom: (root) => {
+            io = new IntersectionObserver(([x]) => {
+              x.isIntersecting && (
+                x.target === root.firstElementChild
+                  ? (start(), io.unobserve(root.firstElementChild))
+                  : (end(), io.unobserve(root.lastElementChild)),
+                s.redraw()
+              )
+            }, {
+              rootMargin: '1px',
+              threshold: [1]
+            })
+            io.observe(root.firstElementChild)
+            io.observe(root.lastElementChild)
+            const observer = new MutationObserver(xs => {
+              for (const x of xs) {
+                if (x.type === 'childList' && x.addedNodes.length > 0) {
+                  if (x.addedNodes[0] === root.firstElementChild)
+                    io.observe(root.firstElementChild)
+                  if (x.addedNodes[x.addedNodes.length - 1] === root.lastElementChild)
+                    io.observe(root.lastElementChild)
+                }
+              }
+            })
+            observer.observe(root, { childList: true });
+          }
+        },
+          xs.map((x, i) =>
+            s`
+              min-width 40vw
+              h 10vh
+              bc teal
+              fs 30
+            `({
+              key: x,
+              dom: () => io
+            },
+              x
+            )
+          )
+        )
+    })
+  )
+}
+
+function virt() {
+  s.css`
+    html, body {
+      height 100%
+      min-height 100%
+    }
+  `
+  const virtual = s(({
+    data,
+    rows,
+    columns
+  }, [view]) => {
+    const from = s.live(0)
+    const size = s.live(1)
+    const height = s.live(0)
+    const items = s.live.from(from, size, (from, size) =>
+      data(from, from + size).map(x =>
+        view({
+          dom,
+          data: x,
+          i: from + x
+        })
+      )
+    )
+
+    function dom(x) {
+      if (!x.parentNode)
+        return
+
+      const h = x.offsetHeight
+      const ch = x.parentNode.offsetHeight
+      height(height + h)
+      height() < ch && size(size + 1)
+      return () => height(height - h)
+    }
+
+    return () => items
+  })
+
+  const xs = [...Array(10000)].map((x, i) => i)
+
+  s.mount(() =>
+    virtual({
+      data: (from, to) => xs.slice(from, to)
+    },
+      s(({ data, i, dom }) => s``({ id: i, dom }, 'Hello', data, i))
+    )
+  )
+}
+
+function occlu() {
+  const watso = s(({ data, count, height: defaultHeight }, [view]) => {
+    const length = 8
+        , heights = new Array(count).fill(null)
+        , height = x => heights.slice(0, x).reduce((a, b) => a + (b === null ? defaultHeight : b), 0)
+        , scroll = s.live(0)
+        , translate = s.live(0)
+        , offset = s.live.from(scroll, x => {
+          let index = 0
+          let height = heights[index]
+          while (height <= x)
+            height += heights[++index] || defaultHeight
+          translate(Math.max(0, height - (heights[index] || defaultHeight)))
+          return index - 1
+        })
+        , items = s.live.from(offset, x =>
+          data(Math.max(0, x), Math.min(x + length, count)).map((item, i) =>
+            view({ dom, key: item, item, index: x + i })
+          )
+        )
+
+    const doms = [
+      x => x.parentNode.style.minHeight = height(count) + 'px',
+      s.on(
+        document,
+        'scroll',
+        scroll.set(() => document.documentElement.scrollTop || document.body.scrollTop),
+        { passive: true }
+      )
+    ]
+
+    function dom(dom, { index }) {
+      heights[index] = (dom.offsetTop + dom.offsetHeight - (
+          dom.previousElementSibling
+            ? (dom.previousElementSibling.offsetTop + dom.offsetHeight)
+            : 0
+        )) || defaultHeight
+    }
+
+    return () =>
+      s`
+        transform translateY(${ translate })
+      `({
+        dom: doms
+      },
+        items
+      )
+  })
+
+  const xs = [...Array(3000)].map((x, i) => i)
+
+  let watsoi = false
+  s.css`
+    body { m 0 }
+  `
+
+  const child = s(({ item, index }, [], { redraw }) =>
+    s`
+      h 100
+      bc lightblue
+      ta center
+      p 40
+    `({
+      id: 'a' + index
+    },
+      index + ' is good ', Date.now(),
+      s``({ onclick: redraw }, 'yas')
+    )
+  )
+
+  s.mount(() => [
+    watsoi
+    ?
+    s`
+      d grid
+      gap 20
+    `(
+      xs.map(x => child({ index: x }))
+    )
+    : watso`
+      d grid
+      gap 20
+    `({
+      height: 200,
+      count: xs.length,
+      data: (from, to) => xs.slice(from, to)
+    },
+      child
+    ),
+    s`button
+      position fixed
+      top 0
+      right 0
+    `({
+      onclick: () => watsoi = !watsoi
+    },
+      'switch'
+    )
+  ])
+}
+
+function onremove() {
+  const a = s(({}, [], { onremove }) => {
+    onremove(() => p('onremove a'))
+    return () => s`h1`('a')
+  })
+  const b = s(({}, [], { onremove }) => {
+    onremove(() => p('onremove b'))
+    return () => s`h1`('b')
+  })
+
+  let toggled = false
+  let show = false
+  s.mount(() =>
+    s`main`(
+      s`button`({
+          onclick: () => show = !show
+        }, 'show'),
+      s`button`({
+        onclick: () => toggled = !toggled
+      }, 'toggle'),
+      show && s(async({}, [], { onremove }) => {
+        onremove(() => p('onremove'))
+        return () => toggled
+          ? a
+          : b
+      })
+    )
+  )
+}
+
+function componentLifecycle() {
+  let redraw = s.event()
+  let refresh = s.event()
+  let reload = s.event()
+  let show = true
+  s.mount(() => [
+    s`form`({
+      onsubmit: (e, dom) => {
+        e.preventDefault()
+        const x = dom.elements[0]
+        console.log(x.value)
+        x.value = ''
+      },
+    },
+      s`input`
+    ),
+    s``(
+      Date.now()
+    ),
+    s`button`({ onclick: () => show = !show }, 'toggle'),
+    s`button`({ onclick: s.redraw }, 'global redraw'),
+    s`button`({ onclick: redraw }, 'local redraw'),
+    s`button`({ onclick: refresh }, 'local refresh'),
+    s`button`({ onclick: reload }, 'local reload'),
+    show && s({
+      loading: s`h1`('loading')
+    }, async({}, [], { ignore, reload, refresh, redraw, onremove }) => {
+      const init = Date.now()
+      onremove(() => alert('removed'))
+      await s.sleep(1000)
+
+      return () => s`
+        border 2px solid black
+      `(
+        s`h3`('Ignore stuff'),
+        s`button`({ onclick: redraw }, 'redraw'),
+        s`button`({ onclick: refresh }, 'refresh'),
+        s`button`({ onclick: reload }, 'reload'),
+        s`li`(init, ' init'),
+        s`li`(Date.now(), ' draw')
+      )
+    })({
+      redraw,
+      refresh,
+      reload
+    })
+  ])
+}
+
 async function ssrfun() {
   s.css`
     * {
@@ -197,7 +614,7 @@ function scrollHistory() {
           route({
             '/': () => s(async() => {
               await s.sleep(2000)
-              return () => [...Array(100)].map((x, i) => s`h1`('home ', i, Math.round(Math.random() * 10)))
+              return () => [...Array(100)].map((x, i) => s`h1`({ href: '/next' }, 'home ', i, Math.round(Math.random() * 10)))
             }),
             '/next': () => [...Array(100)].map((x, i) => s`h1`('next', i))
           })
@@ -205,156 +622,6 @@ function scrollHistory() {
       })
     )
   ])
-}
-
-function virtBAD() {
-  s.css`
-    html, body {
-      height 100%
-      min-height 100%
-    }
-  `
-  const virtual = s(({
-    data,
-    rows,
-    columns
-  }, [view]) => {
-    const from = s.live(0)
-    const size = s.live(1)
-    const height = s.live(0)
-    const items = s.live.from(from, size, (from, size) =>
-      data(from, from + size).map(x =>
-        view({
-          dom,
-          data: x,
-          i: from + x
-        })
-      )
-    )
-
-    function dom(x) {
-      if (!x.parentNode)
-        return
-
-      const h = x.offsetHeight
-      const ch = x.parentNode.offsetHeight
-      height(height + h)
-      height() < ch && size(size + 1)
-      return () => height(height - h)
-    }
-
-    return () => items
-  })
-
-  const xs = [...Array(10000)].map((x, i) => i)
-
-  s.mount(() =>
-    virtual({
-      data: (from, to) => xs.slice(from, to)
-    },
-      s(({ data, i }) => s``({ id: i }, 'Hello', data, i))
-    )
-  )
-
-  function occlu() {
-    const watso = s(({ data, count, height: defaultHeight }, [view]) => {
-      const length = 8
-          , heights = new Array(count).fill(null)
-          , height = x => heights.slice(0, x).reduce((a, b) => a + (b === null ? defaultHeight : b), 0)
-          , scroll = s.live(0)
-          , translate = s.live(0)
-          , offset = s.live.from(scroll, x => {
-            let index = 0
-            let height = heights[index]
-            while (height < x)
-              height += heights[++index] || defaultHeight
-            translate(Math.max(0, height - (heights[index] || defaultHeight)))
-            return index
-          })
-          , items = s.live.from(offset, x =>
-            data(Math.max(0, x), Math.min(x + length, count)).map((item, i) =>
-              view({ dom, key: item, item, index: x + i })
-            )
-          )
-
-      const doms = [
-        x => x.parentNode.style.minHeight = height(count) + 'px',
-        s.on(
-          document,
-          'scroll',
-          scroll.set(() => document.documentElement.scrollTop || document.body.scrollTop),
-          { passive: true }
-        )
-      ]
-
-      function dom(dom, { index }) {
-        heights[index] = (dom.offsetTop + dom.offsetHeight - (
-            dom.previousElementSibling
-              ? (dom.previousElementSibling.offsetTop + dom.offsetHeight)
-              : 0
-          )) || defaultHeight
-      }
-
-      return () =>
-        s`
-          transform translateY(${ translate })
-        `({
-          dom: doms
-        },
-          items
-        )
-    })
-
-    const xs = [...Array(10000)].map((x, i) => i)
-
-    let watsoi = false
-    s.css`
-      body { m 0 }
-    `
-
-    const child = s(({ item, index }, [], { redraw }) =>
-      s`
-        h 100
-        bc lightblue
-        ta center
-        p 40
-        will-change transform
-        animation 0.5s {
-          from {
-            transform rotateX(-90deg)
-            opacity 0
-          }
-        }
-      `({
-        id: 'a' + index
-      },
-        index + 'is good', Date.now(),
-        s``({ onclick: redraw }, 'yas')
-      )
-    )
-
-    s.mount(() => [
-      watsoi ? xs.map(x => child({ index: x })) : watso`
-        d grid
-        gap 20
-      `({
-        height: 200,
-        count: xs.length,
-        data: (from, to) => xs.slice(from, to)
-      },
-        child
-      ),
-      s`button
-        position fixed
-        top 0
-        right 0
-      `({
-        onclick: () => watsoi = !watsoi
-      },
-        'switch'
-      )
-    ])
-  }
 }
 
 function lively() {
@@ -416,17 +683,21 @@ function nestedInsideMediaIssue(fixed) {
 
 function wat() {
   let checked = false
+  let date = Date.now()
+  let empty
   s.mount(() => [
     s`button`({
       onclick: () => checked = !checked
     }, 'yas'),
     s`input`({
       type: 'date',
-      value: new Date()
+      value: date,
+      oninput: (e, dom) => date = dom.value
     }),
     s`input`({
       type: 'text',
-      value: undefined
+      value: empty,
+      oninput: (e, dom) => empty = dom.value
     }),
     s`input`({
       type: 'checkbox',

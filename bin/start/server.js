@@ -47,7 +47,7 @@ command !== 'server' && app.get(r => {
     x => {
       r.end(
         wrap(x, {
-          body: command === 'ssr' ? '' : '<script type=module src="/'
+          body: noscript ? '' : '<script type=module src="/'
             + (entry + '?ts=' + entryStat.mtimeMs.toFixed(0))
             + '"></script>'
         }),
@@ -77,7 +77,7 @@ ssl && fs.watch(ssl.cert, () => {
 
 function resolveEntry(x, command) {
   return [
-    path.join(cwd, command === 'ssr' || command === 'server' ? '' : '+build', x),
+    path.join(cwd, noscript || run ? '' : '+build', x),
     path.join(cwd, '+public', x)
   ].find(x => fs.existsSync(x))
 }

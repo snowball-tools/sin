@@ -203,7 +203,7 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
         specificity += '.' + temp
 
       hashed.has(temp) || Object.entries(rules).forEach(([k, v]) =>
-        insert(k.replace(/&/g, '.' + temp) + specificity + '{' + v + '}')
+        insert(k.replace(/&/g, '.' + temp + specificity) + '{' + v + '}')
       )
     }
   }

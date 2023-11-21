@@ -59,8 +59,29 @@ export function ignoredAttr(x) {
   || x === 'class' || x === 'className' || x === 'style' || x === 'deferrable' || x === 'href'
 }
 
+export function getName(x) {
+  while (x.parent && !x.name)
+    x = x.parent
+  return x.name
+}
+
+export function getId(x) {
+  while (x.parent && !x.id)
+    x = x.parent
+  return x.id
+}
+
+export function getClasses(x) {
+  let s = x.classes || ''
+  while (x.parent) {
+    x = x.parent
+    s += ' ' + x.classes || ''
+  }
+  return s
+}
+
 export function className(view) {
-  return (classes(view.attrs.class) + classes(view.attrs.className) + view.tag.classes).trim()
+  return (classes(view.attrs.class) + classes(view.attrs.className) + getClasses(view.tag)).trim()
 }
 
 export function asArray(x) {

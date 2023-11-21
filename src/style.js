@@ -167,7 +167,7 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
   for (let j = 0; j < xs.length; j++) {
     rules
       ? parseStyles(0, j === xs.length - 1)
-      : parseSelector(xs, j, parent)
+      : parseSelector(xs, j)
 
     x = xs[j + 1]
     if (j < args.length) {
@@ -224,7 +224,7 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
   return result
 }
 
-function parseSelector(xs, j, parent) {
+function parseSelector(xs, j) {
   for (let i = 0; i <= x.length; i++) {
     char = x.charCodeAt(i)
     i < x.length && (hash = Math.imul(31, hash) + char | 0)
@@ -239,17 +239,17 @@ function parseSelector(xs, j, parent) {
       classes = (classIdx !== -1
         ? x.slice(classIdx + 1, i).replace(/\./g, ' ')
         : ''
-      ) + classes + (parent ? ' ' + parent.classes : '')
+      ) + classes
 
       id === '' && (id = (idIdx !== -1
         ? x.slice(idIdx, classIdx === -1 ? i : classIdx)
         : ''
-      ) || (parent ? parent.id : null))
+      ))
 
       name = x.slice(0, id
         ? idIdx - 1
         : (classIdx !== -1 ? classIdx : i)
-      ) || (parent && parent.name)
+      )
       idIdx = classIdx = -1
       styles = true
     } else if (char === 35) { // #

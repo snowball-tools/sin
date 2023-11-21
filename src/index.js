@@ -9,6 +9,7 @@ import {
   scrollRestore,
   isObservable,
   ignoredAttr,
+  getClasses,
   scrollSize,
   stackTrace,
   cleanSlash,
@@ -19,9 +20,11 @@ import {
   mergeTag,
   isTagged,
   notValue,
+  getName,
   isEvent,
   asArray,
   hasOwn,
+  getId,
   noop
 } from './shared.js'
 
@@ -601,7 +604,7 @@ function updateElement(
   create = dom === null || tagChanged(dom, view, context)
 ) {
   const previousNS = context.NS
-  view.attrs.xmlns || NS[view.tag.name] && (context.NS = view.attrs.xmlns || NS[view.tag.name])
+  view.attrs.xmlns || NS[getName(view.tag)] && (context.NS = view.attrs.xmlns || NS[getName(view.tag)])
   create && replace(
     dom,
     dom = createElement(view, context),
@@ -630,18 +633,18 @@ function removeChildren(dom, parent) {
 
 function tagChanged(dom, view, context) {
   return (dom[keySymbol] !== view.key && !context.hydrating) // eslint-disable-line
-       || dom.nodeName.toLowerCase() !== (view.tag.name ? view.tag.name.toLowerCase() : 'div')
+       || dom.nodeName.toLowerCase() !== (getName(view.tag).toLowerCase() || 'div')
 }
 
 function createElement(view, context) {
   const is = view.attrs.is
   return context.NS
     ? is
-      ? document.createElementNS(context.NS, view.tag.name, { is })
-      : document.createElementNS(context.NS, view.tag.name)
+      ? document.createElementNS(context.NS, getName(view.tag), { is })
+      : document.createElementNS(context.NS, getName(view.tag))
     : is
-      ? document.createElement(view.tag.name || 'div', { is })
-      : document.createElement(view.tag.name || 'div')
+      ? document.createElement(getName(view.tag) || 'div', { is })
+      : document.createElement(getName(view.tag) || 'div')
 }
 
 class Instance {
@@ -868,17 +871,10 @@ function attributes(dom, view, context) {
   const prev = dom[attrSymbol] || (context.hydrating && getAttributes(dom))
       , create = !prev
 
-  hasOwn.call(view.attrs, 'id') === false
-    && tag.id
-    && (view.attrs.id = tag.id)
+  if (hasOwn.call(view.attrs, 'id') !== false)
+    view.attrs.id = getId(tag)
 
-    if ((create && tag.classes) ||
-     view.attrs.class !== (prev && prev.class) ||
-     view.attrs.className !== (prev && prev.className) ||
-     dom.className !== tag.classes
-  )
-    setClass(dom, view)
-
+  setClass(dom, view)
   create && observe(dom, view.attrs.class, () => setClass(dom, view))
   create && observe(dom, view.attrs.className, () => setClass(dom, view))
 
@@ -889,7 +885,7 @@ function attributes(dom, view, context) {
       if (attr === 'deferrable') {
         dom[deferrableSymbol] = view.attrs[attr]
       }
-    } else if (attr === 'value' && tag.name === 'input' && dom.value !== '' + view.attrs.value) {
+    } else if (attr === 'value' && getName(tag) === 'input' && dom.value !== '' + view.attrs.value) {
       value = view.attrs[attr]
       let start
         , end
@@ -1005,6 +1001,8 @@ function observe(dom, x, fn) {
 
 function setClass(dom, view) {
   const x = className(view)
+  if (dom.className == x)
+    return
   x
     ? dom instanceof SVGElement
       ? dom.setAttribute('class', x)

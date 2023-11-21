@@ -8,6 +8,8 @@ import {
   isPromise,
   isEvent,
   isFunction,
+  getName,
+  getId,
   asArray,
   notValue,
   hasOwn,
@@ -148,15 +150,11 @@ function update(view, context) {
   return x
 }
 
-function tagName(view) {
-  return (view.tag.name || 'div').toLowerCase()
-}
-
 function updateElement(view, context) {
-  const tag = tagName(view)
+  const tag = (getName(view.tag) || 'div').toLowerCase()
   const internal = !String(view.attrs.href).match(/^[a-z]+:|\/\//)
-  hasOwn.call(view.attrs, 'id') === false && view.tag.id && (view.attrs.id = view.tag.id)
-  if (view.tag.name === 'a' && hasOwn.call(view.attrs, 'href') && internal) {
+  hasOwn.call(view.attrs, 'id') === false && (view.attrs.id = getId(view.tag))
+  if (getName(view.tag) === 'a' && hasOwn.call(view.attrs, 'href') && internal) {
     view.attrs.href = cleanHref(view.attrs.href)
     context.doc.links(view.attrs.href)
   }

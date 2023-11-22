@@ -2,6 +2,29 @@
 
 import s from 'sin'
 
+function inheritTest() {
+  const c = s(({ yas }) =>
+    (yas ? s`strong#a
+      bc blue
+    ` : s`div#b
+      bc green
+    `)`
+    `('hej')
+  )
+
+  s.mount(() => [
+    s`button`({
+      onclick: () => p('wat')
+    }, 'red'),
+    c({
+      yas: true
+    }),
+    c({
+      yas: false
+    })
+  ])
+}
+
 async function ssrfun() {
   s.css`
     * {

@@ -1,6 +1,6 @@
-import S from '../../src/index.js'
-import s from '../../src/index.js?sintools'
-import { stackTrace } from '../../src/shared.js'
+import S from '../../../src/index.js'
+import s from '../../../src/index.js?sintools'
+import { stackTrace } from '../../../src/shared.js'
 
 const rect = s.live(null)
     , eventOptions = { capture: true, passive: true }
@@ -153,7 +153,7 @@ s.mount(div, s(({}, [], { ignore }) => {
       dom: s.animate,
       key: top
     },
-      s`
+      false && s`
         position absolute
         height min(calc(100vh - 100px), 500px)
         w calc(100% - 40px)
@@ -255,7 +255,7 @@ s.mount(div, s(({}, [], { ignore }) => {
                     })
                   },
                     x.url.slice(location.origin.length) + ':' + (x.lineNumber + 1)
-                  ),
+                  )
                 )
               )
             )
@@ -395,7 +395,7 @@ s.mount(div, s(({}, [], { ignore }) => {
             hmr.observe(() => {
               document.body.animate([
                 { opacity: 1 },
-                { opacity: .4 },
+                { opacity: 0.4 },
                 { opacity: 1 }
               ], { duration: 300, easing: 'ease-out' })
               x.animate([

@@ -4,10 +4,6 @@ import fs from 'fs'
 import net from 'net'
 import fsp from 'fs/promises'
 
-import watch from './watch'
-
-const cwd = process.cwd()
-
 export async function getPort() {
   return new Promise(resolve => {
     const server = net.createServer().listen(0, () => {
@@ -17,8 +13,8 @@ export async function getPort() {
   })
 }
 
-export async function gracefulRead(x) {
-  return fsp.readFile(x, "utf8")
+export async function tryRead(x) {
+  return fsp.readFile(x, 'utf8')
     .catch(async() => (await new Promise(r => setTimeout(r, 10)), fsp.readFile(x, 'utf8')))
     .catch(async() => (await new Promise(r => setTimeout(r, 20)), fsp.readFile(x, 'utf8')))
 }
@@ -29,13 +25,17 @@ const staticImport = /(?:`[^`]*`)|((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: 
     , dynamicImportDir = /(?:`[^`]*`)|([^$.]import\(\s?['"])((?:\.\/|\.\.\/|\/)+?[a-zA-Z0-9@/._-]+?(?<!\.[tj]s))(['"]\s?\))/g
     , resolveCache = Object.create(null)
 
+export function jail(x) {
+  return x.replace(/((function.*?\)|=>)\s*{)/g, '$1eval(0);')
+}
+
 export function modify(x, path) {
-  return x
-    .replace(/((function.*?\)|=>)\s*{)/g, '$1eval(0);')
-    .replace(staticImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
-    .replace(dynamicImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
-    .replace(staticImportDir, (_, a, b, c) => a ? a + extensionless(b, path) + c : _)
-    .replace(dynamicImportDir, (_, a, b, c) => a ? a + extensionless(b, path) + c : _)
+  return jail(
+    x.replace(staticImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
+     .replace(dynamicImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
+     .replace(staticImportDir, (_, a, b, c) => a ? a + extensionless(b, path) + c : _)
+     .replace(dynamicImportDir, (_, a, b, c) => a ? a + extensionless(b, path) + c : _)
+  )
 }
 
 function resolve(n) {
@@ -48,21 +48,21 @@ function resolve(n) {
       , name = install.replace(/(.+)@.*/, '$1')
       , root = 'node_modules/' + name
       , full = [root, ...parts.slice(scoped ? 2 : 1)].join('/')
-      , fullPath = url.pathToFileURL(path.join(cwd, full))
+      , fullPath = url.pathToFileURL(path.join(process.cwd(), full))
 
   return resolveCache[n] = (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()
     ? full
-    : fs.existsSync(path.join(cwd, full, 'package.json'))
+    : fs.existsSync(path.join(process.cwd(), full, 'package.json'))
     ? pkgLookup(full)
     : name === 'sin'
-    ? pkgLookup(full, sinRoot)
+    ? pkgLookup(full, path.dirname(process.env.SIN_BIN))
     : n
   )
 }
 
-function extensionless(x, root = '') {
+export function extensionless(x, root = '') {
   x.indexOf('file:') === 0 && (x = x.slice(5))
-  root = path.isAbsolute(x) ? cwd : path.basename(root)
+  root = path.isAbsolute(x) ? process.cwd() : path.basename(root)
   return path.extname(x) ? x
     : canRead(path.join(root, x, 'index.js')) ? x + '/index.js'
     : canRead(path.join(root, x + '.js')) ? x + '.js'
@@ -81,13 +81,75 @@ export function transform(buffer, filePath) {
   if (!filePath.endsWith('.js'))
     return buffer
 
-  const original = originals[filePath] = Buffer.from(buffer).toString()
-  const file = { original, source: modify(original, path.dirname(filePath)), path: filePath }
-  watch(file)
-  return file.source
+  return modify(Buffer.from(buffer).toString(), path.dirname(filePath))
 }
 
 function pkgLookup(x, abs = x) {
   const pkg = JSON.parse(fs.readFileSync(path.join(abs, 'package.json'), 'utf8'))
   return x + '/' + (pkg.module || pkg.unpkg || pkg.main || 'index.js').replace(/^\.\//, '')
+}
+
+export function Watcher(fn) {
+  const start = Date.now()
+  const watched = new Map()
+
+  return {
+    add,
+    remove
+  }
+
+  function add(x) {
+    if (watched.has(x))
+      return
+
+    try {
+      const watcher = fs.watch(x, { persistent: false }, t => {
+        t === 'rename'
+          ? readd(x, watcher)
+          : changed(x, watcher)
+      })
+      watched.set(x, watcher)
+      return watcher
+    } catch (e) {
+      // noop - watch is best effort
+    }
+  }
+
+  function readd(x, watcher) {
+    const time = watcher.time
+    remove(x)
+    setTimeout(() => {
+      const watcher = add(x)
+      if (watcher) {
+        watcher.time = time
+        changed(x, watcher)
+      }
+    }, 20)
+  }
+
+  function remove(x) {
+    if (!watched.has(x))
+      return x
+    const watcher = watched.get(x)
+    watcher.close()
+    watched.delete(x)
+    return x
+  }
+
+  function changed(x, watcher, t) {
+    const time = modified(x)
+    if ((watcher.time && time - watcher.time < 5) || start > time)
+      return
+
+    watcher.time = time
+    fn(x)
+  }
+
+  function modified(x) {
+    try {
+      return fs.statSync(x).mtimeMs
+    } catch (error) {
+      return Math.random()
+    }
+  }
 }

@@ -1,6 +1,6 @@
 import '../log.js'
-import s from '../../src/index.js'
-import window from '../../src/window.js'
+import s from '../../../src/index.js'
+import window from '../../../src/window.js'
 import { goto, log, hmr, parseStackTrace } from './inspect.js'
 
 const unquoteFilename = navigator.platform.toLowerCase().includes('win')
@@ -10,25 +10,30 @@ const unquoteFilename = navigator.platform.toLowerCase().includes('win')
 let ws
 connect()
 function connect() {
-  ws = new WebSocket(location.protocol.replace('http', 'ws') + location.host + '/sindev')
+  ws = new WebSocket(
+    location.protocol.replace('http', 'ws') + location.hostname + ':' + window.sintools.getAttribute('port')
+  )
   ws.onmessage = onmessage
   ws.onclose = () => setTimeout(connect, 100)
   ws.onerror = console.log
 }
 
-function send(name, x) {
-  ws && ws.readyState === 1 && ws.send(name + '.' + JSON.stringify(x))
+function send(event, data) {
+  ws && ws.readyState === 1 && ws.send(JSON.stringify({ event, data }))
 }
 
-function onmessage({ data }) {
-  data === 'forceReload'
+function onmessage(e) {
+  console.log(e.data)
+  const { event, data } = JSON.parse(e.data)
+  console.log(event, data)
+  event === 'refresh'
     ? location.reload()
-    : data === 'reload'
-    ? window.hmr || location.reload()
     : data === 'redraw'
-    ? window.hmr && hmr()
-    : data.startsWith('log.')
-    ? log(JSON.parse(data.slice(4)))
+    ? window.hmr
+      ? hmr()
+      : location.reload()
+    : event === 'log'
+    ? log(data)
     : null
 }
 
@@ -56,7 +61,7 @@ s.error = s((error) => {
             `({
               onclick: (e) => {
                 e.redraw = false
-                send('goto', { file, line, column })
+                send('editor', { file, line, column })
               }
             },
               file + ':' + line + ':' + column

@@ -6,6 +6,7 @@ import fsp from 'fs/promises'
 
 import ey from 'ey'
 
+import config from './config.js'
 import { tryPromise } from '../../src/shared.js'
 import ssr, { wrap } from '../../ssr/index.js'
 
@@ -47,7 +48,7 @@ command !== 'server' && app.get(r => {
     x => {
       r.end(
         wrap(x, {
-          body: noscript ? '' : '<script type=module src="/'
+          body: config.noscript ? '' : '<script type=module src="/'
             + (entry + '?ts=' + entryStat.mtimeMs.toFixed(0))
             + '"></script>'
         }),
@@ -77,7 +78,7 @@ ssl && fs.watch(ssl.cert, () => {
 
 function resolveEntry(x, command) {
   return [
-    path.join(cwd, noscript || run ? '' : '+build', x),
+    path.join(cwd, config.noscript || config.raw ? '' : '+build', x),
     path.join(cwd, '+public', x)
   ].find(x => fs.existsSync(x))
 }

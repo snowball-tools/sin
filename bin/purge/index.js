@@ -1,7 +1,3 @@
-console.log(
-  'purge'
-)
-
 const xs = argv[1] === 'all'
   ? fs.readdirSync(home).filter(x => fs.statSync(path.join(home, x)).isDirectory())
   : [name]

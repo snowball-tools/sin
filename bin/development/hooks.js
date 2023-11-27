@@ -2,19 +2,9 @@ import path from 'path'
 import fs from 'fs'
 import url from 'url'
 
-import { jail } from './development/shared.js'
+import { jail } from './shared.js'
 
 const cwd = process.cwd()
-let watch
-let dev
-
-export async function initialize(x) {
-  dev = x
-  if (dev) {
-    watch = new Set()
-    dev.on('message', () => dev.postMessage(watch))
-  }
-}
 
 export async function resolve(specifier, context, nextResolve) {
   if (path.isAbsolute(specifier) && !specifier.startsWith(cwd))
@@ -28,7 +18,6 @@ export async function resolve(specifier, context, nextResolve) {
 
   if (x) {
     const result = await nextResolve(extensionless(specifier, x), context)
-    dev && x.indexOf(cwd) === 0 && (watch.add(url.fileURLToPath(result.url)), dev.postMessage(watch))
     return result
   }
 

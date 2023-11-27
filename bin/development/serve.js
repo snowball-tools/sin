@@ -7,20 +7,19 @@ import ey from 'ey'
 
 import './log.js'
 import '../env.js'
-import { gracefulRead, transform } from './shared.js'
+import { tryRead, transform } from './shared.js'
 import ssr, { wrap } from '../../ssr/index.js'
 
 const cwd = process.cwd()
-    , run = false // todo
-    , noscript = false // todo
     , port = process.env.PORT
     , url = 'http://localhost:' + port
     , { mount, entry } = await getMount()
     , sinRoot = path.join(Url.fileURLToPath(new URL('.', import.meta.url)), '..', '..')
 
+const head = getTools()
 const app = ey()
 
-const serverPath = path.join(cwd, run ? '' : '+', 'index.js')
+const serverPath = path.join(cwd, process.env.SIN_RAW ? '' : '+', 'index.js')
 if (fs.existsSync(serverPath)) {
   const x = await import(Url.pathToFileURL(serverPath))
   typeof x.default === 'function' && await x.default(app)
@@ -63,20 +62,32 @@ app.get(async r => {
     { location: 'http://' + (r.headers.host || url) + r.url }
   )
 
-  r.end(wrap(x, {
-    head: '<script type=module src="/node_modules/sin/bin/development/browser.js"></script>',
-    body: noscript ? '' : '<script type=module async defer src="/' + entry + '"></script>'
-  }), x.status || 200, x.headers)
+  const html = wrap(x, {
+    head,
+    body: process.env.SIN_NOSCRIPT ? '' : '<script type=module async defer src="/' + entry + '"></script>'
+  })
+
+  r.end(html, x.status || 200, x.headers)
 })
 
 await app.listen(port)
-console.log('Listening on', port)
 
 async function getMount() {
   const entry = path.basename(process.env.SIN_ENTRY)
-      , hasMount = (await gracefulRead(process.env.SIN_ENTRY)).indexOf('export default ') !== -1
+      , hasMount = (await tryRead(process.env.SIN_ENTRY)).indexOf('export default ') !== -1
 
-  return hasMount
-    ? { entry, mount: (await import(process.env.SIN_ENTRY)).default }
-    : { entry }
+  return {
+    mount: hasMount && (await import(process.env.SIN_ENTRY)).default,
+    entry
+  }
+}
+
+function getTools() {
+  return `
+    <script id=sintools port="${ process.env.SIN_TOOLS_PORT }" type=module async ${
+      true || process.env.SIN_DEBUG
+        ? 'src="/node_modules/sin/bin/development/tools/index.js">'
+        : '>' + fs.readFileSync(path.join(process.env.SIN_BIN, 'development', 'tools', 'dist.js'), 'utf8')
+    }</script>
+  `.trim()
 }

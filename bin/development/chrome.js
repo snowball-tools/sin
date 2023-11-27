@@ -2,214 +2,161 @@
 
 // https://chromedevtools.github.io/devtools-protocol/
 
-import path from 'path'
-import cp from 'child_process'
 import fs from 'fs'
-import fsp from 'fs/promises'
+import path from 'path'
+import prexit from 'prexit'
+import cp from 'child_process'
 
+import config from '../config.js'
+import api from './api.js'
 import { getPort } from './shared.js'
 
 import '../../ssr/index.js'
 import s from '../../src/index.js'
 
-import { createRequire } from 'module'
+const port = await getPort()
+    , origin = new URL(api.url()).origin
+    , hmr = 'if(window.self === window.top)window.hmr=1;'
+    , scripts = new Map()
 
-const requests = new Map()
-const hmr = 'if(window.self === window.top)window.hmr=1;'
-const args = process.argv.slice(2).concat((process.env.SIN_DEV_ARGS || '').split(' '))
+// Delay prevent uws tying port to child https://github.com/uNetworking/uWebSockets.js/issues/840
+await s.sleep(100)
 
-let id = 1
+const chrome = cp.spawn(getPath(), [
+  '--no-first-run',
+  '--no-default-browser-check',
+  '--disable-web-security',
+  '--disable-translate',
+  '--disable-features=TranslateUI',
+  '--disable-features=Translate',
+  '--disable-infobars',
+  '--test-type', // Remove warning banner from --disable-web-security usage
+  '--user-data-dir=' + api.home,
+  '--remote-debugging-port=' + port,
+  api.url()
+], {
+  detached: true,
+  stdio: 'ignore'
+})
 
-export default async function(home, log, url, scriptParsed) {
-  const { WebSocket } = createRequire(import.meta.url)('internal/deps/undici/undici')
+chrome.unref()
 
-  const chromePath = getPath()
-      , urlPath = path.join(home, '.sin-url')
-      , wsUrlPath = path.join(home, '.sin-chrome-ws')
-      , scriptsPath = path.join(home, '.sin-scripts')
-      , chromePortPath = path.join(home, '.sin-chrome-port')
+const tab = await getTab(origin)
 
-      , chromePort = (await fsp.readFile(chromePortPath, 'utf8').catch(() => null)) || await getPort()
-      , lastUrl = await fsp.readFile(urlPath, 'utf8').catch(() => null)
-      , chromeUrl = `http://127.0.0.1:${ chromePort }/json/`
+if (!tab)
+  throw new Error('Could not find tab in chrome')
 
-  let wsUrl = await fsp.readFile(wsUrlPath, 'utf8').catch(() => null)
-    , launched = false
-    , errored = null
-    , opened = false
-    , socket
-    , chrome
-    , open
-    , ready
+const ws = await connect(tab.webSocketDebuggerUrl)
 
-  ready = wsUrl
-    ? connect()
-    : spawn()
+api.redraw.observe(x => {
+  console.log(x, scripts.get(x.path))
+  scripts.has(x.path) && ws.request('Debugger.setScriptSource', {
+    scriptId: scripts.get(x.path),
+    scriptSource: x.next
+  }).then(console.log, console.error)
+})
 
-  // Delay return to prevent uws tying port to child https://github.com/uNetworking/uWebSockets.js/issues/840
-  await new Promise(r => setTimeout(r, 50))
+prexit(async() => {
+  await ws.request('Browser.close')
+  chrome.kill()
+})
 
-  return { send, kill: () => chrome && chrome.kill() }
+async function connect(debuggerUrl) {
+  return new Promise((resolve, reject) => {
+    let id = 1
 
-  async function spawn() {
-    print.debug('Launching Chrome')
-    chrome = cp.spawn(chromePath, [
-      args.includes('--fps') ? '--show-fps-counter' : '',
-      args.includes('--tools') ? '--auto-open-devtools-for-tabs' : '',
-      '--no-first-run',
-      '--no-default-browser-check',
-      '--disable-web-security',
-      '--disable-translate',
-      '--disable-features=TranslateUI',
-      '--disable-features=Translate',
-      '--disable-infobars',
-      '--test-type', // Remove warning banner from --disable-web-security usage
-      '--user-data-dir=' + home,
-      '--remote-debugging-port=' + chromePort,
-      lastUrl || url
-    ].filter(x => x), {
-      detached: true,
-      stdio: 'ignore'
-    })
+    const ws = new WebSocket(debuggerUrl)
+        , requests = new Map()
 
-    chrome.unref()
+    ws.onmessage = onmessage
+    ws.onerror = reject
+    ws.onclose = reject
+    ws.onopen = onopen
+    ws.request = request
 
-    // Delay return to prevent uws tying port to child
-    await new Promise(r => setTimeout(r, 60))
-
-    print('Connecting to Chrome')
-    const tabs = await getTabs(chromeUrl)
-    const tab = tabs.find(t => t.url.indexOf(url) === 0)
-
-    if (!tab)
-      return console.error('Could not find tab in chrome') // eslint-disable-line
-
-    wsUrl = tab.webSocketDebuggerUrl
-    fs.writeFileSync(chromePortPath, String(chromePort))
-    fs.writeFileSync(wsUrlPath, wsUrl)
-    await connect()
-  }
-
-  async function connect() {
-    errored = null
-    socket = new WebSocket(wsUrl)
-    socket.onopen = onopen
-    socket.onmessage = onmessage
-    socket.onerror = onerror
-    socket.onclose = onclose
-    return open || new Promise((resolve, reject) => open = { resolve, reject })
-  }
-
-  function onclose() {
-    errored || (ready = reconnect())
-  }
-
-  async function reconnect() {
-    await new Promise(r => setTimeout(r, 100))
-    await connect()
-  }
-
-  function onerror(x) {
-    errored = x
-    if (opened) {
-      print.debug('Chrome closed')
-      chrome && chrome.kill()
-      process.exit(0)
-    } else {
-      opened && print.error('Unknown Chrome WS Error:', x.message)
-      launched && open.reject(x)
-      fsp.unlink(wsUrlPath).catch(() => {})
-      fsp.unlink(scriptsPath).catch(() => {})
-      !chrome && spawn()
+    async function request(method, params) {
+      return ws.readyState === 1 && new Promise((resolve, reject) => {
+        const message = {
+          id: id++,
+          method,
+          params,
+          resolve,
+          reject
+        }
+        requests.set(message.id, message)
+        ws.send(JSON.stringify(message))
+      })
     }
-  }
 
-  async function send(method, params) {
-    await ready
-    return socket.readyState === 1 && new Promise((resolve, reject) => {
-      const message = {
-        id: id++,
-        method,
-        params,
-        resolve,
-        reject
-      }
-      requests.set(message.id, message)
-      socket.send(JSON.stringify(message))
-    })
-  }
-
-  async function onopen() {
-    open.resolve()
-    try {
-      await send('Runtime.enable')
-      await send('Runtime.evaluate', { expression: hmr })
-      await send('Debugger.enable').catch(print.debug)
-      !process.env.DEBUG
-        && await send('Debugger.setBlackboxPatterns', { patterns: ['sin/src/', 'sin/bin/'] })
-      await send('Network.enable')
-      await send('Network.setCacheDisabled', { cacheDisabled: true })
-      await send('Page.enable')
-      await send('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
+    async function onopen() {
+      await request('Runtime.enable')
+      await request('Runtime.evaluate', { expression: hmr })
+      await request('Debugger.enable').catch(print.debug)
+      !api.debug && await request('Debugger.setBlackboxPatterns', { patterns: ['sin/src/', 'sin/bin/'] })
+      await request('Network.enable')
+      await request('Network.setCacheDisabled', { cacheDisabled: true })
+      await request('Page.enable')
+      await request('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
       false && setTimeout(() => {
-        send('Emulation.setDeviceMetricsOverride', {
+        request('Emulation.setDeviceMetricsOverride', {
           width: 320,
           height: 480,
           deviceScaleFactor: 2,
           mobile: true
-        }).then(console.log,console.error)
+        }).then(console.log, console.error)
       }, 2000)
-      print.debug(launched
-        ? 'Reconnected to Chrome'
-        : 'Connected to Chrome') // eslint-disable-line
-    } catch (error) {
-      print.debug('Error Connecting to Chrome', error)
+
+      resolve(ws)
     }
-    launched = true
-  }
 
-  function onmessage({ data }) {
-    opened = true
-    const { id, method, params, error, result } = JSON.parse(data)
-    if (method === 'Debugger.scriptParsed' && params.url)
-      return scriptParsed(params)
+    function onmessage({ data }) {
+      const { id, method, params, error, result } = JSON.parse(data)
+      if (method === 'Debugger.scriptParsed' && params.url)
+        return parsed(params)
 
-    if (method === 'Page.navigatedWithinDocument' && params.url.indexOf(url) === 0)
-      return fs.writeFileSync(urlPath, params.url)
+      if (method === 'Page.navigatedWithinDocument' && params.url.indexOf(origin) === 0)
+        return api.url(params.url)
 
-    if (method === 'Page.frameNavigated' && !params.frame.parentId && params.frame.url.indexOf(url) === 0)
-      return navigated(params)
+      if (method === 'Page.frameNavigated' && !params.frame.parentId && params.frame.url.indexOf(origin) === 0)
+        return api.url(params.frame.url)
 
-    if (method === 'Runtime.consoleAPICalled')
-      return log(params)
+      if (method === 'Runtime.consoleAPICalled')
+        return false && api.log(params)
 
-    if (!requests.has(id))
-      return
+      if (!requests.has(id))
+        return
 
-    const { reject, resolve } = requests.get(id)
-    requests.delete(id)
+      const { reject, resolve } = requests.get(id)
+      requests.delete(id)
 
-    error
-      ? reject(error)
-      : resolve(result)
-  }
+      error
+        ? reject(error)
+        : resolve(result)
+    }
 
-  function navigated(params) {
+    function parsed(script) {
+      console.log(script)
+      if (script.url.indexOf(origin) !== 0)
+        return
 
-    fs.writeFileSync(urlPath, params.frame.url)
-  }
-
+      const x = path.join(config.cwd, new URL(script.url).pathname)
+      const p = fs.realpathSync(path.isAbsolute(x) ? x : path.join(process.cwd(), x))
+      scripts.set(p, script.scriptId)
+      api.watch({ path: p, origin: 'client' })
+    }
+  })
 }
 
-async function getTabs(url, retries = 0) {
+async function getTab(url, retries = 0) {
   try {
-    return await s.http(url + 'list/')
+    const tabs = await s.http('http://127.0.0.1:' + port + '/json/list/')
+    return tabs.find(t => t.url.indexOf(origin) === 0)
   } catch (err) {
     if (retries > 20)
       throw new Error('Could not connect to Chrome dev tools')
 
     await new Promise(r => setTimeout(r, 500))
-    return getTabs(url, ++retries)
+    return getTab(url, ++retries)
   }
 }
 

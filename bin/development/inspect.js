@@ -1,7 +1,7 @@
 import s from '../../src/index.js'
 import { stackTrace } from '../../src/shared.js'
 
-const goto = s.signal()
+const goto = s.event()
 
 export default goto
 

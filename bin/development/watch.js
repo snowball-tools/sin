@@ -1,19 +1,18 @@
 import api from './api.js'
 import fs from 'fs'
-import { Watcher, tryRead, jail } from './shared.js'
+import { Watcher, tryRead } from './shared.js'
 
-const clientWatch = new Set()
-    , serverWatch = new Set()
+const browserWatch = new Set()
+    , nodeWatch = new Set()
     , watching = new Map()
 
 const watcher = Watcher(changed)
 
-api.watch.observe(async({ path, origin }) => {
-  console.log('watch', origin, path)
-  origin === 'client'
-    ? clientWatch.add(path)
-    : serverWatch.add(path)
+api.node.watch.observe(x => watch(x, nodeWatch))
+api.browser.watch.observe(x => watch(x, browserWatch))
 
+async function watch(path, origin) {
+  origin.add(path)
   if (watching.has(path))
     return watching.get(path)
 
@@ -23,17 +22,16 @@ api.watch.observe(async({ path, origin }) => {
   update(file)
   watcher.add(path)
   return file
-})
+}
 
 async function changed(path) {
   const x = await read(path)
-  console.log('changed', path, serverWatch.has(path), clientWatch.has(path))
-  serverWatch.has(path)
-    ? clientWatch.has(path)
+  nodeWatch.has(path)
+    ? browserWatch.has(path)
       ? both(x)
-      : server(x)
-    : clientWatch.has(path)
-      ? client(x)
+      : node(x)
+    : browserWatch.has(path)
+      ? browser(x)
       : remove(x)
 
   update(x)
@@ -41,33 +39,33 @@ async function changed(path) {
 
 function remove(x) {
   watcher.remove(x)
-  clientWatch.delete(x)
-  serverWatch.delete(x)
+  browserWatch.delete(x)
+  nodeWatch.delete(x)
 }
 
-function server(x) {
+function node(x) {
   x.next === x.content
-    ? api.restart(x)
-    : api.reload(x)
+    ? api.node.restart(x)
+    : api.node.hotload(x)
 }
 
-function client(x) {
+function browser(x) {
   x.next === x.content
-    ? api.refresh(x)
-    : api.redraw(x)
+    ? api.browser.reload(x)
+    : api.browser.hotload(x)
 }
 
 function both(x) {
   x.next === x.content
     ? x.content === x.pre
-      ? (api.restart(x), api.refresh(x))
-      : (api.reload(x), api.refresh(x))
-    : (api.reload(x), api.redraw(x))
+      ? (api.node.restart(x), api.browser.reload(x))
+      : (api.node.hotload(x), api.browser.reload(x))
+    : (api.node.hotload(x), api.browser.hotload(x))
 }
 
 async function read(path) {
   const x = watching.get(path)
-  x.next = jail(await tryRead(x.path, 'utf8'))
+  x.next = await tryRead(x.path, 'utf8')
   return x
 }
 

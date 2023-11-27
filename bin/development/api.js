@@ -18,12 +18,18 @@ export default {
   home,
   project     : path.join(home, port + '-' + path.basename(config.cwd)),
   url         : s.live(url, x => fs.writeFileSync(path.join(home, 'sinurl'), x)),
-  restart     : s.event(),
-  reload      : s.event(),
-  refresh     : s.event(),
-  redraw      : s.event(),
+  node     : {
+    restart : s.event(),
+    hotload : s.event(),
+    watch   : s.event()
+  },
+  browser  : {
+    reload  : s.event(),
+    hotload : s.event(),
+    redraw  : s.event(),
+    watch   : s.event()
+  },
   log         : s.event(),
-  watch       : s.event(),
   editor      : s.event()
 }
 

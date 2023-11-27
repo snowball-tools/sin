@@ -26,9 +26,9 @@ function onmessage(e) {
   console.log(e.data)
   const { event, data } = JSON.parse(e.data)
   console.log(event, data)
-  event === 'refresh'
+  event === 'reload'
     ? location.reload()
-    : data === 'redraw'
+    : event === 'redraw'
     ? window.hmr
       ? hmr()
       : location.reload()

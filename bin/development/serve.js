@@ -12,7 +12,7 @@ import ssr, { wrap } from '../../ssr/index.js'
 
 const cwd = process.cwd()
     , port = process.env.PORT
-    , url = 'http://localhost:' + port
+    , url = 'http://127.0.0.1:' + port
     , { mount, entry } = await getMount()
     , sinRoot = path.join(Url.fileURLToPath(new URL('.', import.meta.url)), '..', '..')
 

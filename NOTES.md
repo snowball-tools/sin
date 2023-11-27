@@ -26,6 +26,10 @@ function navigated(url) {
 }
 
 ## Todo
+- dialogs for installing packages
+- connect to all tabs (devtools)
+- p.alert (opens log window)
+- p.watch (tracks variable value)
 - regression href: null sets attribute
 - readd implicit create if `sin dev` in empty dir
 - remove undefined behvior for s.with

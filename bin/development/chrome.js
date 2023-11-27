@@ -9,7 +9,7 @@ import cp from 'child_process'
 
 import config from '../config.js'
 import api from './api.js'
-import { getPort } from './shared.js'
+import { getPort, modify } from './shared.js'
 
 import '../../ssr/index.js'
 import s from '../../src/index.js'
@@ -48,12 +48,14 @@ if (!tab)
 
 const ws = await connect(tab.webSocketDebuggerUrl)
 
-api.redraw.observe(x => {
-  console.log(x, scripts.get(x.path))
-  scripts.has(x.path) && ws.request('Debugger.setScriptSource', {
+api.browser.hotload.observe(async x => {
+  if (!scripts.has(x.path))
+    return
+
+  ws.request('Debugger.setScriptSource', {
     scriptId: scripts.get(x.path),
-    scriptSource: x.next
-  }).then(console.log, console.error)
+    scriptSource: modify(x.next)
+  }).then(api.browser.redraw, api.browser.refresh)
 })
 
 prexit(async() => {
@@ -135,14 +137,13 @@ async function connect(debuggerUrl) {
     }
 
     function parsed(script) {
-      console.log(script)
       if (script.url.indexOf(origin) !== 0)
         return
 
       const x = path.join(config.cwd, new URL(script.url).pathname)
       const p = fs.realpathSync(path.isAbsolute(x) ? x : path.join(process.cwd(), x))
       scripts.set(p, script.scriptId)
-      api.watch({ path: p, origin: 'client' })
+      api.browser.watch(p)
     }
   })
 }

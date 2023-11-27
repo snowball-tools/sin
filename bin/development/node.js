@@ -20,10 +20,10 @@ prexit(() => {
   node && node.kill()
 })
 
-api.reload.observe((x) => {
+api.node.hotload.observe((x) => {
   ws && ws.request('Debugger.setScriptSource', {
     scriptId: scripts[x.path],
-    scriptSource: x.next
+    scriptSource: jail(x.next)
   })
 })
 
@@ -119,7 +119,7 @@ function start() {
       const x = URL.fileURLToPath(script.url)
       const p = fs.realpathSync(path.isAbsolute(x) ? x : path.join(process.cwd(), x))
       scripts.set(p, script.scriptId)
-      api.watch({ path: p, origin: 'server' })
+      api.node.watch(p)
     }
   }
 }

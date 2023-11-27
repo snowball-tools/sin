@@ -19,11 +19,10 @@ export default {
   port
 }
 
-api.refresh.observe(() => publish('refresh'))
-api.redraw.observe(() => publish('redraw'))
+api.browser.reload.observe(() => publish('reload'))
+api.browser.redraw.observe(() => publish('redraw'))
 api.log.observe(x => publish('log', x))
 
 function publish(event, data) {
-  console.log(event, data, wss)
   wss.forEach(ws => ws.send(JSON.stringify({ event, data })))
 }

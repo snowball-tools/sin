@@ -1,27 +1,27 @@
 /* eslint no-console: 0 */
 
 import './usage.js'
-import s from '../style.js'
+import c from '../color.js'
 
 false && console.log(`
-${ s.bold`development` }
+${ c.bold`development` }
 // Todo
 
-${ s.bold`production` }
+${ c.bold`production` }
 // Todo
 
-${ s.bold`build` }
+${ c.bold`build` }
 // Todo
 
-${ s.bold`create` }
+${ c.bold`create` }
 // Todo
 
-${ s.bold`generate` }
+${ c.bold`generate` }
 // Todo
 
-${ s.bold`version` }
+${ c.bold`version` }
 // Todo
 
-${ s.bold`help` }
+${ c.bold`help` }
 // Todo
 `)

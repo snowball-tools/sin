@@ -6,7 +6,7 @@ import cp from 'child_process'
 
 import config from '../config.js'
 import api from './api.js'
-import { getPort } from './shared.js'
+import { getPort, jail } from './shared.js'
 
 const port = await getPort()
     , dirname = path.dirname(URL.fileURLToPath(import.meta.url))
@@ -15,21 +15,33 @@ let node
   , ws
   , scripts = new Map()
 
-prexit(() => {
-  ws && ws.close()
-  node && node.kill()
+prexit(close)
+
+api.node.restart.observe(async() => {
+  await close()
+  start()
 })
 
 api.node.hotload.observe((x) => {
+  if (!scripts.has(x.path))
+    return
+
   ws && ws.request('Debugger.setScriptSource', {
-    scriptId: scripts[x.path],
+    scriptId: scripts.get(x.path),
     scriptSource: jail(x.next)
   })
 })
 
 start()
 
+function close() {
+  ws && ws.close()
+  node && node.kill()
+}
+
 function start() {
+  api.log({ from: 'node', type: 'starting' })
+
   node = cp.fork(
     config.raw ? config.entry : path.join(dirname, 'serve.js'),
     [],
@@ -48,16 +60,15 @@ function start() {
   )
 
   node.stdout.setEncoding('utf8')
-  node.stdout.on('data', data => api.log({ type: 'info', origin: 'server', data }))
+  node.stdout.on('data', data => api.debug && process.stdout.write(data))
 
   node.stderr.setEncoding('utf8')
   node.stderr.on('data', async(data) => {
+    api.debug && process.stderr.write(data)
     if (data.includes('Debugger listening on ws://127.0.0.1:' + port)) {
       ws = connect(data.slice(22).split('\n')[0].trim())
     } else if (data.includes('Waiting for the debugger to disconnect...')) {
       ws && ws.close()
-    } else if (!data.includes('Debugger ending on ws://127.0.0.1:' + port)) {
-      api.log({ type: 'error', origin: 'server', data: data.trim() })
     }
   })
 
@@ -65,6 +76,11 @@ function start() {
     ws && ws.close()
     ws = null
   })
+
+  function pass(data) {
+    return data !== 'Debugger ending on ws://127.0.0.1:' + port
+        && data !== 'Debugger attached.'
+  }
 
   function connect(url) {
     const requests = new Map()
@@ -93,13 +109,19 @@ function start() {
     }
 
     async function onopen() {
+      await request('Runtime.enable')
+      await request('Runtime.setAsyncCallStackDepth', { maxDepth: 128 })
       await request('Debugger.enable')
+      api.log({ from: 'node', type: 'started' })
     }
 
     function onmessage({ data }) {
       const { id, method, params, error, result } = JSON.parse(data)
       if (method === 'Debugger.scriptParsed' && params.url)
         return parsed(params)
+
+      if (method === 'Runtime.consoleAPICalled')
+        return api.log({ from: 'node', ...params })
 
       if (!requests.has(id))
         return

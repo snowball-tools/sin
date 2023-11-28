@@ -33,7 +33,8 @@ function getCommand() {
     p: 'purge',
     r: 'run',
     s: 'start',
-    v: 'version'
+    v: 'version',
+    i: 'install'
   }
 
   const first = argv[0] || ''

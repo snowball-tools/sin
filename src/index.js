@@ -228,6 +228,7 @@ function mount(dom, view, attrs = {}, context = {}) {
   if (s.isServer)
     return { view, attrs, context }
 
+  dom[stackTrace] = new Error().stack
   s.scroll && scrollRestoration(context)
 
   context.hydrating = shouldHydrate(dom.firstChild)

@@ -2,7 +2,7 @@ import fs from 'fs'
 import cp from 'child_process'
 import path from 'path'
 import readline from 'readline'
-import s from '../style.js'
+import c from '../color.js'
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 
@@ -89,7 +89,7 @@ function mk(x, file, data = '') {
 }
 
 async function prompt(x) {
-  return yes || (await ask(x + s.gray(' (Y/n)'))).toLowerCase() !== 'n'
+  return yes || (await ask(x + c.gray(' (Y/n)'))).toLowerCase() !== 'n'
 }
 
 async function ask(x) {

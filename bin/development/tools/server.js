@@ -1,5 +1,10 @@
 import ey from 'ey'
 import api from '../api.js'
+import editor from './editor.js'
+
+const events = {
+  editor
+}
 
 const wss = new Set()
 const app = ey()
@@ -8,7 +13,7 @@ app.ws({
   upgrade: r => ({ name: r.ip }),
   open: ws => wss.add(ws),
   close: ws => wss.delete(ws),
-  message: (ws, { json }) => json.event && api[json.event](json.data, ws)
+  message: (ws, { json }) => json.event && events[json.event](json.data, ws)
 })
 
 const { port } = await app.listen()

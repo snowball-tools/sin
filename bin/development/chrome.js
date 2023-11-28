@@ -15,12 +15,8 @@ import '../../ssr/index.js'
 import s from '../../src/index.js'
 
 const port = await getPort()
-    , origin = new URL(api.url()).origin
     , hmr = 'if(window.self === window.top)window.hmr=1;'
     , scripts = new Map()
-
-// Delay prevent uws tying port to child https://github.com/uNetworking/uWebSockets.js/issues/840
-await s.sleep(100)
 
 const chrome = cp.spawn(getPath(), [
   '--no-first-run',
@@ -31,7 +27,7 @@ const chrome = cp.spawn(getPath(), [
   '--disable-features=Translate',
   '--disable-infobars',
   '--test-type', // Remove warning banner from --disable-web-security usage
-  '--user-data-dir=' + api.home,
+  '--user-data-dir=' + api.project,
   '--remote-debugging-port=' + port,
   api.url()
 ], {
@@ -41,12 +37,20 @@ const chrome = cp.spawn(getPath(), [
 
 chrome.unref()
 
-const tab = await getTab(origin)
+const tab = await getTab(api.origin)
 
 if (!tab)
   throw new Error('Could not find tab in chrome')
 
 const ws = await connect(tab.webSocketDebuggerUrl)
+
+ws.onerror = error => console.error(error)
+ws.onclose = prexit.exit
+
+prexit(async() => {
+  await ws.request('Browser.close').catch(() => {})
+  chrome.kill()
+})
 
 api.browser.hotload.observe(async x => {
   if (!scripts.has(x.path))
@@ -56,11 +60,6 @@ api.browser.hotload.observe(async x => {
     scriptId: scripts.get(x.path),
     scriptSource: modify(x.next)
   }).then(api.browser.redraw, api.browser.refresh)
-})
-
-prexit(async() => {
-  await ws.request('Browser.close')
-  chrome.kill()
 })
 
 async function connect(debuggerUrl) {
@@ -92,9 +91,10 @@ async function connect(debuggerUrl) {
 
     async function onopen() {
       await request('Runtime.enable')
+      await request('Runtime.setAsyncCallStackDepth', { maxDepth: 128 })
       await request('Runtime.evaluate', { expression: hmr })
       await request('Debugger.enable').catch(print.debug)
-      !api.debug && await request('Debugger.setBlackboxPatterns', { patterns: ['sin/src/', 'sin/bin/'] })
+      await request('Debugger.setBlackboxPatterns', { patterns: api.blackbox })
       await request('Network.enable')
       await request('Network.setCacheDisabled', { cacheDisabled: true })
       await request('Page.enable')
@@ -107,7 +107,6 @@ async function connect(debuggerUrl) {
           mobile: true
         }).then(console.log, console.error)
       }, 2000)
-
       resolve(ws)
     }
 
@@ -116,14 +115,14 @@ async function connect(debuggerUrl) {
       if (method === 'Debugger.scriptParsed' && params.url)
         return parsed(params)
 
-      if (method === 'Page.navigatedWithinDocument' && params.url.indexOf(origin) === 0)
+      if (method === 'Page.navigatedWithinDocument' && params.url.indexOf(api.origin) === 0)
         return api.url(params.url)
 
-      if (method === 'Page.frameNavigated' && !params.frame.parentId && params.frame.url.indexOf(origin) === 0)
+      if (method === 'Page.frameNavigated' && !params.frame.parentId && params.frame.url.indexOf(api.origin) === 0)
         return api.url(params.frame.url)
 
       if (method === 'Runtime.consoleAPICalled')
-        return false && api.log(params)
+        return api.log({ from: 'browser', ...params })
 
       if (!requests.has(id))
         return
@@ -137,10 +136,10 @@ async function connect(debuggerUrl) {
     }
 
     function parsed(script) {
-      if (script.url.indexOf(origin) !== 0)
+      const x = path.join(config.cwd, new URL(script.url).pathname)
+      if (script.url.indexOf(api.origin) !== 0 || !isFile(x))
         return
 
-      const x = path.join(config.cwd, new URL(script.url).pathname)
       const p = fs.realpathSync(path.isAbsolute(x) ? x : path.join(process.cwd(), x))
       scripts.set(p, script.scriptId)
       api.browser.watch(p)
@@ -148,10 +147,18 @@ async function connect(debuggerUrl) {
   })
 }
 
+function isFile(x) {
+  try {
+    return fs.statSync(x).isFile()
+  } catch (e) {
+    return false
+  }
+}
+
 async function getTab(url, retries = 0) {
   try {
     const tabs = await s.http('http://127.0.0.1:' + port + '/json/list/')
-    return tabs.find(t => t.url.indexOf(origin) === 0)
+    return tabs.find(t => t.url.indexOf(api.origin) === 0)
   } catch (err) {
     if (retries > 20)
       throw new Error('Could not connect to Chrome dev tools')

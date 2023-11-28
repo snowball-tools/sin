@@ -1,5 +1,7 @@
 import fs from 'fs'
+import Url from 'url'
 import path from 'path'
+import c from '../color.js'
 
 import '../../ssr/index.js'
 import s from '../../src/index.js'
@@ -11,27 +13,34 @@ process.env.NODE_ENV = 'development'
 const env = process.env
     , home = getHome()
     , port = process.env.PORT = getPort(home)
+    , project = path.join(home, port + '-' + path.basename(config.cwd))
+    , debug = process.env.SIN_DEBUG = process.argv.some(x => x === '--debug' || x === '-d')
     , url = getUrl(home, port)
+    , origin = new URL(url).origin
 
-export default {
+const api = {
   port,
   home,
-  project     : path.join(home, port + '-' + path.basename(config.cwd)),
-  url         : s.live(url, x => fs.writeFileSync(path.join(home, 'sinurl'), x)),
-  node     : {
+  debug,
+  origin,
+  project,
+  blackbox: debug ? [] : ['/sin/src/', '/sin/bin/', 'node:internal/', '/ey/src/', '/sin/ssr/'],
+  url: s.live(url, x => fs.writeFileSync(path.join(project, '.sin-url'), x)),
+  node: {
     restart : s.event(),
     hotload : s.event(),
     watch   : s.event()
   },
-  browser  : {
+  browser: {
     reload  : s.event(),
     hotload : s.event(),
     redraw  : s.event(),
     watch   : s.event()
   },
-  log         : s.event(),
-  editor      : s.event()
+  log: s.event()
 }
+
+export default api
 
 function getHome() {
   const x = env.SIN_HOME || path.join(
@@ -61,7 +70,7 @@ function getPort() {
 }
 
 function getUrl() {
-  const x = path.join(home, 'sinurl')
+  const x = path.join(project, '.sin-url')
   return fs.existsSync(x)
     ? fs.readFileSync(x, 'utf8')
     : 'http://127.0.0.1:' + port

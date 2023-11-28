@@ -19,15 +19,15 @@ export async function tryRead(x) {
     .catch(async() => (await new Promise(r => setTimeout(r, 20)), fsp.readFile(x, 'utf8')))
 }
 
+export function jail(x) {
+  return x.replace(/((function.*?\)|=>)\s*{)/g, '$1eval(0);')
+}
+
 const staticImport = /(?:`[^`]*`)|((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: from )?\s*['"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)(['"])/g // eslint-disable
     , dynamicImport = /(?:`[^`]*`)|([^$.]import\(\s?['"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)(['"]\s?\))/g
     , staticImportDir = /(?:`[^`]*`)|((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: from )?\s*['"])((?:\.\/|\.\.\/|\/)+?[a-zA-Z0-9@./_-]+?(?<!\.[tj]s))(['"])/g // eslint-disable
     , dynamicImportDir = /(?:`[^`]*`)|([^$.]import\(\s?['"])((?:\.\/|\.\.\/|\/)+?[a-zA-Z0-9@/._-]+?(?<!\.[tj]s))(['"]\s?\))/g
     , resolveCache = Object.create(null)
-
-export function jail(x) {
-  return x.replace(/((function.*?\)|=>)\s*{)/g, '$1eval(0);')
-}
 
 export function modify(x, path) {
   return jail(
@@ -78,10 +78,9 @@ function canRead(x) {
 }
 
 export function transform(buffer, filePath) {
-  if (!filePath.endsWith('.js'))
-    return buffer
-
-  return modify(Buffer.from(buffer).toString(), path.dirname(filePath))
+  return filePath.endsWith('.js')
+    ? modify(Buffer.from(buffer).toString(), path.dirname(filePath))
+    : buffer
 }
 
 function pkgLookup(x, abs = x) {

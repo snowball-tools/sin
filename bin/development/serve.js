@@ -85,9 +85,9 @@ async function getMount() {
 function getTools() {
   return `
     <script id=sintools port="${ process.env.SIN_TOOLS_PORT }" type=module async ${
-      true || process.env.SIN_DEBUG
+      process.env.SIN_DEBUG
         ? 'src="/node_modules/sin/bin/development/tools/index.js">'
-        : '>' + fs.readFileSync(path.join(process.env.SIN_BIN, 'development', 'tools', 'dist.js'), 'utf8')
+        : 'src="/node_modules/sin/bin/development/tools/dist.js">'
     }</script>
   `.trim()
 }

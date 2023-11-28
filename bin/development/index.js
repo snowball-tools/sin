@@ -1,6 +1,7 @@
 import './log.js'
 import './api.js'
+import './print.js'
 import './watch.js'
-import './tools/ws.js'
+import './tools/server.js'
 import './node.js'
 import './chrome.js'

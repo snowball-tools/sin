@@ -1,16 +1,16 @@
-import S from '../../../src/index.js'
-import s from '../../../src/index.js?sintools'
-import { stackTrace } from '../../../src/shared.js'
+import s from 'sin'
+
+const sinPath = '/node_modules/sin/src/shared.js'
+const { stackTrace } = await import(sinPath)
+
+import api from './api.js'
 
 const rect = s.live(null)
-    , eventOptions = { capture: true, passive: true }
     , last = { log: s.live(), error: s.live() }
     , logs = []
     , showLog = s.live(0, showLogChange)
 
-export const goto = s.event()
-export const log = s.event(newLog)
-export const hmr = s.event(S.redraw)
+api.log.observe(newLog)
 
 let over = null
   , inspecting = false
@@ -31,8 +31,8 @@ function showLogChange() {
   logTimer = setTimeout(s.redraw, 3010)
 }
 
-window.addEventListener('mouseover', mouseover, eventOptions)
-window.addEventListener('keydown', keydown, eventOptions)
+window.addEventListener('mouseover', mouseover, { capture: true, passive: true })
+window.addEventListener('keydown', keydown, { capture: true, passive: true })
 
 const div = document.createElement('div')
 div.id = 'sindev'
@@ -40,7 +40,7 @@ document.documentElement.appendChild(div)
 
 s.scroll = false
 
-s.mount(div, s(({}, [], { ignore }) => {
+s.mount(div, s(() => {
   return () => [
     window.hasOwnProperty(stackTrace) && rect && s`
       all initial
@@ -248,7 +248,7 @@ s.mount(div, s(({}, [], { ignore }) => {
                       o 1
                     }
                   `({
-                    onclick: () => goto({
+                    onclick: () => api.editor({
                       file: x.url.slice(location.origin.length),
                       line: (x.lineNumber + 1),
                       column: (x.columnNumber + 1)
@@ -322,7 +322,7 @@ s.mount(div, s(({}, [], { ignore }) => {
             m 0 8
             flex-wrap no-wrap
           `(
-            logs[logs.length - 1].args.map(x =>
+            logs[logs.length - 1].args?.map(x =>
               s`
                 white-space nowrap
               `({
@@ -391,20 +391,13 @@ s.mount(div, s(({}, [], { ignore }) => {
           }
         `({
           onclick: () => top = !top,
-          dom: x => {
-            hmr.observe(() => {
-              document.body.animate([
-                { opacity: 1 },
-                { opacity: 0.4 },
-                { opacity: 1 }
-              ], { duration: 300, easing: 'ease-out' })
-              x.animate([
-                { transform: 'rotate(0)' },
-                { transform: 'rotate(180deg) scale(1.1)' },
-                { transform: 'rotate(360deg)' }
-              ], { duration: 300, easing: 'ease-out' })
-            })
-          }
+          dom: x => api.redraw.observe(() => {
+            x.animate([
+              { transform: 'rotate(0)' },
+              { transform: 'rotate(180deg) scale(1.1)' },
+              { transform: 'rotate(360deg)' }
+            ], { duration: 300, easing: 'ease-out' })
+          })
         },
           s.trust`
             <svg viewBox="0 0 480 480" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -417,7 +410,6 @@ s.mount(div, s(({}, [], { ignore }) => {
   ]
 }))
 
-
 function click(e) {
   if (!window.hasOwnProperty(stackTrace))
     return
@@ -428,9 +420,10 @@ function click(e) {
   let dom = e.target
   while (dom) {
     if (dom.hasOwnProperty(stackTrace)) {
-      const x = parseStackTrace(dom[stackTrace])[3]
+      const parsed = api.parseStackTrace(dom[stackTrace])
+      const x = parsed[3] || parsed.pop()
       if (x)
-        return goto(x)
+        return api.editor(x)
     }
 
     dom = dom.parentNode
@@ -464,10 +457,9 @@ function show() {
   over
     ? rect(over.getBoundingClientRect())
     : rect(document.body.getBoundingClientRect())
-  window.addEventListener('click', click, eventOptions)
-  window.addEventListener('blur', blur, eventOptions)
+  window.addEventListener('click', click, { capture: true })
+  window.addEventListener('blur', blur, { capture: true })
   s.redraw()
-  S.redraw()
 }
 
 function hide() {
@@ -476,18 +468,4 @@ function hide() {
   window.removeEventListener('click', click)
   window.removeEventListener('blur', blur)
   s.redraw()
-  S.redraw()
-}
-
-export function parseStackTrace(x) {
-  return String(x).split('\n').reduce((acc, x) => (
-    x = x.match(/( +at )?([^/]*)[@(](.+):([0-9]+):([0-9]+)/i), // check if really unnecessary escape char
-    x && acc.push({
-      name: x[2].trim(),
-      file: x[3].replace(window.location.origin, ''),
-      line: parseInt(x[4]),
-      column: parseInt(x[5])
-    }),
-    acc
-  ), [])
 }

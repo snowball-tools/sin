@@ -3,18 +3,19 @@ import fs from 'fs'
 import cp from 'child_process'
 import path from 'path'
 
-import api from './api.js'
+import api from '../api.js'
 
 let editor = null
 const stackLine = ({ path, line, column }) => [path, line, column].join(':')
 
-api.editor.observe(x => {
+export default function(x) {
+  x.path = path.join(process.cwd(), x.file)
   try {
     goto(x)
   } catch (e) {
     api.log({ type: 'error', content: e })
   }
-})
+}
 
 const editors = ({
   darwin: {

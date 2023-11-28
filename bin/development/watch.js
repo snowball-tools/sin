@@ -1,5 +1,4 @@
 import api from './api.js'
-import fs from 'fs'
 import { Watcher, tryRead } from './shared.js'
 
 const browserWatch = new Set()

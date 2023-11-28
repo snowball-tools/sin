@@ -16,12 +16,9 @@ export async function resolve(specifier, context, nextResolve) {
     ? url.fileURLToPath(specifier)
     : null
 
-  if (x) {
-    const result = await nextResolve(extensionless(specifier, x), context)
-    return result
-  }
-
-  return nextResolve(specifier, context)
+  return x
+    ? nextResolve(extensionless(specifier, x), context)
+    : nextResolve(specifier, context)
 }
 
 export async function load(url, context, nextLoad) {
@@ -33,7 +30,7 @@ export async function load(url, context, nextLoad) {
 
 function extensionless(x, full) {
   return path.extname(x) ? x
-    : canRead(full) ? x + '/index.js'
+    : canRead(path.join(full, 'index.js')) ? x + '/index.js'
     : canRead(full + '.js') ? x + '.js'
     : x
 }

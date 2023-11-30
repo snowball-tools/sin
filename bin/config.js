@@ -30,7 +30,7 @@ function getCommand() {
   const commands = {
     b: 'build',
     c: 'create',
-    d: 'development',
+    d: 'develop',
     g: 'generate',
     h: 'help',
     p: 'purge',
@@ -40,7 +40,13 @@ function getCommand() {
     i: 'install'
   }
 
-  const first = argv[0] || ''
+  const alias = {
+    prod        : 'start',
+    production  : 'start',
+    development : 'develop'
+  }
+
+  const first = argv[0] in alias && alias[argv[0]] || ''
       , help = (argv.some(x => x === '-h' || x === '--help') || argv.length === 0) && 'help'
       , version = argv.some(x => x === '-v' || x === '--version') && 'version'
 
@@ -70,7 +76,7 @@ function getEntry() {
     fs.readFileSync(entry, { length: 1 })
   } catch (error) {
     const x = '🚨 Entry file '+  entry + ' is not available'
-    command === 'development'
+    command === 'develop'
       ? process.stdout.write(
           '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) +
           '\n ' + c.inverse(('   ' + x).padEnd(process.stdout.columns - 2, ' ')) +

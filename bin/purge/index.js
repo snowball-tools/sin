@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 
-import api from '../development/api.js'
+import api from '../develop/api.js'
 import c from '../color.js'
 
 const all = process.argv.some(x => x === 'all')

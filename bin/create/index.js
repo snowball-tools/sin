@@ -77,8 +77,8 @@ install && cp.execSync(npm + ' install porsager/sin', { stdio: 'inherit' })
 
 !global.print && console.log(
   cd
-    ? '\nRun `cd ' + name + '` and then `' + run + ' dev` to start development\n'
-    : '\nRun `' + run + ' dev` to start development\n'
+    ? '\nRun `cd ' + name + '` and then `' + run + ' dev` to start developing\n'
+    : '\nRun `' + run + ' dev` to start developing\n'
 )
 
 rl.close()

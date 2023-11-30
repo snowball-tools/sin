@@ -92,8 +92,8 @@ function getTools() {
   return `
     <script id=sintools port="${ process.env.SIN_TOOLS_PORT }" type=module async ${
       process.env.SIN_DEBUG
-        ? 'src="/node_modules/sin/bin/development/tools/index.js">'
-        : 'src="/node_modules/sin/bin/development/tools/dist.js">'
+        ? 'src="/node_modules/sin/bin/develop/tools/index.js">'
+        : 'src="/node_modules/sin/bin/develop/tools/dist.js">'
     }</script>
   `.trim()
 }

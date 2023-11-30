@@ -4,7 +4,7 @@ import './usage.js'
 import c from '../color.js'
 
 false && console.log(`
-${ c.bold`development` }
+${ c.bold`develop` }
 // Todo
 
 ${ c.bold`production` }

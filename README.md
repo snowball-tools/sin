@@ -46,7 +46,7 @@ wonderButton({
 ## The Stateless Component `s(() => ...)`
 ```js
 // Definition
-const wonderButton = s(({ onclick, ...attrs }, children) => 
+const wonderButton = s(({ onclick, ...attrs }, children) =>
   s`button
     background hotpink
   `({
@@ -81,12 +81,12 @@ Ok, enough talk - here's an example
 ```js
 s.mount(({ route }) => [
   s`nav`(
-    ['/', '/murray', '/lysander', '/profile'].map(x => 
-      s`a 
+    ['/', '/murray', '/lysander', '/profile'].map(x =>
+      s`a
         background ${ route.has(path) && 'lightblue' }
       `({
         href: '/' + x
-      }, 
+      },
         x.slice(1) || 'Home'
       )
     )
@@ -118,13 +118,13 @@ The most popular CSS properties can be references by its initials. A few popular
 ### @ Media queries
 
 
-### 
+###
 
 ## The CLI
 
 sin create
 
-sin development
+sin develop
 
 sin production
 

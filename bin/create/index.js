@@ -16,9 +16,9 @@ const argv = process.argv.slice(2)
     , cd = target !== cwd
     , pkg = JSON.parse(fs.readFileSync(new URL('package.json', import.meta.url)))
     , full = await prompt('Full Setup?')
-    , raw = !full && await prompt('Only Node Server?')
-    , ssr = !full && !raw && await prompt('Only SSR?')
-    , staticServe = !full && !raw && !ssr && await prompt('Only Static serve?')
+    , raw = !full && await prompt('Only Run Node (run)?')
+    , noscript = !full && !raw && await prompt('Only SSR (noscript)?')
+    , staticServe = !full && !raw && !noscript && await prompt('Only Static serve?')
     , server = !full && !raw && !ssr && !staticServe && await prompt('Only HTTP?')
     , npm = await new Promise(r => cp.exec('which pnpm', e => r(e ? 'npm' : 'pnpm')))
     , run = npm + (npm === 'npm' ? ' run' : '')
@@ -55,9 +55,9 @@ if (full) {
   pkg.scripts.start = 'sin prod raw index.js'
   pkg.scripts.dev = 'sin dev raw index.js'
   mk(target, 'index.js', '// Do your thing\n')
-} else if (ssr) {
-  pkg.scripts.start = 'sin prod ssr'
-  pkg.scripts.dev = 'sin dev ssr'
+} else if (noscript) {
+  pkg.scripts.start = 'sin start noscript'
+  pkg.scripts.dev = 'sin dev noscript'
   mk(path.join(target, '+'), 'index.js', serverScript)
   mk(path.join(target, '+public'))
   mk(target, 'index.js', clientScript)

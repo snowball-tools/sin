@@ -111,9 +111,7 @@ export default function({ view = () => '', attrs = {}, context = {} } = {}, serv
   )
 
   return tryPromise(result, (x, was) => {
-    const css = '<style class="sin">'
-      + cssRules().join('')
-      + '</style>'
+    const css = '<style class=sin>' + cssRules().join('') + '</style>'
 
     return {
       headers,

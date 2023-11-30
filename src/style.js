@@ -2,16 +2,18 @@ import window from './window.js'
 import { isFunction, snake, asCssVar, hasOwn, isObservable } from './shared.js'
 import { popular, initials } from './shorthands.js'
 
-const doc = window.document
-    , style = doc.querySelector('style.sin') || doc.createElement('style')
+let style
+
+const prefix = 's'
+    , doc = window.document
     , vendorRegex = /^(ms|moz|webkit)[-A-Z]/i
-    , prefix = style && style.getAttribute('id') || 'sin-'
     , div = doc.createElement('div')
     , aliasCache = {}
     , propCache = {}
     , unitCache = {}
 
-export const cssRules = () => style.sheet.cssRules
+export const styleElement = x => style || (style = x || doc.querySelector('style.sin') || doc.createElement('style'))
+export const cssRules = () => style ? style.sheet.cssRules : []
 export const alias = (k, v) => typeof v === 'string'
   ? aliasCache['@' + k] = v
   : Object.entries(k).forEach(([k, v]) => alias(k, v))
@@ -142,6 +144,7 @@ function insert(rule, index) {
 }
 
 export function parse([xs, ...args], parent, nesting = 0, root = false) {
+  style || styleElement()
   if (cache.has(xs)) {
     const prev = cache.get(xs)
     return {

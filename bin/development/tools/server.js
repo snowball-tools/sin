@@ -24,8 +24,8 @@ export default {
   port
 }
 
-api.browser.reload.observe(() => publish('reload'))
-api.browser.redraw.observe(() => publish('redraw'))
+api.browser.reload.observe(x => publish('reload', x))
+api.browser.redraw.observe(x => publish('redraw', x))
 api.log.observe(x => publish('log', x))
 
 function publish(event, data) {

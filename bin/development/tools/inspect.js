@@ -1,9 +1,12 @@
-import s from 'sin'
+import s from 'SIN'
 
 const sinPath = '/node_modules/sin/src/shared.js'
 const { stackTrace } = await import(sinPath)
 
 import api from './api.js'
+import userland from './userland.js'
+
+s.style(document.createElement('style'))
 
 const rect = s.live(null)
     , last = { log: s.live(), error: s.live() }
@@ -153,7 +156,7 @@ s.mount(div, s(() => {
       dom: s.animate,
       key: top
     },
-      false && s`
+      s`
         position absolute
         height min(calc(100vh - 100px), 500px)
         w calc(100% - 40px)
@@ -459,6 +462,7 @@ function show() {
     : rect(document.body.getBoundingClientRect())
   window.addEventListener('click', click, { capture: true })
   window.addEventListener('blur', blur, { capture: true })
+  userland.redraw()
   s.redraw()
 }
 
@@ -467,5 +471,6 @@ function hide() {
   delete window[stackTrace]
   window.removeEventListener('click', click)
   window.removeEventListener('blur', blur)
+  userland.redraw()
   s.redraw()
 }

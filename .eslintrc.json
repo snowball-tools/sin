@@ -1,19 +1,16 @@
 {
   "root": true,
-  "env":
-  {
+  "env": {
+    "es2022": true,
     "es6": true,
     "node": true,
-    "browser": true,
-    "es2022": true
+    "browser": true
   },
-  "parserOptions":
-  {
+  "parserOptions": {
     "ecmaVersion": 2022,
     "sourceType": "module"
   },
-  "rules":
-  {
+  "rules": {
     "no-async-promise-executor": 2,
     "comma-dangle": 2,
     "no-cond-assign": 2,
@@ -43,11 +40,16 @@
     "array-callback-return": 0,
     "consistent-return": 0,
     "default-case": 2,
-    "dot-location": [2, "property"],
-    "dot-notation": [2,
-    {
-      "allowPattern": "^[a-z]+(_[a-z]+)+$"
-    }],
+    "dot-location": [
+      2,
+      "property"
+    ],
+    "dot-notation": [
+      2,
+      {
+        "allowPattern": "^[a-z]+(_[a-z]+)+$"
+      }
+    ],
     "no-alert": 2,
     "no-caller": 2,
     "no-case-declarations": 2,
@@ -67,16 +69,19 @@
     "no-loop-func": 0,
     "no-continue": 0,
     "no-magic-numbers": 0,
-    "no-multi-spaces": [2,
-    {
-      "exceptions":
+    "no-multi-spaces": [
+      2,
       {
-        "Array": true,
-        "Property": true,
-        "VariableDeclarator": true,
-        "ImportDeclaration": true
+        "ignoreEOLComments": true,
+        "exceptions": {
+          "CommentLine": true,
+          "Array": true,
+          "Property": true,
+          "VariableDeclarator": true,
+          "ImportDeclaration": true
+        }
       }
-    }],
+    ],
     "no-multi-str": 2,
     "no-native-reassign": 2,
     "no-new": 2,
@@ -108,15 +113,19 @@
     "no-shadow-restricted-names": 2,
     "no-undef": 2,
     "no-undef-init": 2,
-    "no-unused-vars": [1,
-    {
-      "vars": "all",
-      "args": "none"
-    }],
-    "no-use-before-define": [2,
-    {
-      "functions": false
-    }],
+    "no-unused-vars": [
+      1,
+      {
+        "vars": "all",
+        "args": "none"
+      }
+    ],
+    "no-use-before-define": [
+      2,
+      {
+        "functions": false
+      }
+    ],
     "callback-return": 0,
     "global-require": 2,
     "handle-callback-err": 2,
@@ -124,35 +133,56 @@
     "no-new-require": 2,
     "no-path-concat": 2,
     "no-process-exit": 0,
-    "block-spacing": [2, "always"],
+    "block-spacing": [
+      2,
+      "always"
+    ],
     "comma-spacing": 2,
-    "comma-style": [2, "first",
-    {
-      "exceptions":
+    "comma-style": [
+      2,
+      "first",
       {
-        "ArrayExpression": true,
-        "ObjectExpression": true
+        "exceptions": {
+          "ArrayExpression": true,
+          "ObjectExpression": true
+        }
       }
-    }],
-    "consistent-this": [2, "self"],
+    ],
+    "consistent-this": [
+      2,
+      "self"
+    ],
     "eol-last": 2,
-    "key-spacing": [0,
-    {
-      "beforeColon": false,
-      "afterColon": true,
-      "mode": "minimum"
-    }],
+    "key-spacing": [
+      0,
+      {
+        "beforeColon": false,
+        "afterColon": true,
+        "mode": "minimum"
+      }
+    ],
     "keyword-spacing": 2,
     "linebreak-style": 2,
     "lines-around-comment": 2,
-    "max-depth": [2, 5],
-    "max-len": [0, 150],
-    "max-params": [2, 8],
+    "max-depth": [
+      2,
+      5
+    ],
+    "max-len": [
+      0,
+      150
+    ],
+    "max-params": [
+      2,
+      8
+    ],
     "max-statements-per-line": 2,
-    "new-cap": [2,
-    {
-      "capIsNew": false
-    }],
+    "new-cap": [
+      2,
+      {
+        "capIsNew": false
+      }
+    ],
     "new-parens": 2,
     "newline-after-var": 0,
     "newline-before-return": 0,
@@ -164,12 +194,27 @@
     "no-trailing-spaces": 1,
     "no-unneeded-ternary": 2,
     "no-whitespace-before-property": 2,
-    "object-curly-spacing": [2, "always"],
-    "one-var-declaration-per-line": [2, "always"],
-    "quote-props": [2, "as-needed"],
-    "semi": [2, "never"],
+    "object-curly-spacing": [
+      2,
+      "always"
+    ],
+    "one-var-declaration-per-line": [
+      2,
+      "always"
+    ],
+    "quote-props": [
+      2,
+      "as-needed"
+    ],
+    "semi": [
+      2,
+      "never"
+    ],
     "space-before-blocks": 2,
-    "space-before-function-paren": [2, "never"],
+    "space-before-function-paren": [
+      2,
+      "never"
+    ],
     "space-unary-ops": 2,
     "spaced-comment": 2,
     "arrow-spacing": 2,

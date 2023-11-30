@@ -6,10 +6,12 @@ import cp from 'child_process'
 
 import config from '../config.js'
 import api from './api.js'
-import { getPort, jail } from './shared.js'
+import { reservePort, jail } from './shared.js'
+import s from '../../src/index.js'
 
-const port = await getPort()
+const port = await reservePort()
     , dirname = path.dirname(URL.fileURLToPath(import.meta.url))
+    , replace = Math.random()
 
 let node
   , ws
@@ -17,9 +19,10 @@ let node
 
 prexit(close)
 
-api.node.restart.observe(async() => {
-  await close()
-  start()
+api.node.restart.observe(async(x) => {
+  close()
+  await start()
+  x === 'reload' && s.sleep(200).then(() => api.browser.reload())
 })
 
 api.node.hotload.observe((x) => {
@@ -32,15 +35,17 @@ api.node.hotload.observe((x) => {
   })
 })
 
-start()
+await start()
 
 function close() {
-  ws && ws.close()
   node && node.kill()
 }
 
-function start() {
-  api.log({ from: 'node', type: 'starting' })
+async function start() {
+  let started
+  const promise = new Promise(r => started = r)
+
+  api.log({ replace, from: 'node', type: 'status', value: node ? 'Restarting' : '⏳' })
 
   node = cp.fork(
     config.raw ? config.entry : path.join(dirname, 'serve.js'),
@@ -60,22 +65,26 @@ function start() {
   )
 
   node.stdout.setEncoding('utf8')
-  node.stdout.on('data', data => api.debug && process.stdout.write(data))
+  node.stdout.on('data', data => config.debug && process.stdout.write(data))
 
   node.stderr.setEncoding('utf8')
   node.stderr.on('data', async(data) => {
-    api.debug && process.stderr.write(data)
+    config.debug && process.stderr.write(data)
     if (data.includes('Debugger listening on ws://127.0.0.1:' + port)) {
       ws = connect(data.slice(22).split('\n')[0].trim())
     } else if (data.includes('Waiting for the debugger to disconnect...')) {
-      ws && ws.close()
+      ws && setTimeout(() => ws.close(), 16)
     }
   })
 
-  node.on('close', () => {
+  node.on('close', (x, y) => {
     ws && ws.close()
     ws = null
+    +x && prexit.exit()
   })
+
+  await promise
+  api.log({ replace, from: 'node', type: 'status', value: '✅' })
 
   function pass(data) {
     return data !== 'Debugger ending on ws://127.0.0.1:' + port
@@ -112,7 +121,7 @@ function start() {
       await request('Runtime.enable')
       await request('Runtime.setAsyncCallStackDepth', { maxDepth: 128 })
       await request('Debugger.enable')
-      api.log({ from: 'node', type: 'started' })
+      started()
     }
 
     function onmessage({ data }) {
@@ -122,6 +131,9 @@ function start() {
 
       if (method === 'Runtime.consoleAPICalled')
         return api.log({ from: 'node', ...params })
+
+      if (method === 'Runtime.exceptionThrown')
+        return api.log({ from: 'node', type: 'exception', ...params.exceptionDetails })
 
       if (!requests.has(id))
         return

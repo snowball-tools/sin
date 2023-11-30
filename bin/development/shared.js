@@ -4,7 +4,7 @@ import fs from 'fs'
 import net from 'net'
 import fsp from 'fs/promises'
 
-export async function getPort() {
+export async function reservePort() {
   return new Promise(resolve => {
     const server = net.createServer().listen(0, () => {
       const x = server.address().port

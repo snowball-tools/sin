@@ -1,3 +1,4 @@
-import '../log.js'
-import './api.js'
-import './inspect.js'
+await import('../log.js')
+await import('./api.js')
+await import('./inspect.js')
+await import('./userland.js')

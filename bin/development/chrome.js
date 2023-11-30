@@ -9,142 +9,161 @@ import cp from 'child_process'
 
 import config from '../config.js'
 import api from './api.js'
-import { getPort, modify } from './shared.js'
+import { reservePort, modify } from './shared.js'
 
 import '../../ssr/index.js'
 import s from '../../src/index.js'
 
 const port = await getPort()
+    , root = 'http://127.0.0.1:' + port
     , hmr = 'if(window.self === window.top)window.hmr=1;'
-    , scripts = new Map()
+    , replace = Math.random()
 
-const chrome = cp.spawn(getPath(), [
-  '--no-first-run',
-  '--no-default-browser-check',
-  '--disable-web-security',
-  '--disable-translate',
-  '--disable-features=TranslateUI',
-  '--disable-features=Translate',
-  '--disable-infobars',
-  '--test-type', // Remove warning banner from --disable-web-security usage
-  '--user-data-dir=' + api.project,
-  '--remote-debugging-port=' + port,
-  api.url()
-], {
-  detached: true,
-  stdio: 'ignore'
-})
+api.log({ replace, from: 'browser', type: 'status', value: '⏳' })
+const chrome = await spawn()
 
-chrome.unref()
+let started
+const start = new Promise(r => started = r)
+const tabs = new Set((await getTabs(api.origin)).filter(x => {
+  if (x.url === 'about:blank')
+    s.http(root + '/json/close/' + x.id, { responseType: 'text' })
 
-const tab = await getTab(api.origin)
+  if (x.url.indexOf(api.origin) === 0) {
+    s.http(root + '/json/activate/' + x.id, { responseType: 'text' })
+    connect(x)
+    return x
+  }
+}))
 
-if (!tab)
-  throw new Error('Could not find tab in chrome')
+if (tabs.size === 0) {
+  const x = await s.http.put(root + '/json/new?' + api.url())
+  connect(x)
+  tabs.add(x)
+}
 
-const ws = await connect(tab.webSocketDebuggerUrl)
+await start
 
-ws.onerror = error => console.error(error)
-ws.onclose = prexit.exit
+api.log({ replace, from: 'browser', type: 'status', value: '✅' })
+
+// prexit.exit on last tab close()
 
 prexit(async() => {
-  await ws.request('Browser.close').catch(() => {})
   chrome.kill()
 })
 
 api.browser.hotload.observe(async x => {
-  if (!scripts.has(x.path))
-    return
-
-  ws.request('Debugger.setScriptSource', {
-    scriptId: scripts.get(x.path),
-    scriptSource: modify(x.next)
-  }).then(api.browser.redraw, api.browser.refresh)
+  for (const { ws } of tabs) {
+    if (ws && ws.scripts.has(x.path)) {
+      try {
+        await ws.request('Debugger.setScriptSource', {
+          scriptId: ws.scripts.get(x.path),
+          scriptSource: modify(x.next)
+        })
+      } catch (e) {
+        config.debug && p(e, x)
+        ws.request('Page.reload').catch(() => { /* noop */ })
+      }
+    } else if (ws) {
+      ws.request('Page.reload').catch(() => { /* noop */ })
+    }
+  }
+  api.browser.redraw()
 })
 
-async function connect(debuggerUrl) {
-  return new Promise((resolve, reject) => {
-    let id = 1
+async function connect(tab) {
+  let id = 1
 
-    const ws = new WebSocket(debuggerUrl)
-        , requests = new Map()
+  const ws = new WebSocket(tab.webSocketDebuggerUrl)
+      , requests = new Map()
 
-    ws.onmessage = onmessage
-    ws.onerror = reject
-    ws.onclose = reject
-    ws.onopen = onopen
-    ws.request = request
+  ws.scripts = new Map()
+  tab.ws = ws
+  ws.onmessage = onmessage
+  ws.onerror = () => { /* noop */ }
+  ws.onclose = () => closed(tab)
+  ws.onopen = onopen
+  ws.request = request
 
-    async function request(method, params) {
-      return ws.readyState === 1 && new Promise((resolve, reject) => {
-        const message = {
-          id: id++,
-          method,
-          params,
-          resolve,
-          reject
-        }
-        requests.set(message.id, message)
-        ws.send(JSON.stringify(message))
-      })
-    }
+  async function request(method, params) {
+    return ws.readyState === 1 && new Promise((resolve, reject) => {
+      const message = {
+        id: id++,
+        method,
+        params,
+        resolve,
+        reject
+      }
+      requests.set(message.id, message)
+      ws.send(JSON.stringify(message))
+    })
+  }
 
-    async function onopen() {
-      await request('Runtime.enable')
-      await request('Runtime.setAsyncCallStackDepth', { maxDepth: 128 })
-      await request('Runtime.evaluate', { expression: hmr })
-      await request('Debugger.enable').catch(print.debug)
-      await request('Debugger.setBlackboxPatterns', { patterns: api.blackbox })
-      await request('Network.enable')
-      await request('Network.setCacheDisabled', { cacheDisabled: true })
-      await request('Page.enable')
-      await request('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
-      false && setTimeout(() => {
-        request('Emulation.setDeviceMetricsOverride', {
-          width: 320,
-          height: 480,
-          deviceScaleFactor: 2,
-          mobile: true
-        }).then(console.log, console.error)
-      }, 2000)
-      resolve(ws)
-    }
+  async function onopen() {
+    started()
+    await request('Runtime.enable')
+    await request('Runtime.setAsyncCallStackDepth', { maxDepth: 128 })
+    await request('Runtime.evaluate', { expression: hmr })
+    await request('Debugger.enable').catch(() => { /* noop */})
+    await request('Debugger.setBlackboxPatterns', { patterns: api.blackbox })
+    await request('Network.enable')
+    await request('Network.setCacheDisabled', { cacheDisabled: true })
+    await request('Page.enable')
+    await request('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
+    false && setTimeout(() => {
+      request('Emulation.setDeviceMetricsOverride', {
+        width: 320,
+        height: 480,
+        deviceScaleFactor: 2,
+        mobile: true
+      }).then(console.log, console.error)
+    }, 2000)
+  }
 
-    function onmessage({ data }) {
-      const { id, method, params, error, result } = JSON.parse(data)
-      if (method === 'Debugger.scriptParsed' && params.url)
-        return parsed(params)
+  function onmessage({ data }) {
+    const { id, method, params, error, result } = JSON.parse(data)
+    if (method === 'Debugger.scriptParsed' && params.url)
+      return parsed(params)
 
-      if (method === 'Page.navigatedWithinDocument' && params.url.indexOf(api.origin) === 0)
-        return api.url(params.url)
+    if (method === 'Page.navigatedWithinDocument' && params.url.indexOf(api.origin) === 0)
+      return api.url(params.url)
 
-      if (method === 'Page.frameNavigated' && !params.frame.parentId && params.frame.url.indexOf(api.origin) === 0)
-        return api.url(params.frame.url)
+    if (method === 'Page.frameNavigated' && !params.frame.parentId && params.frame.url.indexOf(api.origin) === 0)
+      return api.url(params.frame.url)
 
-      if (method === 'Runtime.consoleAPICalled')
-        return api.log({ from: 'browser', ...params })
+    if (method === 'Runtime.consoleAPICalled')
+      return api.log({ from: 'browser', ...params })
 
-      if (!requests.has(id))
-        return
+    if (method === 'Runtime.exceptionThrown')
+      return api.log({ from: 'browser', type: 'exception', ...params.exceptionDetails })
 
-      const { reject, resolve } = requests.get(id)
-      requests.delete(id)
+    if (!requests.has(id))
+      return
 
-      error
-        ? reject(error)
-        : resolve(result)
-    }
+    const { reject, resolve } = requests.get(id)
+    requests.delete(id)
 
-    function parsed(script) {
-      const x = path.join(config.cwd, new URL(script.url).pathname)
-      if (script.url.indexOf(api.origin) !== 0 || !isFile(x))
-        return
+    error
+      ? reject(error)
+      : resolve(result)
+  }
 
-      const p = fs.realpathSync(path.isAbsolute(x) ? x : path.join(process.cwd(), x))
-      scripts.set(p, script.scriptId)
-      api.browser.watch(p)
-    }
-  })
+  function parsed(script) {
+    const x = path.join(config.cwd, new URL(script.url).pathname)
+    if (script.url.indexOf(api.origin) !== 0 || !isFile(x))
+      return
+
+    const p = fs.realpathSync(path.isAbsolute(x) ? x : path.join(process.cwd(), x))
+    ws.scripts.set(p, script.scriptId)
+    api.browser.watch(p)
+  }
+}
+
+function closed(tab) {
+  tabs.delete(tab)
+  if (tabs.size === 0) {
+    p('should we close chrome?')
+  }
+
 }
 
 function isFile(x) {
@@ -155,16 +174,15 @@ function isFile(x) {
   }
 }
 
-async function getTab(url, retries = 0) {
+async function getTabs(url, retries = 0) {
   try {
-    const tabs = await s.http('http://127.0.0.1:' + port + '/json/list/')
-    return tabs.find(t => t.url.indexOf(api.origin) === 0)
+    return await s.http(root + '/json/list/')
   } catch (err) {
     if (retries > 20)
-      throw new Error('Could not connect to Chrome dev tools')
+      throw new Error('Could not fetch Chrome tabs')
 
-    await new Promise(r => setTimeout(r, 500))
-    return getTab(url, ++retries)
+    await new Promise(r => setTimeout(r, 200))
+    return getTabs(url, ++retries)
   }
 }
 
@@ -183,5 +201,47 @@ function getPath() {
       process.env['PROGRAMFILES'] + '\\Google\\Chrome\\Application\\chrome.exe',      // eslint-disable-line
       process.env['PROGRAMFILES(X86)'] + '\\Google\\Chrome\\Application\\chrome.exe'  // eslint-disable-line
     ].find(fs.existsSync)
+  }
+}
+
+async function spawn() {
+  return new Promise((resolve, reject) => {
+    const x = cp.spawn(getPath(), [
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--disable-web-security',
+      '--disable-translate',
+      '--disable-features=TranslateUI',
+      '--disable-features=Translate',
+      '--restore-last-session',
+      '--disable-infobars',
+      '--test-type', // Remove warning banner from --disable-web-security usage
+      '--user-data-dir=' + api.project,
+      '--remote-debugging-port=' + port,
+      'about:blank'
+    ], {
+      detached: true
+    })
+
+    let opened
+    x.stderr.setEncoding('utf8')
+    x.stderr.on('data', () => resolve(x))
+    x.stdout.setEncoding('utf8')
+    x.stdout.on('data', x => {
+      opened = true
+      resolve(x)
+    })
+
+    x.on('close', () => opened || reject('closed'))
+  })
+}
+
+function getPort() {
+  try {
+    return cp.execSync(`netstat -vanp tcp | grep " ${
+      fs.readlinkSync('/Users/rasmus/.sin/1344-sin/SingletonLock').split('\n').pop().trim().split('-').pop()
+    } "`, { encoding: 'utf8' }).match(/127\.0\.0\.1\.([0-9]{4,5}) /)[1]
+  } catch (error) {
+    return reservePort()
   }
 }

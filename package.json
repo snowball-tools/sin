@@ -10,7 +10,8 @@
     "build": "bun build:min && bun build:bundle && bun build:gzip",
     "build:min": "esbuild src/index.js --minify --format=esm --bundle --outfile=sin.min.js",
     "build:bundle": "esbuild src/index.js --format=esm --bundle --outfile=sin.js",
-    "build:gzip": "gzip -c sin.min.js > sin.min.js.gz && ls -l sin.min.js.gz && rm sin.min.js.gz"
+    "build:gzip": "gzip -c sin.min.js > sin.min.js.gz && ls -l sin.min.js.gz && rm sin.min.js.gz",
+    "build:dev": "esbuild bin/development/tools/index.js --minify --format=esm --bundle --outfile=bin/development/tools/dist.js"
   },
   "bin": {
     "sin": "./bin/index.js"
@@ -40,7 +41,10 @@
     "simple",
     "css",
     "html",
-    "javascript"
+    "javascript",
+    "not-react",
+    "not-svelte",
+    "not-vue"
   ],
   "dependencies": {
     "esbuild": "0.19.5",

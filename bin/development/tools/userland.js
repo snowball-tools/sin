@@ -5,13 +5,12 @@ const s = (await import(sinPath)).default
 
 export default s
 
-api.redraw(() => window.hmr ? s.redraw() : location.reload())
+api.redraw.observe(() => window.hmr ? s.redraw() : location.reload())
 
 const unquoteFilename = navigator.platform.toLowerCase().includes('win')
   ? /"([^<>:"/\\|?*]+)":/ig
   : /"([^\0/]+)":/ig
 
-console.log('wat')
 s.error = s((error) => {
   console.error(error) // eslint-disable-line
   const stack = api.parseStackTrace(error.stack || '')

@@ -14,17 +14,15 @@ const env = process.env
     , home = getHome()
     , port = process.env.PORT = getPort(home)
     , project = path.join(home, port + '-' + path.basename(config.cwd))
-    , debug = process.env.SIN_DEBUG = process.argv.some(x => x === '--debug' || x === '-d')
     , url = getUrl(home, port)
     , origin = new URL(url).origin
 
 const api = {
   port,
   home,
-  debug,
   origin,
   project,
-  blackbox: debug ? [] : ['/sin/src/', '/sin/bin/', 'node:internal/', '/ey/src/', '/sin/ssr/'],
+  blackbox: config.debug ? [] : ['/sin/src/', '/sin/bin/', '/ey/src/', '/sin/ssr/'],
   url: s.live(url, x => fs.writeFileSync(path.join(project, '.sin-url'), x)),
   node: {
     restart : s.event(),
@@ -33,8 +31,8 @@ const api = {
   },
   browser: {
     reload  : s.event(),
-    hotload : s.event(),
     redraw  : s.event(),
+    hotload : s.event(),
     watch   : s.event()
   },
   log: s.event()

@@ -1,4 +1,4 @@
-import s from 'sin'
+import s from 'SIN'
 
 let ws
 connect()

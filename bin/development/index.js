@@ -1,7 +1,10 @@
 import './log.js'
-import './api.js'
 import './print.js'
 import './watch.js'
-import './tools/server.js'
-import './node.js'
-import './chrome.js'
+
+import config from '../config.js'
+import api from './api.js'
+
+await import('./tools/server.js')
+await import('./node.js')
+config.raw || await import('./chrome.js')

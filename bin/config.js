@@ -1,6 +1,7 @@
 import fs from 'fs'
 import url from 'url'
 import path from 'path'
+import c from './color.js'
 
 const argv = process.argv.slice(2)
 const env = process.env
@@ -10,6 +11,7 @@ const entry    = env.SIN_ENTRY    = getEntry()
 const bin      = env.SIN_BIN      = getBin()
 const raw      = env.SIN_RAW      = argv.some(x => x === 'raw') || ''
 const noscript = env.SIN_NOSCRIPT = argv.some(x => x === 'noscript') || ''
+const debug    = env.SIN_DEBUG    = env.SIN_DEBUG || process.argv.some(x => x === '--debug' || x === '-d')
 const cwd      = env.PWD          = path.dirname(entry)
 
 process.cwd() !== cwd && process.chdir(cwd)
@@ -20,7 +22,8 @@ export default {
   bin,
   raw,
   noscript,
-  cwd
+  cwd,
+  debug
 }
 
 function getCommand() {
@@ -50,18 +53,34 @@ function getCommand() {
 }
 
 function getEntry() {
-  const entry = argv.slice(1).find(x => !'ssr raw server'.includes(x) && x[0] !== '-') || ''
+  const x = argv.slice(1).find(x => !'server static raw noscript'.includes(x) && x[0] !== '-') || ''
 
-  return path.isAbsolute(entry)
-    ? entry
+  const entry = path.isAbsolute(x)
+    ? x
     : path.join(
       process.cwd(),
-      entry !== path.basename(process.cwd()) && fs.existsSync(entry + '.js')
-        ? entry + '.js'
-        : entry !== path.basename(process.cwd())
-          ? path.join(entry, entry.endsWith('.js') ? '' : 'index.js')
+      x !== path.basename(process.cwd()) && fs.existsSync(x + '.js')
+        ? x + '.js'
+        : x !== path.basename(process.cwd())
+        ? path.join(x, x.endsWith('.js') ? '' : 'index.js')
           : 'index.js'
     )
+
+  try {
+    fs.readFileSync(entry, { length: 1 })
+  } catch (error) {
+    const x = '🚨 Entry file '+  entry + ' is not available'
+    command === 'development'
+      ? process.stdout.write(
+          '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) +
+          '\n ' + c.inverse(('   ' + x).padEnd(process.stdout.columns - 2, ' ')) +
+          '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) + '\n\n'
+        )
+      : x
+    process.exit(1)
+  }
+
+  return entry
 }
 
 function getBin() {

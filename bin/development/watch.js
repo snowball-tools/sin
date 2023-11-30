@@ -57,7 +57,7 @@ function browser(x) {
 function both(x) {
   x.next === x.content
     ? x.content === x.pre
-      ? (api.node.restart(x), api.browser.reload(x))
+      ? api.node.restart('reload')
       : (api.node.hotload(x), api.browser.reload(x))
     : (api.node.hotload(x), api.browser.hotload(x))
 }
@@ -71,5 +71,4 @@ async function read(path) {
 function update(x) {
   x.pre = x.content
   x.content = x.next
-  x.next = null
 }

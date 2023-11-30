@@ -3,8 +3,8 @@ import http from './http.js'
 import live from './live.js'
 import window from './window.js'
 import router from './router.js'
-import { parse, alias, formatValue } from './style.js'
 import query from './query.js'
+import { parse, alias, formatValue, styleElement } from './style.js'
 import {
   scrollRestore,
   isObservable,
@@ -100,6 +100,7 @@ s.redraw = redraw
 s.mount = mount
 s.css = (...x) => parse(x, null, 0, true)
 s.css.alias = alias
+s.style = styleElement
 s.animate = animate
 s.http = http
 s.live = live
@@ -316,13 +317,13 @@ function globalRedraw() {
   redrawed()
 }
 
-function draw({ view, attrs, context }, dom) {
+function draw(m, dom) {
   s.redrawing = true
   try {
-    updates(dom, asArray(view(attrs)), context)
+    m.dom = updates(dom, asArray(m.view(m.attrs)), m.context, m.dom && m.dom.first.previousSibling, m.dom && m.dom.last)
   } catch (error) {
-    attrs.error = error
-    updates(dom, asArray(context.error(error, attrs, [], context)), context)
+    m.attrs.error = error
+    m.dom = updates(dom, asArray(m.context.error(error, m.attrs, [], m.context)), context, m.dom && m.dom.first.previousSibling, m.dom && m.dom.last)
   }
   s.redrawing = false
   afterRedraw()

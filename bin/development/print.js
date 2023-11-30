@@ -163,7 +163,7 @@ function logStack(stack, max = 50) {
     .slice(0, max)
     .map(x =>
       c.gray(
-          x.functionName + ' @ '
+          (x.functionName || '') + ' @ '
         + [
           '.' + x.url.replace(api.origin, '').replace(Url.pathToFileURL(config.cwd), ''),
           x.lineNumber + 1,

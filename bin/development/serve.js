@@ -43,7 +43,10 @@ app.get(
   app.files(sinRoot, {
     compressions: false,
     cache: false,
-    transform
+    transform(buffer, filePath) {
+      process.send(filePath)
+      return transform(buffer, filePath)
+    }
   })
 )
 
@@ -51,7 +54,10 @@ app.get(
   app.files({
     compressions: false,
     cache: false,
-    transform
+    transform(buffer, filePath) {
+      process.send(filePath)
+      return transform(buffer, filePath)
+    }
   })
 )
 

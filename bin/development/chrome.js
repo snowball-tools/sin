@@ -52,12 +52,21 @@ prexit(async() => {
 })
 
 api.browser.hotload.observe(async x => {
-  for (const { ws } of tabs) {
+  await Promise.all([...tabs].map(async({ ws }) => {
     if (ws && ws.scripts.has(x.path)) {
       try {
-        await ws.request('Debugger.setScriptSource', {
+        const r = await ws.request('Debugger.setScriptSource', {
           scriptId: ws.scripts.get(x.path),
           scriptSource: modify(x.next)
+        })
+
+        r.status === 'CompileError' && api.log({
+          from: 'browser',
+          type: 'hotload error',
+          args: [{ type: 'string', value: r.exceptionDetails?.text }],
+          stackTrace: {
+            callFrames: [{ url: x.path, ...r.exceptionDetails }]
+          }
         })
       } catch (e) {
         config.debug && p(e, x)
@@ -66,7 +75,7 @@ api.browser.hotload.observe(async x => {
     } else if (ws) {
       ws.request('Page.reload').catch(() => { /* noop */ })
     }
-  }
+  }))
   api.browser.redraw()
 })
 

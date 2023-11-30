@@ -19,20 +19,35 @@ let node
 
 prexit(close)
 
-api.node.restart.observe(async(x) => {
+api.node.restart.observe(restart)
+
+async function restart(x) {
   close()
   await start()
   x === 'reload' && s.sleep(200).then(() => api.browser.reload())
-})
+}
 
-api.node.hotload.observe((x) => {
+api.node.hotload.observe(async x => {
   if (!scripts.has(x.path))
     return
 
-  ws && ws.request('Debugger.setScriptSource', {
-    scriptId: scripts.get(x.path),
-    scriptSource: jail(x.next)
-  })
+  try {
+    const r = ws && await ws.request('Debugger.setScriptSource', {
+      scriptId: scripts.get(x.path),
+      scriptSource: jail(x.next)
+    })
+    r && r.status === 'CompileError' && api.log({
+      from: 'browser',
+      type: 'hotload error',
+      args: [{ type: 'string', value: r.exceptionDetails?.text }],
+      stackTrace: {
+        callFrames: [{ url: x.path, ...r.exceptionDetails }]
+      }
+    })
+  } catch (e) {
+    config.debug && p(e, x)
+    restart()
+  }
 })
 
 await start()
@@ -76,6 +91,8 @@ async function start() {
       ws && setTimeout(() => ws.close(), 16)
     }
   })
+
+  node.on('message', x => api.browser.watch(x))
 
   node.on('close', (x, y) => {
     ws && ws.close()

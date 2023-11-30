@@ -141,7 +141,7 @@ export function Watcher(fn) {
       return
 
     watcher.time = time
-    fn(x)
+    setTimeout(fn, 0, x)
   }
 
   function modified(x) {

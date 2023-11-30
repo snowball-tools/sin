@@ -226,7 +226,10 @@ s.mount(div, s(() => {
                   },
                     x.value
                       ? x.value
-                      : x.description.split('\n')[0])
+                      : x.description
+                      ? x.description.split('\n')[0]
+                      : ''
+                  )
                 )
               ),
               s.with(x.stackTrace?.callFrames.find(x =>

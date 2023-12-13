@@ -30,6 +30,7 @@ const env = process.env
     , url = 'http://localhost:' + port
     , { mount, entry } = await getMount()
     , name = port + '-' + path.basename(cwd) // + (entry === 'index.js' ? '' : '-' + entry)
+    , noChrome = argv.some(x => x === '--nobrowser')
     , chromeHome = path.join(home, name)
     , staticImport = /(?:`[^`]*`)|((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: from )?\s*['"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)(['"])/g // eslint-disable
     , dynamicImport = /(?:`[^`]*`)|([^$.]import\(\s?['"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)(['"]\s?\))/g
@@ -131,7 +132,7 @@ app.get(async r => {
   }), x.status || 200, x.headers)
 })
 
-chrome = command !== 'server' && await (await import('./chrome.js')).default(chromeHome, url, scriptParsed)
+chrome = !noChrome && command !== 'server' && await (await import('./chrome.js')).default(chromeHome, url, scriptParsed)
 
 const { unlisten } = await app.listen(port)
 console.log('Listening on', port)
@@ -140,7 +141,7 @@ argv.includes('--live') && live(chromeHome, port)
 
 prexit(async(signal) => {
   signal === 'SIGHUP' && !process.exitCode && (process.exitCode = 123)
-  process.exitCode !== 123 && await chrome.send('Browser.close')
+  process.exitCode !== 123 && chrome && await chrome.send('Browser.close')
   unlisten()
   sockets.forEach(x => x.close())
 })
@@ -201,7 +202,7 @@ function canRead(x) {
 }
 
 async function setSource(x) {
-  await chrome.send('Debugger.setScriptSource', {
+  chrome && await chrome.send('Debugger.setScriptSource', {
     scriptId: x.scriptId,
     scriptSource: x.source
   }).catch(console.error)

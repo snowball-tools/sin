@@ -1100,8 +1100,10 @@ function callHandler(handler, e, ...xs) {
     ? handler.call(e.currentTarget, e, ...xs)
     : isFunction(handler.handleEvent) && handler.handleEvent(e, ...xs)
 
-  if (e.redraw === false)
+  if (e.redraw === false) {
+    delete e.redraw
     return
+  }
 
   !isObservable(result) && !isObservable(handler) && redraw()
   result && isFunction(result.then) && result.then(redraw)

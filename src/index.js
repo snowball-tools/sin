@@ -889,20 +889,17 @@ function attributes(dom, view, context) {
       if (attr === 'deferrable') {
         dom[deferrableSymbol] = view.attrs[attr]
       }
-    } else if (attr === 'value' && getName(tag) === 'input' && dom.value !== '' + view.attrs.value) {
-      value = view.attrs[attr]
-      let start
-        , end
+    } else if (attr === 'value' && getName(tag) === 'input' && dom.value !== '' + view.attrs[attr]) {
+      let start, end
       if (dom === document.activeElement) {
         start = dom.selectionStart
         end = dom.selectionEnd
       }
-      updateAttribute(dom, view.attrs, attr, dom.value, value, create)
+      updateAttribute(dom, view.attrs, attr, dom.value, view.attrs[attr], create)
       if (dom === document.activeElement && (dom.selectionStart !== start || dom.selectionEnd !== end))
         dom.setSelectionRange(start, end)
     } else if (!prev || prev[attr] !== view.attrs[attr]) {
-      value = view.attrs[attr]
-      updateAttribute(dom, view.attrs, attr, prev && prev[attr], value, create)
+      updateAttribute(dom, view.attrs, attr, prev && prev[attr], view.attrs[attr], create)
     }
   }
 

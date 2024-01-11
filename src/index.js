@@ -320,10 +320,10 @@ function globalRedraw() {
 function draw(m, dom) {
   s.redrawing = true
   try {
-    m.dom = updates(dom, asArray(m.view(m.attrs)), m.context, m.dom && m.dom.first.previousSibling, m.dom && m.dom.last)
+    m.doms = updates(dom, asArray(m.view(m.attrs)), m.context, m.doms && m.doms.dom.previousSibling, m.doms && m.doms.last)
   } catch (error) {
     m.attrs.error = error
-    m.dom = updates(dom, asArray(m.context.error(error, m.attrs, [], m.context)), context, m.dom && m.dom.first.previousSibling, m.dom && m.dom.last)
+    m.doms = updates(dom, asArray(m.context.error(error, m.attrs, [], m.context)), m.context, m.doms && m.doms.dom.previousSibling, m.doms && m.doms.last)
   }
   s.redrawing = false
   afterRedraw()

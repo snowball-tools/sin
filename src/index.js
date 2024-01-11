@@ -898,8 +898,6 @@ function attributes(dom, view, context) {
       updateAttribute(dom, view.attrs, attr, dom.value, value, create)
       if (dom === document.activeElement && (dom.selectionStart !== start || dom.selectionEnd !== end))
         dom.setSelectionRange(start, end)
-      if (!view.attrs.oninput)
-        console.log('oninput handler required when value is specified for', dom)
     } else if (!prev || prev[attr] !== view.attrs[attr]) {
       value = view.attrs[attr]
       updateAttribute(dom, view.attrs, attr, prev && prev[attr], value, create)

@@ -3,6 +3,9 @@ import { hasOwn, stackTrace } from './shared.js'
 
 export default class View {
   constructor(inline, component, tag = null, level = 0, attrs = null, children = null) {
+    if (tag && tag.name === 'input' && attrs && 'value' in attrs && !('oninput' in attrs) && !attrs.disabled)
+      throw new Error('oninput handler required when value is set on input - Bypass check by setting oninput: false')
+
     this.level = level
     this.component = component
     this.inline = inline

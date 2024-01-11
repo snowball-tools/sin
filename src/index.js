@@ -513,7 +513,7 @@ function updateLive(dom, view, context, parent) {
 
   function run(x) {
     const doms = update(dom, x, context, parent || dom && dom.parentNode)
-    arguments.length > 1 && afterRedraw()
+    afterRedraw()
     dom = doms.first
     doms.first[liveSymbol] = { view, doms }
     return doms

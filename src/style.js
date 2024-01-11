@@ -83,11 +83,11 @@ let start = -1
   , fontFaces = -1
   , cssVar = -1
   , temp = ''
-  , specificity = ''
   , prop = ''
   , path = '&&'
   , selector = ''
   , animation = ''
+  , specificity = ''
   , keyframe = ''
   , rule = ''
   , keyframes = ''
@@ -201,13 +201,11 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
     } else {
       temp = prefix + Math.abs(hash).toString(31)
       classes += (classes ? ' ' : '') + temp
-      specificity = ''
-      for (let i = 0; i < nesting; i++)
-        specificity += '.' + temp
-
-      hashed.has(temp) || Object.entries(rules).forEach(([k, v]) =>
-        insert(k.replace(/&/g, '.' + temp + specificity) + '{' + v + '}')
-      )
+      specificity = nesting && '&'.repeat(nesting + 1)
+      hashed.has(temp) || Object.entries(rules).forEach(([k, v]) => {
+        specificity && (k = k.replace('&', '&'.repeat(nesting + 1)))
+        insert(k.replace(/&/g, '.' + temp) + '{' + v + '}')
+      })
     }
   }
 

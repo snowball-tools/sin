@@ -1064,6 +1064,9 @@ function updateAttribute(dom, attrs, attr, old, value, create) { // eslint-disab
 }
 
 function setAttribute(dom, attr, value) {
+  if (value == null)
+    value = ''
+
   if (isFunction(value))
     return setAttribute(dom, attr, value())
 

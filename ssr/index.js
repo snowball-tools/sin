@@ -151,7 +151,10 @@ function update(view, context) {
 function updateElement(view, context) {
   const tag = (getName(view.tag) || 'div').toLowerCase()
   const internal = !String(view.attrs.href).match(/^[a-z]+:|\/\//)
-  hasOwn.call(view.attrs, 'id') === false && (view.attrs.id = getId(view.tag))
+  if (hasOwn.call(view.attrs, 'id') === false) {
+    const id = getId(view.tag)
+    id && (view.attrs.id = id)
+  }
   if (getName(view.tag) === 'a' && hasOwn.call(view.attrs, 'href') && internal) {
     view.attrs.href = cleanHref(view.attrs.href)
     context.doc.links(view.attrs.href)

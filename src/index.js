@@ -281,7 +281,7 @@ function scrollSave() {
 function head(x) {
   if (Array.isArray(x))
     return x.forEach(head)
-  const dom = document.createElement(x.tag.name)
+  const dom = document.createElement(getName(x.tag))
   for (const attr in x.attrs)
     dom.setAttribute(attr, x.attrs[attr])
   x.children.length && (dom.innerHTML = x.children[0])
@@ -875,8 +875,10 @@ function attributes(dom, view, context) {
   const prev = dom[attrSymbol] || (context.hydrating && getAttributes(dom))
       , create = !prev
 
-  if (hasOwn.call(view.attrs, 'id') !== false)
-    view.attrs.id = getId(tag)
+  if (hasOwn.call(view.attrs, 'id') === false) {
+    const id = getId(view.tag)
+    id && (view.attrs.id = id)
+  }
 
   setClass(dom, view)
   create && observe(dom, view.attrs.class, () => setClass(dom, view))

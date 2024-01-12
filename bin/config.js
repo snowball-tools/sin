@@ -41,6 +41,7 @@ function getCommand() {
   }
 
   const alias = {
+    build       : 'bundle',
     prod        : 'start',
     production  : 'start',
     development : 'develop'

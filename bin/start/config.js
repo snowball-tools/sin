@@ -1,6 +1,6 @@
 import os from 'os'
 
-import config from './config.js'
+import config from '../config.js'
 
 process.env.NODE_ENV = 'production'
 

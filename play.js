@@ -25,6 +25,180 @@ function inheritTest() {
   ])
 }
 
+s.mount(() => [
+  s`
+    position relative
+    w 500
+    h 600
+  `(
+    s`#a
+      position absolute
+      t 300
+      l 150
+      bc #00ff00
+      br 75
+      w 150
+      h 150
+    `(),
+    s`#b
+      position absolute
+      t 100
+      l 150
+      bc #ff0000
+      br 50
+      w 150
+      h 150
+    `(),
+    s`#d
+      position absolute
+      t 100
+      l 350
+      bi linear-gradient(oklch(.5 100% 20), oklch(.5 100% -50))
+      br 50
+      w 100
+      h 350
+      c white
+    `()
+  )
+])
+
+function hackStyleAdd() {
+  const styles = []
+  let sheet
+
+  const css = (xs) => {
+    return s(() =>
+      s`style`({
+        dom: x => {
+          p(x.parentNode)
+          styles.push(xs.join('').replace(/&/g, '.' + x.parentNode.className))
+          sheet.textContent = styles.join('\n')
+          p(styles)
+        }
+      }, 'Wat')
+    )
+  }
+
+  s.mount(() => [
+    s`style`({
+      dom: x => sheet = x
+    }),
+    s`main
+      fs 200
+    `({
+    },
+      css`
+        & {
+          background: green;
+          padding: ${ 200 }
+        }
+
+        & li {
+          background: red;
+        }
+      `,
+      s`li`('hi')
+    )
+  ])
+}
+
+function hackStyleParse() {
+  // import { parse, formatValue } from './src/style.js'
+  // import { isObservable } from './src/shared.js'
+
+  function css(xs, ...args) {
+    const x = parse([xs, ...args])
+    return s`style`({
+      dom: dom => {
+        const unobserves = []
+        const parent = dom.parentNode
+        parent.classList.add(x.classes)
+        for (const prop in x.vars) {
+          const v = x.vars[prop]
+          parent.style.setProperty(prop, formatValue(x.args[v.index], v))
+          if (isObservable(x.args[v.index]))
+            unobserves.push(x.args[v.index].observe(newValue => parent.style.setProperty(prop, formatValue(newValue, v))))
+        }
+        return () => unobserves.map(x => x())
+      }
+    })
+  }
+
+  const size = s.live(200)
+
+  setInterval(() => size(size + 10), 1000)
+
+  s.mount(() =>
+    s`main`({
+      onclick: s.redraw
+    },
+      css`
+        bc blue
+        fs ${ size }
+      `,
+      'HI'
+    )
+  )
+}
+
+function liveLists() {
+  const xs = s.live([s.live(1), s.live(2), s.live(3), s.live(4), s.live(5)])
+
+  s.mount(() =>
+    s`main`(
+      s`h1`('Hi'),
+      s`button`({ onclick: () => xs(xs().concat(s.live(4))) }, 'add'),
+      s`button`({
+        onclick: () => {
+          xs(p(xs().sort(() => Math.random() > 0.5 ? 1 : -1)))
+        }
+      },'shuffle'),
+      xs().map(l =>
+        s(({}, [], { ignore }) => {
+          ignore(true)
+          return () => s`li`(
+            l,
+            s`button`({
+              onclick: l.set(() => l + 1)
+            }, 'inc'),
+            s`button`({
+              onclick: () => {
+                const wat = xs()
+                const i = wat.indexOf(l)
+                wat.splice(i, 1)
+                xs(wat)
+              }
+            }, 'remove'),
+            Date.now()
+          )
+        })({ key: l })
+      )
+    )
+  )
+}
+
+function doubleObserveIssue() {
+  let i = 0
+
+  const wattoo = () => i
+  let show = true
+
+  wattoo.observe = fn => {
+    p.trace('observe', Math.random())
+    setInterval(() => fn(++i), 1000)
+    return () => p('unobserve')
+  }
+
+  s.mount(() => [
+    s`button`({
+      onclick: () => show = !show
+    },
+      'toggle'
+    ),
+    show && wattoo
+  ])
+}
+
 function fucked() {
   let size = 500
   let offset = size * 2

@@ -85,7 +85,7 @@ export default function router(s, root, rootContext, parent) {
   }
 
   function popstate({ state = {} } = {}) {
-    s.redraw().then(() => scrollRestore(...(state.scroll || [])))
+    s.redraw().then(() => scrollRestore(...(state && state.scroll || [])))
   }
 
   function route(routes, options = {}) {

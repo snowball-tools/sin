@@ -29,13 +29,13 @@ const argv = process.argv.slice(2)
 let certChangeThrottle
   , listener
 
-server.esbuild && (await import('../../build/index.js')).default(server.esbuild)
+server.esbuild && (await import('../../bundle/index.js')).default(server.esbuild)
 
 const app = ey()
 
 typeof server.default === 'function' && await server.default(app)
 
-app.get(app.files('+build'))
+app.get(app.files('+bundle'))
 app.get(app.files('+public'))
 
 command !== 'server' && app.get(r => {
@@ -78,7 +78,7 @@ ssl && fs.watch(ssl.cert, () => {
 
 function resolveEntry(x, command) {
   return [
-    path.join(cwd, config.noscript || config.raw ? '' : '+build', x),
+    path.join(cwd, config.noscript || config.raw ? '' : '+bundle', x),
     path.join(cwd, '+public', x)
   ].find(x => fs.existsSync(x))
 }

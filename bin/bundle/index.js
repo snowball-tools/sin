@@ -8,12 +8,12 @@ const file = root.endsWith('.js')
 
 process.chdir(process.env.PWD = file ? path.dirname(root) : root)
 
-const build = (await import('../../build/index.js')).default
+const bundle = (await import('../../bundle/index.js')).default
 
-await build(
+await bundle(
   entry
     ? { entryPoints: [file ? root : path.join(root, 'index.js')] }
     : {}
 )
 
-console.log('Finished building in', performance.now())
+console.log('Finished in', performance.now())

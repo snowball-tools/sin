@@ -7,20 +7,20 @@
   "scripts": {
     "dev": "sin dev play.js",
     "lint": "eslint . --ignore-pattern sin.js --ignore-pattern sin.min.js --ignore-pattern play.js",
-    "build": "bun build:min && bun build:bundle && bun build:gzip",
-    "build:min": "esbuild src/index.js --minify --format=esm --bundle --outfile=sin.min.js",
-    "build:bundle": "esbuild src/index.js --format=esm --bundle --outfile=sin.js",
-    "build:gzip": "gzip -c sin.min.js > sin.min.js.gz && ls -l sin.min.js.gz && rm sin.min.js.gz",
-    "build:dev": "esbuild bin/develop/tools/index.js --minify --format=esm --bundle --outfile=bin/develop/tools/dist.js"
+    "bundle": "bun bundle:min && bun bundle:bundle && bun bundle:gzip",
+    "bundle:min": "esbuild src/index.js --minify --format=esm --bundle --outfile=sin.min.js",
+    "bundle:bundle": "esbuild src/index.js --format=esm --bundle --outfile=sin.js",
+    "bundle:gzip": "gzip -c sin.min.js > sin.min.js.gz && ls -l sin.min.js.gz && rm sin.min.js.gz",
+    "bundle:dev": "esbuild bin/develop/tools/index.js --minify --format=esm --bundle --outfile=bin/develop/tools/dist.js"
   },
   "bin": {
     "sin": "./bin/index.js"
   },
   "files": [
-    "/build",
+    "/bin",
+    "/bundle",
     "/src",
     "/ssr",
-    "/bin",
     "/sin.js",
     "/sin.min.js",
     "/sin.svg"

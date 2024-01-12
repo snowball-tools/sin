@@ -11,7 +11,7 @@ export default async function(x = {}) {
     splitting: true,
     sourcemap: 'external',
     minify: true,
-    outdir: '+build',
+    outdir: '+bundle',
     format: 'esm',
     ...options,
     plugins: [

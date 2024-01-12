@@ -16,11 +16,11 @@ const argv = process.argv.slice(2)
     , generated = new Set()
     , noscript = argv.some(x => x === '--noscript')
 
-fs.rmSync('+build', { recursive: true, force: true })
-fs.mkdirSync('+build', { recursive: true })
-noscript || await import('../build/index.js')
+fs.rmSync('+bundle', { recursive: true, force: true })
+fs.mkdirSync('+bundle', { recursive: true })
+noscript || await import('../bundle/index.js')
 const start = performance.now()
-fs.cpSync('+public', '+build', { recursive: true, force: true })
+fs.cpSync('+public', '+bundle', { recursive: true, force: true })
 await generate()
 console.log('Finished generating in', performance.now() - start)
 
@@ -31,7 +31,7 @@ async function generate(location = '/') {
   generated.add(location)
 
   const x = await ssr(mount, {}, { location })
-      , indexPath = path.join('+build', ...location.split('/'), 'index.html')
+      , indexPath = path.join('+bundle', ...location.split('/'), 'index.html')
 
   const html = wrap(x, {
     body: noscript

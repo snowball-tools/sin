@@ -42,7 +42,7 @@ pkg.name = name
 mk(target)
 process.chdir(target)
 
-pkg.scripts.build = 'sin build'
+pkg.scripts.bundle = 'sin bundle'
 pkg.scripts.generate = 'sin generate'
 
 if (full) {

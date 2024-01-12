@@ -128,6 +128,6 @@ sin develop
 
 sin production
 
-sin build
+sin bundle
 
 sin generate

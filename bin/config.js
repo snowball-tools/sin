@@ -28,7 +28,7 @@ export default {
 
 function getCommand() {
   const commands = {
-    b: 'build',
+    b: 'bundle',
     c: 'create',
     d: 'develop',
     g: 'generate',

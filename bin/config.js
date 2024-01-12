@@ -46,7 +46,7 @@ function getCommand() {
     development : 'develop'
   }
 
-  const first = argv[0] in alias && alias[argv[0]] || ''
+  const first = argv[0] in alias && alias[argv[0]] || argv[0] || ''
       , help = (argv.some(x => x === '-h' || x === '--help') || argv.length === 0) && 'help'
       , version = argv.some(x => x === '-v' || x === '--version') && 'version'
 

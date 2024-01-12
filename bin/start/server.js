@@ -101,7 +101,7 @@ async function listenHttp() {
 
 async function listenHttps() {
   listener && listener.unlisten()
-  await app.listen(port, address, ssl).then(x => listener = x)
+  listener = await app.listen(port, address, ssl)
   console.log('HTTPS Listening on', port)
 }
 

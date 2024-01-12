@@ -7,9 +7,10 @@ const url = config.raw
   ? config.entry
   : './server.js'
 
+
 if (config.workers > 1) {
   for (let i = 0; i < config.workers; i++)
-    new Worker(new URL(url, import.meta.url), { argv }) // eslint-disable-line
+    new Worker(new URL(url, import.meta.url), { argv: process.argv }) // eslint-disable-line
 } else {
   import(url)
 }

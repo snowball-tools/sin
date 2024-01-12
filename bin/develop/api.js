@@ -1,7 +1,5 @@
 import fs from 'fs'
-import Url from 'url'
 import path from 'path'
-import c from '../color.js'
 
 import '../../ssr/index.js'
 import s from '../../src/index.js'

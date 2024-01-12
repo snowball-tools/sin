@@ -28,7 +28,7 @@ if (fs.existsSync(serverPath)) {
 app.get(r => {
   r.header('Cache-Control', 'no-store')
   if (r.url.indexOf('/.') !== -1) // Don't serve hidden paths or dir up hacks
-    return r.status(403).end()
+    return r.statusEnd(403)
 })
 
 app.get(

@@ -22,7 +22,7 @@ s.error = s((error) => {
       d block
       ws pre-wrap
       m 0
-      c white;
+      c white
       bc #ff0033
       p 8 12
       br 6;

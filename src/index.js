@@ -1070,11 +1070,23 @@ function setAttribute(dom, attr, value) {
   if (isFunction(value))
     return setAttribute(dom, attr, value())
 
-  dom instanceof SVGElement === false && attr in dom
-    ? dom[attr] = value === undefined ? null : value
+  asProp(dom, attr)
+    ? dom[attr] = value
     : notValue(value)
       ? dom.removeAttribute(attr)
       : dom.setAttribute(attr, value === true ? '' : value)
+}
+
+function asProp(dom, attr) {
+  return dom instanceof SVGElement === false
+      && attr !== 'href'
+      && attr !== 'list'
+      && attr !== 'form'
+      && attr !== 'tabIndex'
+      && attr !== 'download'
+      && attr !== 'width'
+      && attr !== 'height'
+      && attr in dom
 }
 
 function removeEvent(dom, name) {

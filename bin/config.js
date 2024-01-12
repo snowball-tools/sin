@@ -6,13 +6,13 @@ import c from './color.js'
 const argv = process.argv.slice(2)
 const env = process.env
 
-const command  = env.SIN_COMMAND  = getCommand()
-const entry    = env.SIN_ENTRY    = getEntry()
-const bin      = env.SIN_BIN      = getBin()
-const raw      = env.SIN_RAW      = argv.some(x => x === 'raw') || ''
-const noscript = env.SIN_NOSCRIPT = argv.some(x => x === 'noscript') || ''
-const debug    = env.SIN_DEBUG    = env.SIN_DEBUG || process.argv.some(x => x === '--debug' || x === '-d')
-const cwd      = env.PWD          = path.dirname(entry)
+const command  = set('SIN_COMMAND',   getCommand())
+const entry    = set('SIN_ENTRY',     getEntry())
+const bin      = set('SIN_BIN',       getBin())
+const raw      = set('SIN_RAW',       argv.some(x => x === 'raw') || '')
+const noscript = set('SIN_NOSCRIPT',  argv.some(x => x === 'noscript') || '')
+const debug    = set('SIN_DEBUG',     env.SIN_DEBUG || process.argv.some(x => x === '--debug' || x === '-d'))
+const cwd      = set('PWD',           path.dirname(entry))
 
 process.cwd() !== cwd && process.chdir(cwd)
 
@@ -95,4 +95,9 @@ function getBin() {
   return fs.existsSync(local)
     ? local
     : url.fileURLToPath(new URL('.', import.meta.url))
+}
+
+function set(name, value) {
+  (value || value === 0) && (env[name] = value)
+  return value
 }

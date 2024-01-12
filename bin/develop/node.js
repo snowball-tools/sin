@@ -45,7 +45,7 @@ api.node.hotload.observe(async x => {
       }
     })
   } catch (e) {
-    config.debug && p(e, x)
+    config.debug && api.debug(e, x)
     restart()
   }
 })
@@ -69,6 +69,7 @@ async function start() {
       silent: true,
       execArgv: [
         '--import', '' + URL.pathToFileURL(path.join(dirname, 'import.js')),
+        '--import', '' + URL.pathToFileURL(path.join(dirname, 'log.js')),
         '--inspect=' + port,
         ...(
           process.argv.indexOf('--') > -1
@@ -80,11 +81,11 @@ async function start() {
   )
 
   node.stdout.setEncoding('utf8')
-  node.stdout.on('data', data => config.debug && process.stdout.write(data))
+  node.stdout.on('data', data => config.debug && api.log({ from: 'node', type: 'stdout', args: data }))
 
   node.stderr.setEncoding('utf8')
   node.stderr.on('data', async(data) => {
-    config.debug && process.stderr.write(data)
+    config.debug && api.log({ from: 'node', type: 'stderr', args: data })
     if (data.includes('Debugger listening on ws://127.0.0.1:' + port)) {
       ws = connect(data.slice(22).split('\n')[0].trim())
     } else if (data.includes('Waiting for the debugger to disconnect...')) {
@@ -102,11 +103,6 @@ async function start() {
 
   await promise
   api.log({ replace, from: 'node', type: 'status', value: '✅' })
-
-  function pass(data) {
-    return data !== 'Debugger ending on ws://127.0.0.1:' + port
-        && data !== 'Debugger attached.'
-  }
 
   function connect(url) {
     const requests = new Map()

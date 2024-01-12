@@ -3,11 +3,14 @@ import s from 'SIN'
 let ws
 connect()
 
+const debug = window.sindev.hasAttribute('debug')
 const api = {
-  log    : s.event(),
-  redraw : s.event(),
-  reload : s.event(() => location.reload()),
-  editor : s.event(x => send('editor', x)),
+  log        : s.event(),
+  redraw     : s.event(),
+  reload     : s.event(() => location.reload()),
+  editor     : s.event(x => send('editor', x)),
+  color      : s.live([0, 0, 0]),
+  inspect    : s.live(false, x => send('inspect', x)),
   parseStackTrace
 }
 
@@ -15,7 +18,7 @@ export default api
 
 function connect() {
   ws = new WebSocket(
-    location.protocol.replace('http', 'ws') + location.hostname + ':' + window.sintools.getAttribute('port')
+    location.protocol.replace('http', 'ws') + location.hostname + ':' + window.sindev.getAttribute('port')
   )
   ws.onmessage = onmessage
   ws.onclose = () => setTimeout(connect, 100)
@@ -36,7 +39,8 @@ export function parseStackTrace(x) {
     x = x.endsWith(')')
       ? x.match(/( +at )?([^/]*)[@(](.+):([0-9]+):([0-9]+)/i)
       : x.match(/( +at)( )?(.+):([0-9]+):([0-9]+)$/i),
-    x && acc.push({
+
+    x && (debug || !x[3].includes('/sin/src')) && acc.push({
       name: x[2].trim(),
       file: x[3].replace(window.location.origin, ''),
       line: parseInt(x[4]),

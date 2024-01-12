@@ -1,9 +1,15 @@
+import url from 'url'
+import cp from 'child_process'
 import ey from 'ey'
 import api from '../api.js'
 import editor from './editor.js'
+import eyeDropper from './eyedropper/index.js'
+
+let eyeDropperStop
 
 const events = {
-  editor
+  editor,
+  inspect
 }
 
 const wss = new Set()
@@ -29,5 +35,15 @@ api.browser.redraw.observe(x => publish('redraw', x))
 api.log.observe(x => publish('log', x))
 
 function publish(event, data) {
-  wss.forEach(ws => ws.send(JSON.stringify({ event, data })))
+  wss.forEach(ws => send(ws, event, data))
+}
+
+function send(ws, event, data) {
+  ws.send(JSON.stringify({ event, data }))
+}
+
+function inspect(x, ws) {
+  x
+    ? eyeDropperStop = eyeDropper(x => send(ws, 'color', x))
+    : eyeDropperStop && eyeDropperStop()
 }

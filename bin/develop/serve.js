@@ -5,7 +5,6 @@ import fs from 'fs'
 import Url from 'url'
 import ey from 'ey'
 
-import './log.js'
 import '../env.js'
 import { tryRead, transform } from './shared.js'
 import ssr, { wrap } from '../../ssr/index.js'
@@ -90,8 +89,8 @@ async function getMount() {
 
 function getTools() {
   return `
-    <script id=sintools port="${ process.env.SIN_TOOLS_PORT }" type=module async ${
-      process.env.SIN_DEBUG
+    <script type=module id=sindev ${ process.env.SIN_DEBUG ? 'debug' : '' } port="${ process.env.SIN_TOOLS_PORT }" ${
+      true || process.env.SIN_DEBUG
         ? 'src="/node_modules/sin/bin/develop/tools/index.js">'
         : 'src="/node_modules/sin/bin/develop/tools/dist.js">'
     }</script>

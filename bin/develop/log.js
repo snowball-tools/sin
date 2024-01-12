@@ -1,6 +1,6 @@
 globalThis.p = globalThis.print = globalThis.l = globalThis.log = log
 
-function log(...xs) {
+export default function log(...xs) {
   console.log(...xs) // eslint-disable-line
   return xs.pop()
 }

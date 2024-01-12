@@ -3,7 +3,12 @@ import api from './api.js'
 const sinPath = '/node_modules/sin/src/index.js'
 const s = (await import(sinPath)).default
 
+const sharePath = '/node_modules/sin/src/shared.js'
+const { stackTrace } = (await import(sharePath))
+
 export default s
+
+export { stackTrace }
 
 api.redraw.observe(() => window.hmr ? s.redraw() : location.reload())
 

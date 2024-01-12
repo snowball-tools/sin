@@ -4,6 +4,7 @@
 
 import fs from 'fs'
 import path from 'path'
+import util from 'util'
 import prexit from 'prexit'
 import cp from 'child_process'
 
@@ -69,7 +70,7 @@ api.browser.hotload.observe(async x => {
           }
         })
       } catch (e) {
-        config.debug && p(e, x)
+        config.debug && api.log({ from: 'browser', type: 'hotload error', args: util.inspect(e) })
         ws.request('Page.reload').catch(() => { /* noop */ })
       }
     } else if (ws) {
@@ -112,7 +113,7 @@ async function connect(tab) {
     await request('Runtime.enable')
     await request('Runtime.setAsyncCallStackDepth', { maxDepth: 128 })
     await request('Runtime.evaluate', { expression: hmr })
-    await request('Debugger.enable').catch(() => { /* noop */})
+    await request('Debugger.enable').catch(e => api.log({ from: 'browser', type: 'chrome error', args: String(e) }))
     await request('Debugger.setBlackboxPatterns', { patterns: api.blackbox })
     await request('Network.enable')
     await request('Network.setCacheDisabled', { cacheDisabled: true })
@@ -167,12 +168,12 @@ async function connect(tab) {
   }
 }
 
-function closed(tab) {
+async function closed(tab) {
   tabs.delete(tab)
-  if (tabs.size === 0) {
-    p('should we close chrome?')
+  if (tabs.size === 0 && (await getTabs(api.origin)).length === 0) {
+    chrome.kill()
+    prexit.exit()
   }
-
 }
 
 function isFile(x) {
@@ -248,7 +249,7 @@ async function spawn() {
 function getPort() {
   try {
     return cp.execSync(`netstat -vanp tcp | grep " ${
-      fs.readlinkSync('/Users/rasmus/.sin/1344-sin/SingletonLock').split('\n').pop().trim().split('-').pop()
+      fs.readlinkSync(api.project).split('\n').pop().trim().split('-').pop()
     } "`, { encoding: 'utf8' }).match(/127\.0\.0\.1\.([0-9]{4,5}) /)[1]
   } catch (error) {
     return reservePort()

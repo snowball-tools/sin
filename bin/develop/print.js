@@ -1,5 +1,6 @@
 import Url from 'url'
 import util from 'util'
+import p from './log.js'
 
 import config from '../config.js'
 import api from './api.js'
@@ -7,13 +8,13 @@ import c from '../color.js'
 
 p('\n' + padBoth('🔥' + (config.raw ? '' : ' at ' + api.url)) + '\n')
 
-api.browser.reload.observe(() => print({ from: 'browser', type: 'status', value: '🔄' }))
-api.browser.hotload.observe(() => print({ from: 'browser', type: 'status', value: '🔥' }))
-api.node.hotload.observe(() => print({ from: 'node', type: 'status', value: '🔥' }))
+api.browser.reload.observe(() => std({ from: 'browser', replace: 'browserhot', type: 'status', value: '🔄' }))
+api.browser.hotload.observe(() => std({ from: 'browser', replace: 'browserhot', type: 'status', value: '🔥' }))
+api.node.hotload.observe(() => std({ from: 'node', type: 'status', value: '🔥' }))
 
-api.log.observe(print)
+api.log.observe(std)
 
-function print(x) {
+function std(x) {
   const heading = head(x.from + ' ' + x.type, x.type === 'error')
   let output = ''
 
@@ -23,25 +24,25 @@ function print(x) {
     ? logInfo(x)
     : x.type === 'exception'
     ? logInfo(exception(x))
-    : x
+    : util.inspect(x)
 
-  const changed = heading !== log.heading
-      , repeat = !changed && output === log.output ? ++log.count : log.count = 0
-      , replace = x.replace && log.last && x.replace === log.last.replace
-
+  const changed = heading !== std.heading
+      , repeat = !changed && output === std.output ? ++std.count : std.count = 0
+      , replace = x.replace && std.last && x.replace === std.last.replace
+  //p('hej\n', x.replace, std.last && std.last.replace, '\nhej\n')
   if (x.type !== 'status' && changed)
     p('\n' + heading)
 
-  replace && process.stdout.write('\x1B[F\x1B[2K')
+  replace && !repeat && process.stdout.write('\x1B[F\x1B[2K')
   const write = repeat
-    ? (log.count > 1 ? '\x1B[F\x1B[G' : '') + time(x.timestamp) + c.gray`last line repeated ${ c.white(log.count) } times`
+    ? (std.count > 1 ? '\x1B[F\x1B[G' : '') + time(x.timestamp) + c.gray`last line repeated ${ c.white(std.count) } times`
     : time(x.timestamp) + output
 
   p(write)
 
-  log.heading = heading
-  log.output = output
-  log.last = x
+  std.heading = heading
+  std.output = output
+  std.last = x
 }
 
 function head(x, red) {
@@ -61,7 +62,7 @@ function logInfo(x) {
 
   return stack.map((f, i) =>
     padBetween(
-      i ? '' : x.args.map(logArg).join(' ').trim(),
+      i ? '' : Array.isArray(x.args) ? x.args.map(logArg).join(' ').trim() : x.args,
       f.trim(),
       i ? 0 : 14
     )
@@ -112,15 +113,17 @@ function padBetween(a, b, prefix = 0) {
 
 function logArg(x) {
   return x.type === 'string' ? c.cyan(x.value)
-    : x.type === 'number'    ? c.blue(x.value)
-    : x.type === 'object'    ? (
-        x.subtype === 'date' ? c.magenta(new Date(x.description).toISOString())
-      : x.preview ? (
-          x.subtype === 'array' ? logArray(x.preview.properties)
-        : x.subtype === 'error' ? logError(x)
-        : logObject(x.preview.properties)
-      )
-      : '[' + x.value + ']'
+    : x.type === 'number' ? c.blue(x.value)
+    : x.type === 'object' ? (
+      x.subtype === 'date'
+        ? c.magenta(new Date(x.description).toISOString())
+        : x.preview
+        ? (
+            x.subtype === 'array' ? logArray(x.preview.properties)
+          : x.subtype === 'error' ? logError(x)
+          : logObject(x.preview.properties)
+        )
+        : '[' + x.value + ']'
     )
     : x.value
 }
@@ -147,11 +150,14 @@ function logObject(xs) {
 }
 
 function cast(x, type) {
-  return type === 'number'  ? +x
-       : type === 'date'    ? new Date(x)
-       : type === 'regexp'  ? new RegExp(x)
-       : type === 'boolean' ? x === 'true' ? true : false
-       : type === 'bigint'  ? BigInt(x)
+  return type === 'number' ? +x
+       : type === 'date' ? new Date(x)
+       : type === 'regexp' ? new RegExp(x)
+       : type === 'boolean' ? x === 'true'
+       : type === 'bigint' ? BigInt(x)
+       : type === 'undefined' ? undefined
+       : type === 'object' && x === 'null' ? null
+       : type === 'function' ? () => {}
        : x
 }
 
@@ -159,6 +165,7 @@ function logStack(stack, max = 50) {
   return stack
     .filter(s =>
       s.url && api.blackbox.every(x => !s.url.match(new RegExp(x, 'i')))
+            && !s.url.includes('sin/bin/develop/log.js')
     )
     .slice(0, max)
     .map(x =>

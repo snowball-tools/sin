@@ -10,7 +10,7 @@ ${ c.bold`develop` }
 ${ c.bold`production` }
 // Todo
 
-${ c.bold`bundle` }
+${ c.bold`build` }
 // Todo
 
 ${ c.bold`create` }

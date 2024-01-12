@@ -28,7 +28,7 @@ export default {
 
 function getCommand() {
   const commands = {
-    b: 'bundle',
+    b: 'build',
     c: 'create',
     d: 'develop',
     g: 'generate',
@@ -41,7 +41,6 @@ function getCommand() {
   }
 
   const alias = {
-    build       : 'bundle',
     prod        : 'start',
     production  : 'start',
     development : 'develop'

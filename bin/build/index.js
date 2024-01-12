@@ -8,9 +8,9 @@ const file = root.endsWith('.js')
 
 process.chdir(process.env.PWD = file ? path.dirname(root) : root)
 
-const bundle = (await import('../../bundle/index.js')).default
+const build = (await import('../../build/index.js')).default
 
-await bundle(
+await build(
   entry
     ? { entryPoints: [file ? root : path.join(root, 'index.js')] }
     : {}

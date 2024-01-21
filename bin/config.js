@@ -20,7 +20,7 @@ const command     = env.SIN_COMMAND = getCommand()
 const needsEntry  = ['develop', 'start', 'build', 'generate'].includes(command)
 const entry       = env.SIN_ENTRY = needsEntry && getEntry()
 const local       = env.SIN_LOCAL = getLocal()
-const cwd         = env.PWD = env.SIN_PWD = needsEntry ? path.dirname(entry) : process.cwd()
+const cwd         = env.PWD = env.SIN_PWD = needsEntry ? path.dirname(entry).replace('/+build', '') : process.cwd()
 
 // switch to target dir early and load .env
 process.cwd() !== cwd && process.chdir(cwd)
@@ -31,7 +31,6 @@ const script      = option('script')
 const serveStatic = option('static')
 const noscript    = option('--noscript')
 const debug       = option('--debug')
-
 
 export default {
   runtime,

@@ -8,7 +8,7 @@ const env = process.env
 const sslCert = option('--ssl-cert', env.SSL_CERT)
 const acme = sslCert === 'acme' && getAcme()
 const ssl = sslCert && getSSL()
-const workers = option('--workers')
+const workers = option('--workers', 1)
 const port = option('port', env.PORT, parseInt)
 const domain = option('--domain', acme && acme.domains[0])
 const httpsPort = option('--https-port', ssl ? port || 443 : null)

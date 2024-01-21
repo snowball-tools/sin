@@ -48,7 +48,7 @@ async function listenHttp() {
   if (config.ssl && config.ssl.mode === 'redirect') {
     const redirect = ey()
 
-    redirect.route(Acme.route(isMainThread ? {} : { get: getFromParent }))
+    config.acme && redirect.route(Acme.route(isMainThread ? {} : { get: getFromParent }))
     redirect.all(r => {
       const Location = 'https://' + (r.headers.host || config.domain) + r.url
       r.end('', 301, { Location })
@@ -56,7 +56,7 @@ async function listenHttp() {
     await redirect.listen(config.httpPort, config.address)
     console.log('HTTP Redirecting to HTTPS on', config.httpPort) // eslint-disable-line
   } else {
-    router.route(Acme.route(isMainThread ? {} : { get: getFromParent }))
+    config.acme && router.route(Acme.route(isMainThread ? {} : { get: getFromParent }))
     await router.listen(config.httpPort, config.address)
     console.log('HTTP Listening on', config.httpPort) // eslint-disable-line
   }
@@ -102,7 +102,7 @@ function render(r) {
 }
 
 async function listenHttps() {
-  isMainThread && await runAcme()
+  isMainThread && config.acme && await runAcme()
   sslListener && (sslListener.unlisten(), sslListener = null)
   sslListener = await router.listen(config.httpsPort, config.address, config.ssl)
   console.log('HTTPS Listening on', config.httpsPort) // eslint-disable-line

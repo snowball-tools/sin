@@ -1,6 +1,5 @@
 import { Worker } from 'worker_threads'
 
-import '../../ssr/index.js' // mocks window
 import '../env.js'
 import config from './config.js'
 

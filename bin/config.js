@@ -1,3 +1,5 @@
+import '../ssr/index.js' // mocks window
+
 import fsp from 'fs/promises'
 import fs from 'fs'
 import url from 'url'
@@ -75,14 +77,13 @@ function getCommand() {
     || version
 }
 
-function getEntry(alt = '', initial) {
+function getEntry() {
   const x = argv.slice(1).find(x => !'script static'.includes(x) && x[0] !== '-') || ''
 
   const entry = path.isAbsolute(x)
     ? x
     : path.join(
       process.cwd(),
-      alt,
         x !== path.basename(process.cwd()) && fs.existsSync(x + '.js') ? x + '.js'
       : x !== path.basename(process.cwd()) ? path.join(x, x.endsWith('.js') ? '' : 'index.js')
       : 'index.js'
@@ -91,10 +92,7 @@ function getEntry(alt = '', initial) {
   try {
     fs.readFileSync(entry, { length: 1 })
   } catch (error) {
-    if (!alt)
-      return getEntry('+build', entry)
-
-    const x = '🚨 Entry file '+  (initial || entry) + ' is not available (' + error.code + ')'
+    const x = '🚨 Entry file '+  entry + ' is not available (' + error.code + ')'
     process.stderr.write(
       '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) +
       '\n ' + c.inverse(('   ' + x).padEnd(process.stdout.columns - 2, ' ')) +
@@ -136,9 +134,9 @@ function getHome() {
 
 async function resolve() {
   const cwd = process.cwd()
-      , hasExport = (await fsp.readFile(entry, 'utf8')).indexOf('export default ') !== -1
+      , hasExport = (await fsp.readFile(entry, 'utf8')).match(/export([\s]+default\s|[\s]*{.*[\s]+as[\s]+default)/)
       , main = hasExport && await import(entry)
-      , http = typeof main.default === 'function' && main
+      , http = main && typeof main.default === 'function' && main
       , src = !http && !noscript && path.basename(entry)
       , mod = src && (await fsp.stat(path.join(cwd, '+build', src)).catch(() => fsp.stat(path.join(cwd, src)))).mtimeMs.toFixed(0)
 

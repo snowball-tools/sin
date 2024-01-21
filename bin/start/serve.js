@@ -5,10 +5,11 @@ import fsp from 'node:fs/promises'
 import { isMainThread, parentPort } from 'node:worker_threads'
 import ey from 'ey'
 
-import { tryPromise } from '../../src/shared.js'
-import ssr, { wrap } from '../../ssr/index.js'
 import config from './config.js'
 import Acme from './acme.js'
+
+import { tryPromise } from '../../src/shared.js'
+import ssr, { wrap } from '../../ssr/index.js'
 
 let sslListener
 const { server, mount, src, mod } = await config.resolve(config.entry)

@@ -12,7 +12,6 @@ import config from './config.js'
 import api from './api.js'
 import { reservePort, modify } from './shared.js'
 
-import '../../ssr/index.js'
 import s from '../../src/index.js'
 
 const port = await getPort()

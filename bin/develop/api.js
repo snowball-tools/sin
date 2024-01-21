@@ -1,10 +1,9 @@
 import fs from 'fs'
 import path from 'path'
 
-import '../../ssr/index.js'
+import config from './config.js'
 import s from '../../src/index.js'
 
-import config from './config.js'
 
 process.env.NODE_ENV = 'development'
 

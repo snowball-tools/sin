@@ -1,6 +1,5 @@
 import { Worker } from 'worker_threads'
 
-import '../env.js'
 import config from './config.js'
 
 const url = config.script

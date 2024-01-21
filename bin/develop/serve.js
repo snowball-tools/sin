@@ -2,7 +2,6 @@
 
 import ey from 'ey'
 
-import '../env.js'
 import config from './config'
 import { transform } from './shared.js'
 import ssr, { wrap } from '../../ssr/index.js'

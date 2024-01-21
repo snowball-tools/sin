@@ -15,19 +15,23 @@ let [
 const env = process.env
 const shorts = argv.reduce((a, x) => a + (x.length >= 2 && x[0] === '-' && x[1] !== '-' ? x.slice(1) : ''), '')
 const longs = argv.filter(x => x.length >= 3 && x[0] === '-' && x[1] === '-')
-const command = env.SIN_COMMAND = getCommand()
-const needsEntry = ['develop', 'start', 'build', 'generate'].includes(command)
 
+const command     = env.SIN_COMMAND = getCommand()
+const needsEntry  = ['develop', 'start', 'build', 'generate'].includes(command)
 const entry       = env.SIN_ENTRY = needsEntry && getEntry()
 const local       = env.SIN_LOCAL = getLocal()
 const cwd         = env.PWD = env.SIN_PWD = needsEntry ? path.dirname(entry) : process.cwd()
+
+// switch to target dir early and load .env
+process.cwd() !== cwd && process.chdir(cwd)
+await import('./env.js')
+
 const home        = option('--home', getHome())
 const script      = option('script')
 const serveStatic = option('static')
 const noscript    = option('--noscript')
 const debug       = option('--debug')
 
-process.cwd() !== cwd && process.chdir(cwd)
 
 export default {
   runtime,

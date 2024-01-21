@@ -408,34 +408,37 @@ async function createPrivateKey(rsa) {
 }
 
 async function session(root, key, kid) {
+  let queue = Promise.resolve()
   kid && (request.kid = kid)
   request.dir = await fetch(root).then(x => x.json())
   request.nonce = (await fetch(request.dir.newNonce, { method: 'HEAD' })).headers.get('replay-nonce')
   return request
 
   async function request(url, payload, header) {
-    try {
-      const x = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/jose+json' },
-        body: JSON.stringify(
-          await jws(key, payload, {
-            kid: request.kid,
-            alg: 'ES256',
-            b64: true,
-            nonce: request.nonce,
-            url,
-            ...header
-          })
-        )
-      })
+    return queue = queue.then(async() => {
+      try {
+        const x = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/jose+json' },
+          body: JSON.stringify(
+            await jws(key, payload, {
+              kid: request.kid,
+              alg: 'ES256',
+              b64: true,
+              nonce: request.nonce,
+              url,
+              ...header
+            })
+          )
+        })
 
-      request.nonce = x.headers.get('replay-nonce')
-      return x
-    } catch (error) {
-      request.nonce = error.response?.headers.get('replay-nonce') || request.nonce
-      throw error
-    }
+        request.nonce = x.headers.get('replay-nonce')
+        return x
+      } catch (error) {
+        request.nonce = error.response?.headers.get('replay-nonce') || request.nonce
+        throw error
+      }
+    })
   }
 }
 

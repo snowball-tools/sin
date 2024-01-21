@@ -29,7 +29,7 @@ function std(x) {
   const changed = heading !== std.heading
       , repeat = !changed && output === std.output ? ++std.count : std.count = 0
       , replace = x.replace && std.last && x.replace === std.last.replace
-  //p('hej\n', x.replace, std.last && std.last.replace, '\nhej\n')
+
   if (x.type !== 'status' && changed)
     p('\n' + heading)
 
@@ -70,7 +70,10 @@ function logInfo(x) {
 }
 
 function exception(x) {
-  const properties = x.exception.preview.properties.filter(x => x.name !== 'stack' && x.name !== 'message')
+  if (x.exception.type === 'string')
+    return { args: [x.exception] }
+process.stdout.write(JSON.stringify(x, null, 2))
+  const properties = x.exception?.preview?.properties?.filter(x => x.name !== 'stack' && x.name !== 'message') || []
   return {
     args: [
       {
@@ -114,16 +117,16 @@ function padBetween(a, b, prefix = 0) {
 function logArg(x) {
   return x.type === 'string' ? c.cyan(x.value)
     : x.type === 'number' ? c.blue(x.value)
+    : x.type === 'undefined' ? c.gray('undefined')
     : x.type === 'object' ? (
-      x.subtype === 'date'
-        ? c.magenta(new Date(x.description).toISOString())
-        : x.preview
-        ? (
-            x.subtype === 'array' ? logArray(x.preview.properties)
-          : x.subtype === 'error' ? logError(x)
-          : logObject(x.preview.properties)
-        )
-        : '[' + x.value + ']'
+        x.preview ? (
+          x.subtype === 'array' ? logArray(x.preview.properties)
+        : x.subtype === 'error' ? logError(x)
+        : logObject(x.preview.properties)
+      )
+      : x.subtype === 'null' ? c.gray('null')
+      : x.subtype === 'date' ? c.magenta(new Date(x.description).toISOString())
+      : '[' + x.value + ']'
     )
     : x.value
 }
@@ -172,7 +175,7 @@ function logStack(stack, max = 50) {
       c.gray(
           (x.functionName || '') + ' @ '
         + [
-          '.' + x.url.replace(api.origin, '').replace(Url.pathToFileURL(config.cwd), ''),
+          '.' + x.url.replace(config.origin, '').replace(Url.pathToFileURL(config.cwd), ''),
           x.lineNumber + 1,
           x.columnNumber + 1
         ].join(':')

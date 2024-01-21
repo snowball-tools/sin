@@ -2,8 +2,9 @@ import './log.js'
 import './print.js'
 import './watch.js'
 
-import config from '../config.js'
+import config from './config.js'
 
 await import('./tools/server.js')
 await import('./node.js')
-config.raw || await import('./chrome.js')
+config.live && await import('./live.js')
+config.script || config.noBrowser || await import('./chrome.js')

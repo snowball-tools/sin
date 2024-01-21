@@ -8,7 +8,7 @@ import util from 'util'
 import prexit from 'prexit'
 import cp from 'child_process'
 
-import config from '../config.js'
+import config from './config.js'
 import api from './api.js'
 import { reservePort, modify } from './shared.js'
 
@@ -25,11 +25,11 @@ const chrome = await spawn()
 
 let started
 const start = new Promise(r => started = r)
-const tabs = new Set((await getTabs(api.origin)).filter(x => {
+const tabs = new Set((await getTabs(config.origin)).filter(x => {
   if (x.url === 'about:blank')
     s.http(root + '/json/close/' + x.id, { responseType: 'text' })
 
-  if (x.url.indexOf(api.origin) === 0) {
+  if (x.url.indexOf(config.origin) === 0) {
     s.http(root + '/json/activate/' + x.id, { responseType: 'text' })
     connect(x)
     return x
@@ -134,10 +134,10 @@ async function connect(tab) {
     if (method === 'Debugger.scriptParsed' && params.url)
       return parsed(params)
 
-    if (method === 'Page.navigatedWithinDocument' && params.url.indexOf(api.origin) === 0)
+    if (method === 'Page.navigatedWithinDocument' && params.url.indexOf(config.origin) === 0)
       return api.url(params.url)
 
-    if (method === 'Page.frameNavigated' && !params.frame.parentId && params.frame.url.indexOf(api.origin) === 0)
+    if (method === 'Page.frameNavigated' && !params.frame.parentId && params.frame.url.indexOf(config.origin) === 0)
       return api.url(params.frame.url)
 
     if (method === 'Runtime.consoleAPICalled')
@@ -159,7 +159,7 @@ async function connect(tab) {
 
   function parsed(script) {
     const x = path.join(config.cwd, new URL(script.url).pathname)
-    if (script.url.indexOf(api.origin) !== 0 || !isFile(x))
+    if (script.url.indexOf(config.origin) !== 0 || !isFile(x))
       return
 
     const p = fs.realpathSync(path.isAbsolute(x) ? x : path.join(process.cwd(), x))
@@ -170,7 +170,7 @@ async function connect(tab) {
 
 async function closed(tab) {
   tabs.delete(tab)
-  if (tabs.size === 0 && (await getTabs(api.origin)).length === 0) {
+  if (tabs.size === 0 && (await getTabs(config.origin)).length === 0) {
     chrome.kill()
     prexit.exit()
   }
@@ -218,6 +218,7 @@ async function spawn() {
   return new Promise((resolve, reject) => {
     const x = cp.spawn(getPath(), [
       '--no-first-run',
+      '--disable-features=PrivacySandboxSettings4',
       '--no-default-browser-check',
       '--disable-web-security',
       '--disable-translate',
@@ -226,7 +227,7 @@ async function spawn() {
       '--restore-last-session',
       '--disable-infobars',
       '--test-type', // Remove warning banner from --disable-web-security usage
-      '--user-data-dir=' + api.project,
+      '--user-data-dir=' + config.project,
       '--remote-debugging-port=' + port,
       'about:blank'
     ], {
@@ -249,7 +250,7 @@ async function spawn() {
 function getPort() {
   try {
     return cp.execSync(`netstat -vanp tcp | grep " ${
-      fs.readlinkSync(api.project).split('\n').pop().trim().split('-').pop()
+      fs.readlinkSync(config.project).split('\n').pop().trim().split('-').pop()
     } "`, { encoding: 'utf8' }).match(/127\.0\.0\.1\.([0-9]{4,5}) /)[1]
   } catch (error) {
     return reservePort()

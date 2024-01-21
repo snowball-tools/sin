@@ -54,8 +54,8 @@ function resolve(n) {
     ? full
     : fs.existsSync(path.join(process.cwd(), full, 'package.json'))
     ? pkgLookup(full)
-    : name === 'sin'
-    ? pkgLookup(full, path.dirname(process.env.SIN_BIN))
+    : name.toLowerCase() === 'sin'
+    ? pkgLookup(full, process.env.SIN_LOCAL)
     : n
   )
 }

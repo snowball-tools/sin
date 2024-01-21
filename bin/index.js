@@ -6,16 +6,17 @@ import config from './config.js'
 import c from './color.js'
 
 config.command
-  ? import( path.join(config.bin, config.command, 'index.js'))
+  ? import(path.join(config.local, 'bin', config.command, 'index.js'))
   : notFound()
 
 function notFound() {
-  console.log(c.red`
-    The command '${
-      c.reset(c.bold(process.argv[2]))
-    }' was not found - try '${
-      c.reset(c.bold`sin help`)
-    }'
-  `
+  console.log( // eslint-disable-line
+    c.red`
+      The command '${
+        c.reset(c.bold(process.argv[2]))
+      }' was not found - try '${
+        c.reset(c.bold`sin help`)
+      }'
+    `
   )
 }

@@ -2,9 +2,7 @@ import s from 'SIN'
 import api from './api.js'
 import Color from './eyedropper/color.js'
 
-const color = s.live([0, 0, 0])
-
-export default s(({ over, x, y }, [], { onremove }) => {
+export default s(({ over, x, y }) => {
   let cursor
     , measuring = false
 

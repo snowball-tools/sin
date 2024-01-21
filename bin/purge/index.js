@@ -1,17 +1,17 @@
 import fs from 'fs'
 import path from 'path'
 
-import api from '../develop/api.js'
+import config from '../develop/config.js'
 import c from '../color.js'
 
 const all = process.argv.some(x => x === 'all')
 
 const xs = all
-  ? fs.readdirSync(api.home).filter(x => fs.statSync(path.join(api.home, x)).isDirectory())
-  : [api.project]
+  ? fs.readdirSync(config.home).filter(x => fs.statSync(path.join(config.home, x)).isDirectory())
+  : [config.project]
 
 for (const x of xs) {
-  process.stdout.write('Clear ' + x + ' ' + c.gray('(' + path.join(api.home, x) + ')') + ' ...\n')
-  fs.rmSync(path.join(api.home, x), { recursive: true, force: true }).catch(() => {})
+  process.stdout.write('Clear ' + x + ' ' + c.gray('(' + path.join(config.home, x) + ')') + ' ...\n')
+  fs.rmSync(path.join(config.home, x), { recursive: true, force: true }).catch(() => {})
   process.stdout.write('Done\n')
 }

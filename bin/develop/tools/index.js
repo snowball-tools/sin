@@ -10,7 +10,7 @@ import inspect from './inspect.js'
 s.scroll = false
 s.style(Object.assign(document.createElement('style'), { wat: 'hej' }))
 
-const root = Object.assign(document.createElement('div'), { id: 'sintools'})
+const root = Object.assign(document.createElement('div'), { id: 'sintools' })
 document.documentElement.appendChild(root)
 
 api.redraw.observe(s.redraw)

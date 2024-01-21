@@ -16,10 +16,10 @@ const argv = process.argv.slice(2)
     , cd = target !== cwd
     , pkg = JSON.parse(fs.readFileSync(new URL('package.json', import.meta.url)))
     , full = await prompt('Full Setup?')
-    , raw = !full && await prompt('Only Run Node (run)?')
-    , noscript = !full && !raw && await prompt('Only SSR (noscript)?')
-    , staticServe = !full && !raw && !noscript && await prompt('Only Static serve?')
-    , server = !full && !raw && !noscript && !staticServe && await prompt('Only HTTP?')
+    , script = !full && await prompt('Just Run Node (script)?')
+    , noscript = !full && !script && await prompt('Only SSR (--noscript)?')
+    , staticServe = !full && !script && !noscript && await prompt('Just serve static files (static)?')
+    , server = !full && !script && !noscript && !staticServe && await prompt('Just HTTP?')
     , npm = await new Promise(r => cp.exec('which pnpm', e => r(e ? 'npm' : 'pnpm')))
     , run = npm + (npm === 'npm' ? ' run' : '')
     , git = !hasGit(cwd) && await prompt('Git?')
@@ -46,14 +46,14 @@ pkg.scripts.build = 'sin build'
 pkg.scripts.generate = 'sin generate'
 
 if (full) {
-  pkg.scripts.start = 'sin prod'
+  pkg.scripts.start = 'sin start'
   pkg.scripts.dev = 'sin dev'
   mk(path.join(target, '+'), 'index.js', serverScript)
   mk(path.join(target, '+public'))
   mk(target, 'index.js', clientScript.replace('export', '// Add `export default` to enable ssr with hydration\nexport'))
-} else if (raw) {
-  pkg.scripts.start = 'sin prod raw index.js'
-  pkg.scripts.dev = 'sin dev raw index.js'
+} else if (script) {
+  pkg.scripts.start = 'sin start script index.js'
+  pkg.scripts.dev = 'sin dev script index.js'
   mk(target, 'index.js', '// Do your thing\n')
 } else if (noscript) {
   pkg.scripts.start = 'sin start noscript'
@@ -62,10 +62,10 @@ if (full) {
   mk(path.join(target, '+public'))
   mk(target, 'index.js', clientScript)
 } else if (staticServe) {
-  pkg.scripts.start = 'sin prod static'
+  pkg.scripts.start = 'sin start static'
   pkg.scripts.dev = 'sin dev static'
 } else if (server) {
-  pkg.scripts.start = 'sin prod server'
+  pkg.scripts.start = 'sin start server'
   pkg.scripts.dev = 'sin dev server'
   mk(target, 'index.js', serverScript)
 }

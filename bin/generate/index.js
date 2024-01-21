@@ -22,7 +22,7 @@ noscript || await import('../build/index.js')
 const start = performance.now()
 fs.cpSync('+public', '+build', { recursive: true, force: true })
 await generate()
-console.log('Finished generating in', performance.now() - start)
+console.log('Finished generating in', performance.now() - start) // eslint-disable-line
 
 async function generate(location = '/') {
   if (generated.has(location))

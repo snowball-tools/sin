@@ -1,21 +1,49 @@
 import os from 'os'
-
-import config from '../config.js'
+import path from 'path'
+import config, { option } from '../config.js'
 
 process.env.NODE_ENV = 'production'
 
+const env = process.env
+const sslCert = option('--ssl-cert', env.SSL_CERT)
+const acme = sslCert === 'acme' && getAcme()
+const ssl = sslCert && getSSL()
+const workers = option('--workers')
+const port = option('port', env.PORT, parseInt)
+const domain = option('--domain', acme && acme.domains[0])
+const httpsPort = option('--https-port', ssl ? port || 443 : null)
+const httpPort = ssl && ssl.mode === 'only' ? null : option('--http-port', ssl ? 80 : port || 80)
+const address = option('--address', env.ADDRESS || '0.0.0.0')
+
 export default {
   ...config,
-  workers: workers()
+  workers: workers === 'cpus' ? os.cpus().length : parseInt(workers),
+  httpsPort,
+  httpPort,
+  address,
+  domain,
+  acme,
+  ssl
 }
 
-function workers() {
-  const argv = process.argv.slice(2)
-  const hasWorkers = argv.find((_, i) => argv[i - 1] === '--workers') || process.env.SIN_WORKERS
+function getAcme() {
+  return {
+    dir        : option('--acme-dir', path.join(config.home, 'acme'), env.ACME_DIR),
+    domains    : option('--acme-domain', option('--acme-domains') || env.ACME_DOMAIN || env.ACME_DOMAINS).split(' '),
+    email      : option('--acme-email', env.ACME_EMAIL),
+    test       : option('--acme-test', env.ACME_TEST),
+    eab        : option('--acme-eab', env.ACME_EAB),
+    kid        : option('--acme-kid', env.ACME_KID),
+    key        : option('--acme-key', env.ACME_KEY),
+    ca         : option('--acme-ca', env.ACME_CA || 'letsencrypt')
+  }
+}
 
-  return hasWorkers
-    ? hasWorkers === 'cpus'
-      ? os.cpus().length
-      : parseInt(hasWorkers)
-    : 1
+function getSSL() {
+  return {
+    cert: sslCert,
+    key: option('--ssl-key', env.SSL_KEY),
+    passphrase: option('--ssl-passphrase', env.SSL_PASSPHRASE),
+    mode: option('--ssl-mode', env.SSL_MODE || 'redirect')
+  }
 }

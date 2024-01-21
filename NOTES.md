@@ -51,6 +51,7 @@ function navigated(url) {
 - fix bug in async components returning arrays (route especially)
 
 ## Thoughts
+- Ronald sin decorators
 - Should local redraw be raf throttled too?
 - should s.http only parse json if response header content-type ~= '/json'?
 - rename s.signal to s.event?

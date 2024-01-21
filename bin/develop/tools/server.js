@@ -1,5 +1,3 @@
-import url from 'url'
-import cp from 'child_process'
 import ey from 'ey'
 import api from '../api.js'
 import editor from './editor.js'

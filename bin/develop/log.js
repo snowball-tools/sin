@@ -9,7 +9,7 @@ log.debug = function debug(...xs) {
   if (!process.env.DEBUG)
     return xs.pop()
 
-  console.log(...xs)
+  console.log(...xs) // eslint-disable-line
   return xs.pop()
 }
 

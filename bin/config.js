@@ -1,29 +1,46 @@
+import fsp from 'fs/promises'
 import fs from 'fs'
 import url from 'url'
 import path from 'path'
 import c from './color.js'
 
-const argv = process.argv.slice(2)
-const env = process.env
+let [
+  runtime,
+  bin,
+  ...argv
+] = process.argv
 
-const command  = set('SIN_COMMAND',   getCommand())
-const entry    = set('SIN_ENTRY',     getEntry())
-const bin      = set('SIN_BIN',       getBin())
-const raw      = set('SIN_RAW',       argv.some(x => x === 'raw') || '')
-const noscript = set('SIN_NOSCRIPT',  argv.some(x => x === 'noscript') || '')
-const debug    = set('SIN_DEBUG',     env.SIN_DEBUG || process.argv.some(x => x === '--debug' || x === '-d'))
-const cwd      = set('PWD',           path.dirname(entry))
+const env = process.env
+const shorts = argv.reduce((a, x) => a + (x.length >= 2 && x[0] === '-' && x[1] !== '-' ? x.slice(1) : ''), '')
+const longs = argv.filter(x => x.length >= 3 && x[0] === '-' && x[1] === '-')
+const command = env.SIN_COMMAND = getCommand()
+const needsEntry = ['develop', 'start', 'build', 'generate'].includes(command)
+
+const entry       = env.SIN_ENTRY = needsEntry && getEntry()
+const local       = env.SIN_LOCAL = getLocal()
+const cwd         = env.PWD = env.SIN_PWD = needsEntry ? path.dirname(entry) : process.cwd()
+const home        = option('--home', getHome())
+const script      = option('script')
+const serveStatic = option('static')
+const noscript    = option('--noscript')
+const debug       = option('--debug')
 
 process.cwd() !== cwd && process.chdir(cwd)
 
 export default {
+  runtime,
+  bin,
+  home,
   command,
   entry,
-  bin,
-  raw,
+  local,
+  script,
+  serveStatic,
   noscript,
   cwd,
-  debug
+  debug,
+  option,
+  resolve
 }
 
 function getCommand() {
@@ -46,7 +63,7 @@ function getCommand() {
     development : 'develop'
   }
 
-  const first = argv[0] in alias && alias[argv[0]] || argv[0] || ''
+  const first = argv[0] in alias && alias[argv[0]] || argv[0] || process.env.SIN_COMMAND
       , help = (argv.some(x => x === '-h' || x === '--help') || argv.length === 0) && 'help'
       , version = argv.some(x => x === '-v' || x === '--version') && 'version'
 
@@ -59,7 +76,7 @@ function getCommand() {
 }
 
 function getEntry() {
-  const x = argv.slice(1).find(x => !'server static raw noscript'.includes(x) && x[0] !== '-') || ''
+  const x = argv.slice(1).find(x => !'script static'.includes(x) && x[0] !== '-') || ''
 
   const entry = path.isAbsolute(x)
     ? x
@@ -76,28 +93,57 @@ function getEntry() {
     fs.readFileSync(entry, { length: 1 })
   } catch (error) {
     const x = '🚨 Entry file '+  entry + ' is not available'
-    command === 'develop'
-      ? process.stdout.write(
-          '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) +
-          '\n ' + c.inverse(('   ' + x).padEnd(process.stdout.columns - 2, ' ')) +
-          '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) + '\n\n'
-        )
-      : x
+    process.stdout.write(
+      '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) +
+      '\n ' + c.inverse(('   ' + x).padEnd(process.stdout.columns - 2, ' ')) +
+      '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) + '\n\n'
+    )
     process.exit(1)
   }
 
   return entry
 }
 
-function getBin() {
-  const local = path.join(process.cwd(), 'node_modules', 'sin', 'bin')
-
+function getLocal() {
+  const local = path.join(process.cwd(), 'node_modules', 'sin')
   return fs.existsSync(local)
     ? local
-    : url.fileURLToPath(new URL('.', import.meta.url))
+    : path.join(url.fileURLToPath(new URL('.', import.meta.url)), '..')
 }
 
-function set(name, value) {
-  (value || value === 0) && (env[name] = value)
-  return value
+export function option(name, fallback, parse = x => x) {
+  const envName = 'SIN_' + name.toUpperCase().replace(/^-+/, '').replace(/-/g, '_')
+  const value = (longs.find(x => x === name) && name)
+             || (shorts.includes(name[2]) && name)
+             || (argv.includes(name) && name)
+             || process.env[envName]
+             || fallback
+             || undefined
+
+  return value && parse(process.env[envName] = value)
+}
+
+function getHome() {
+  const x = env.SIN_HOME || path.join(
+    process.platform === 'win32' && env.USER_PROFILE || env.HOME,
+    '.sin'
+  )
+  fs.mkdirSync(x, { recursive: true })
+  return x
+}
+
+async function resolve() {
+  const cwd = process.cwd()
+      , hasExport = (await fsp.readFile(entry, 'utf8')).indexOf('export default ') !== -1
+      , main = hasExport && await import(entry)
+      , http = typeof main.default === 'function' && main
+      , src = !http && !noscript && path.basename(entry)
+      , mod = src && (await fsp.stat(path.join(cwd, '+build', src)).catch(() => fsp.stat(path.join(cwd, src)))).mtimeMs.toFixed(0)
+
+  return {
+    server: http ? main : (await import(path.join(cwd, '+', 'index.js')).catch(err => err.code === 'ERR_MODULE_NOT_FOUND' ? null : Promise.reject(err))),
+    mount: !http && main.default,
+    src,
+    mod
+  }
 }

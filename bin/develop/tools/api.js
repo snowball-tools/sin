@@ -22,7 +22,6 @@ function connect() {
   )
   ws.onmessage = onmessage
   ws.onclose = () => setTimeout(connect, 100)
-  ws.onerror = console.log
 }
 
 function send(event, data) {

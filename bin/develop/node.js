@@ -61,9 +61,8 @@ async function start() {
   const promise = new Promise(r => started = r)
 
   api.log({ replace, from: 'node', type: 'status', value: node ? 'Restarting' : '⏳' })
-
   node = cp.fork(
-    config.raw ? config.entry : path.join(dirname, 'serve.js'),
+    config.script ? config.entry : path.join(dirname, 'serve.js'),
     [],
     {
       silent: true,
@@ -89,7 +88,7 @@ async function start() {
     if (data.includes('Debugger listening on ws://127.0.0.1:' + port)) {
       ws = connect(data.slice(22).split('\n')[0].trim())
     } else if (data.includes('Waiting for the debugger to disconnect...')) {
-      ws && setTimeout(() => ws.close(), 16)
+      ws && setTimeout(() => ws.close(), 200)
     }
   })
 
@@ -98,7 +97,6 @@ async function start() {
   node.on('close', (x, y) => {
     ws && ws.close()
     ws = null
-    +x && prexit.exit()
   })
 
   await promise

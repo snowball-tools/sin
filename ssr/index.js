@@ -54,7 +54,8 @@ const voidTags = new Set([
   'wbr'
 ])
 
-export default function({ view = () => '', attrs = {}, context = {} } = {}, serverAttrs = {}, serverContext = {}) {
+export default function(mount, serverAttrs = {}, serverContext = {}) {
+  let { view = () => '', attrs = {}, context = {} } = mount || {}
   serverContext.location = window.location = asLocation(
     typeof serverContext.location === 'string'
       ? new URL(serverContext.location, 'http://localhost/')
@@ -120,7 +121,7 @@ export default function({ view = () => '', attrs = {}, context = {} } = {}, serv
       title: context.doc.title(),
       lang: context.doc.lang(),
       css, // perhaps remove classes according to names in html
-      html: (context.noscript ? '' : '<!--h-->') + x,
+      html: (context.noscript || !mount ? '' : '<!--h-->') + x,
       head
     }
   })

@@ -92,12 +92,13 @@ function XMLHttpRequest(options) {
     responseType: '',
 
     get response() {
-      return xhr.responseType === '' || xhr.responseText === 'text'
-        ? xhr.responseText
+      const x = Buffer.concat(body)
+      return xhr.responseType === '' || xhr.responseType === 'text'
+        ? body.toString()
         : xhr.responseType === 'json'
-        ? JSON.parse(xhr.responseText)
+        ? JSON.parse(x)
         : xhr.responseType === 'arraybuffer'
-        ? Buffer.concat(body).buffer
+        ? x.buffer
         : null
     },
 

@@ -95,7 +95,7 @@ function getEntry(alt = '', initial) {
       return getEntry('+build', entry)
 
     const x = '🚨 Entry file '+  (initial || entry) + ' is not available (' + error.code + ')'
-    process.stdout.write(
+    process.stderr.write(
       '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) +
       '\n ' + c.inverse(('   ' + x).padEnd(process.stdout.columns - 2, ' ')) +
       '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) + '\n\n'

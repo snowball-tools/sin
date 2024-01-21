@@ -75,24 +75,26 @@ function getCommand() {
     || version
 }
 
-function getEntry() {
+function getEntry(alt = '', initial) {
   const x = argv.slice(1).find(x => !'script static'.includes(x) && x[0] !== '-') || ''
 
   const entry = path.isAbsolute(x)
     ? x
     : path.join(
       process.cwd(),
-      x !== path.basename(process.cwd()) && fs.existsSync(x + '.js')
-        ? x + '.js'
-        : x !== path.basename(process.cwd())
-        ? path.join(x, x.endsWith('.js') ? '' : 'index.js')
-          : 'index.js'
+      alt,
+        x !== path.basename(process.cwd()) && fs.existsSync(x + '.js') ? x + '.js'
+      : x !== path.basename(process.cwd()) ? path.join(x, x.endsWith('.js') ? '' : 'index.js')
+      : 'index.js'
     )
 
   try {
     fs.readFileSync(entry, { length: 1 })
   } catch (error) {
-    const x = '🚨 Entry file '+  entry + ' is not available'
+    if (!alt)
+      return getEntry('+build', entry)
+
+    const x = '🚨 Entry file '+  (initial || entry) + ' is not available (' + error.code + ')'
     process.stdout.write(
       '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) +
       '\n ' + c.inverse(('   ' + x).padEnd(process.stdout.columns - 2, ' ')) +

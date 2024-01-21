@@ -208,7 +208,7 @@ async function Acme({
     const body = await req.text()
     key = await exportKey(newAcmePair.privateKey, true)
     acmePair = newAcmePair
-    log('Successfully rotated key for', ca, req.status, body)
+    log('Successfully rotated key for', ca)
     return acme
   }
 
@@ -272,7 +272,8 @@ async function revoke(certificate, {
 
 async function createCSR(domains, key, passphrase) {
   return new Promise((resolve, reject) => {
-    const x = cp.execFile('openssl', [
+    cp.exec('echo "' + key + '" | ' + [
+      'openssl',
       'req',
       '-new',
       '-sha256',
@@ -280,12 +281,11 @@ async function createCSR(domains, key, passphrase) {
       '-subj', '/C=DK/O=' + domains[0] + '/CN=' + domains[0],
       '-addext', 'subjectAltName=' + domains.map(x => 'DNS:' + x).join(','),
       ...(passphrase ? ['-passin', 'pass:' + passphrase] : [])
-    ], (error, stdout, stderr) => {
+    ].join(' '), (error, stdout, stderr) => {
       error || stderr
         ? reject(Object.assign(error || {}, { stdout, stderr }))
         : resolve(stdout.trim())
     })
-    x.stdin.write(key.trim() + '\n')
   })
 }
 

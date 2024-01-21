@@ -88,7 +88,7 @@ async function Acme({
     passphrase,
     rsa
   } = {}) {
-    const domains = [].concat(domain.split(' '))
+    const domains = [].concat(domain.split(','))
     key || (key = await createPrivateKey(rsa))
     rsa && (rsa = rsa === true ? 2048 : rsa)
     ca === 'sslcom' && rsa && (root = root.replace(/-ecc$/, '-rsa'))

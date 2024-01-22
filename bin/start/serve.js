@@ -125,7 +125,7 @@ async function runAcme() {
   const left = cert && new Date(new crypto.X509Certificate(cert).validTo).getTime() - Date.now()
 
   if (!cert || left < 30 * 24 * 60 * 60 * 1000) { // 30 days
-    if (account && !config.acme.kid && ca !== 'zerossl') {
+    if (account && !config.acme.kid && config.acme.ca !== 'zerossl') {
       await acme.rotate()
       await fsp.writeFile(acmeFile, JSON.stringify(acme, null, 2))
       console.log('ACME: Waiting for 15 seconds so key change can propogate remotely') // eslint-disable-line

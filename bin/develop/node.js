@@ -105,7 +105,7 @@ async function start() {
   })
 
   await promise
-  api.log({ replace, from: 'node', type: 'status', value: '✅' })
+  api.log({ replace, from: 'node', type: 'status', value: '🚀' })
 
   function connect(url) {
     const requests = new Map()

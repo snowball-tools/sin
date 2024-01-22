@@ -43,7 +43,7 @@ if (tabs.size === 0) {
 
 await start
 
-api.log({ replace, from: 'browser', type: 'status', value: '✅' })
+api.log({ replace, from: 'browser', type: 'status', value: '🚀' })
 
 // prexit.exit on last tab close()
 

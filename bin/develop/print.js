@@ -72,7 +72,7 @@ function logInfo(x) {
 function exception(x) {
   if (x.exception.type === 'string')
     return { args: [x.exception] }
-process.stdout.write(JSON.stringify(x, null, 2))
+
   const properties = x.exception?.preview?.properties?.filter(x => x.name !== 'stack' && x.name !== 'message') || []
   return {
     args: [

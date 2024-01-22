@@ -94,9 +94,14 @@ async function start() {
 
   node.on('message', x => api.browser.watch(x))
 
-  node.on('close', (x, y) => {
+  node.on('close', async(code, signal) => {
     ws && ws.close()
     ws = null
+    api.log({ replace, from: 'node', type: 'status', value: code ? '💥' : '🏁' })
+    await s.sleep(10)
+    code
+      ? api.log({ replace, from: 'node', type: 'error', value: 'Node exited with ' + code + ' ' + signal })
+      : prexit.exit()
   })
 
   await promise

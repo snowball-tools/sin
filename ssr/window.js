@@ -94,7 +94,7 @@ function XMLHttpRequest(options) {
     get response() {
       const x = Buffer.concat(body)
       return xhr.responseType === '' || xhr.responseType === 'text'
-        ? body.toString()
+        ? x.toString()
         : xhr.responseType === 'json'
         ? JSON.parse(x)
         : xhr.responseType === 'arraybuffer'

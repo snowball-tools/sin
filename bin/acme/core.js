@@ -48,16 +48,16 @@ async function Acme({
 } = {}) {
   let root = cas[ca]
   if (!root)
-    throw new Error('Endpoint for CA ' + ca + ' not found')
+    throw new Error('ACME: Endpoint for CA ' + ca + ' not found')
 
   if (!email && !kid && !eab)
-    throw new Error('Either email, EAB or kid+key required for acme auth')
+    throw new Error('ACME: Either email, EAB or kid+key required for acme auth')
 
   if (needsEAB.includes(ca) && !kid && !eab)
-    throw new Error('You must supply kid+key or EAB credentials for ' + ca)
+    throw new Error('ACME: You must supply kid+key or EAB credentials for ' + ca)
 
   if (kid && !key)
-    throw new Error('Kid provided but key missing')
+    throw new Error('ACME: Kid provided but key missing')
 
   log(kid && key ? 'Reusing acme keypair with' : 'Creating acme keypair for', ca)
   let acmePair = kid && key
@@ -84,10 +84,14 @@ async function Acme({
   return acme
 
   async function create(domain, {
+    challenge: challenger = 'http-01',
     key,
     passphrase,
     rsa
   } = {}) {
+    if (challenger === 'http-01' && domain.includes('*'))
+      throw new Error('ACME: Wildcard certificates only works with DNS challenges')
+
     const domains = [].concat(domain.split(','))
     key || (key = await createPrivateKey(rsa))
     rsa && (rsa = rsa === true ? 2048 : rsa)
@@ -101,12 +105,18 @@ async function Acme({
     }).then(x => x.json())
 
     log('Starting challenges')
-    await Promise.all(authorizations.map(async(auth, i) => {
+    for (const [i, auth] of authorizations.entries()) {
       const domain = domains[i]
       log('Request challenge for', domain)
 
-      const challenge = (await request(auth, '').then(x => x.json())).challenges.find(x => x.type === 'http-01')
-      challenges.set(challenge.token, { domain, reply: challenge.token + '.' + await jwkThumbprint(acmePair.publicKey) })
+      const challenge = (await request(auth, '').then(x => x.json())).challenges.find(x =>
+        challenger === 'http-01' ? x.type === challenger : x.type === 'dns-01'
+      )
+
+      const reply = challenge.token + '.' + await jwkThumbprint(acmePair.publicKey)
+      const id = challenger === 'http-01'
+        ? challenges.set(challenge.token, { domain, reply })
+        : await addDNS(challenger, reply, domain)
 
       log('Ready to answer challenge for', domain)
       try {
@@ -116,20 +126,22 @@ async function Acme({
 
         while (status !== 'valid') {
           if (++retries > 10)
-            throw new Error('Challenge timed out during status - ' + status)
+            throw new Error('ACME: Challenge timed out during status - ' + status)
 
           body = await request(challenge.url, !status ? {} : '').then(x => x.json())
           status = body.status
           log('Challenge', status, 'for', domain)
           if (status === 'invalid')
-            throw new Error('Challenge failed with status - invalid ' + JSON.stringify(body))
+            throw new Error('ACME: Challenge failed with status - invalid ' + JSON.stringify(body))
           else if (status !== 'valid')
             await new Promise(r => setTimeout(r, retries * 1000))
         }
       } finally {
-        challenges.delete(challenge.token)
+        challenger === 'http-01'
+          ? challenges.delete(challenge.token)
+          : await import('./dns/' + challenger + '.js').then(x => x.remove(id))
       }
-    }))
+    }
 
     log('Create Certificate Signing Request for', domains)
     const csr = await createCSR(domains, key, passphrase)
@@ -145,7 +157,7 @@ async function Acme({
     log('Await certificate')
     while (status !== 'valid') {
       if (++retries > 10)
-        throw new Error('Challenge timed out during status - ' + status + ' ' + JSON.stringify(body))
+        throw new Error('ACME: Challenge timed out during status - ' + status + ' ' + JSON.stringify(body))
 
       const x = await request(location)
       body = await x.json()
@@ -155,7 +167,7 @@ async function Acme({
       if (status === 'processing')
         await new Promise(r => setTimeout(r, retry * 1000))
       else if (status !== 'valid')
-        throw new Error('Challenge failed with status - ' + status + ' ' + JSON.stringify(body))
+        throw new Error('ACME: Challenge failed with status - ' + status + ' ' + JSON.stringify(body))
     }
 
     log('Fetch certificate URL')
@@ -176,6 +188,15 @@ async function Acme({
     }
   }
 
+  async function addDNS(challenger, reply, domain) {
+    const { add, timeout = 20000 } = await import('./dns/' + challenger + '.js')
+    log('Set TXT record for', domain, 'using', challenger)
+    const x = await add('_acme-challenge.' + domain.replace('*.', ''), await sha256base64(reply), domain)
+    log('TXT record set for', domain, 'wait', timeout / 1000, 'seconds for propogation')
+    await new Promise(r => setTimeout(r, timeout))
+    return x
+  }
+
   async function revoke(certificate, options) {
     return Acme.revoke(certificate, {
       ca,
@@ -189,7 +210,7 @@ async function Acme({
     log('Rotate key for', ca)
     const newAcmePair = await generate()
     const request = await session(root, acmePair.privateKey, kid)
-    const req = await request(
+    await request(
       request.dir.keyChange,
       {
         resource: 'key-change',
@@ -205,7 +226,6 @@ async function Acme({
         )
       }
     )
-    const body = await req.text()
     key = await exportKey(newAcmePair.privateKey, true)
     acmePair = newAcmePair
     log('Successfully rotated key for', ca)
@@ -384,12 +404,14 @@ function base64Encode(x) {
 }
 
 async function jwkThumbprint(publicKey) {
+  return sha256base64(JSON.stringify(await getJWK(publicKey)))
+}
+
+async function sha256base64(x) {
   return base64Encode(
     await crypto.subtle.digest(
       'SHA-256',
-      new TextEncoder().encode(
-        JSON.stringify(await getJWK(publicKey))
-      )
+      new TextEncoder().encode(x)
     )
   )
 }
@@ -466,7 +488,7 @@ async function createZeroSSLEAB(email, log) {
   }).then(x => x.json())
 
   if (!x.eab_kid || !x.eab_hmac_key)
-    throw new Error('Could not create ZeroSSL eab credentials: ' + JSON.stringify(x))
+    throw new Error('ACME: Could not create ZeroSSL eab credentials: ' + JSON.stringify(x))
 
   log('New ZeroSSL EAB created')
   return x.eab_kid + ':' + x.eab_hmac_key

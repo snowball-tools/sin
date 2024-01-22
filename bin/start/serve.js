@@ -6,7 +6,7 @@ import { isMainThread, parentPort } from 'node:worker_threads'
 import ey from 'ey'
 
 import config from './config.js'
-import Acme from './acme.js'
+import Acme from '../acme/core.js'
 
 import { tryPromise } from '../../src/shared.js'
 import ssr, { wrap } from '../../ssr/index.js'

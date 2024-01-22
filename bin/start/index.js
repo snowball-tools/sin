@@ -8,7 +8,7 @@ const url = config.script
 
 await import(url)
 
-const Acme = config.acme && await import('./acme.js').then(x => x.default)
+const Acme = config.acme && await import('../acme/core.js').then(x => x.default)
 
 for (let i = 1; i < (config.workers || 0); i++) {
   const worker = new Worker(new URL(url, import.meta.url), {

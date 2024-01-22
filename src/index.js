@@ -1074,7 +1074,7 @@ function setAttribute(dom, attr, value) {
 
   asProp(dom, attr)
     ? dom[attr] = value
-    : notValue(value)
+    : !value && value !== 0
       ? dom.removeAttribute(attr)
       : dom.setAttribute(attr, value === true ? '' : value)
 }

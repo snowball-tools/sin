@@ -44,6 +44,6 @@ function getSSL() {
     cert: sslCert,
     key: option('--ssl-key', env.SSL_KEY),
     passphrase: option('--ssl-passphrase', env.SSL_PASSPHRASE),
-    mode: option('--ssl-mode', env.SSL_MODE || 'redirect')
+    mode: option('--ssl-mode', env.SSL_MODE || 'redirect') // only | redirect | optional
   }
 }

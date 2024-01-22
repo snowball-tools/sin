@@ -140,13 +140,11 @@ async function runAcme() {
       fsp.writeFile(certPath, x.cert),
       fsp.writeFile(keyPath, x.key)
     ])
-    config.ssl.cert = process.env.SSL_CERT = certPath
-    config.ssl.key = process.env.SSL_KEY = keyPath
   } else {
     console.log('ACME: Certificate valid for', Math.round(left / 1000 / 60 / 60 / 24), 'more day(s)') // eslint-disable-line
-    config.ssl.cert = process.env.SSL_CERT = certPath
-    config.ssl.key = process.env.SSL_KEY = keyPath
   }
+  config.ssl.cert = process.env.SIN_SSL_CERT = process.env.SSL_CERT = certPath
+  config.ssl.key = process.env.SIN_SSL_CERT = process.env.SSL_KEY = keyPath
 }
 
 async function readOrNull(x) {

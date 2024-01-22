@@ -81,11 +81,11 @@ function XMLHttpRequest(options) {
     , responseText
 
   const xhr = {
-    UNSENT:           0, // Client has been created. open() not called yet.
-    OPENED:           1, // open() has been called.
-    HEADERS_RECEIVED: 2, // send() has been called, and headers and status are available.
-    LOADING:          3, // Downloading; responseText holds partial data.
-    DONE:             4, // The operation is complete.
+    UNSENT:           0,
+    OPENED:           1,
+    HEADERS_RECEIVED: 2,
+    LOADING:          3,
+    DONE:             4,
 
     status: 0,
     readyState: 0,

@@ -49,6 +49,9 @@ export default {
 }
 
 function getCommand() {
+  if (env.SIN_COMMAND)
+    return env.SIN_COMMAND
+
   const commands = {
     b: 'build',
     c: 'create',
@@ -81,6 +84,9 @@ function getCommand() {
 }
 
 function getEntry(alt = '', initial) {
+  if (process.env.SIN_ENTRY)
+    return process.env.SIN_ENTRY
+
   const x = argv.slice(1).find(x => !'script static'.includes(x) && x[0] !== '-') || ''
 
   const entry = path.isAbsolute(x)
@@ -112,6 +118,9 @@ function getEntry(alt = '', initial) {
 }
 
 function getLocal() {
+  if (env.SIN_LOCAL)
+    return env.SIN_LOCAL
+
   const local = path.join(process.cwd(), 'node_modules', 'sin')
   return fs.existsSync(local)
     ? local

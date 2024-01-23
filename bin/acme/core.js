@@ -384,10 +384,11 @@ async function exportKey(key, priv) {
     String.fromCharCode.apply(null, new Uint8Array(
       await crypto.subtle.exportKey(priv ? 'pkcs8' : 'spki', key)
     ))
-  )
+  ).match(/.{1,64}/g).join('\n')
+
   return priv
-    ? `-----BEGIN PRIVATE KEY-----\n${ x }\n-----END PRIVATE KEY-----`
-    : `-----BEGIN PUBLIC KEY-----\n${ x }\n-----END PUBLIC KEY-----`
+    ? `-----BEGIN PRIVATE KEY-----\n${ x }\n-----END PRIVATE KEY-----\n`
+    : `-----BEGIN PUBLIC KEY-----\n${ x }\n-----END PUBLIC KEY-----\n`
 }
 
 function base64Encode(x) {

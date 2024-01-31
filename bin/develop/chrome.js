@@ -20,6 +20,7 @@ const port = await getPort()
     , replace = Math.random()
 
 api.log({ replace, from: 'browser', type: 'status', value: '⏳' })
+ensurePrefs()
 const chrome = await spawn()
 
 let started
@@ -254,4 +255,36 @@ function getPort() {
   } catch (error) {
     return reservePort()
   }
+}
+
+function ensurePrefs() {
+  const def = path.join(config.project, 'Default')
+  const prefs = path.join(def, 'Preferences')
+
+  if (fs.existsSync(prefs))
+    return
+
+  fs.mkdirSync(def, { recursive: true })
+
+  fs.writeFileSync(prefs,
+    JSON.stringify({
+      privacy_sandbox: {
+        anti_abuse_initialized: true,
+        first_party_sets_data_access_allowed_initialized: true,
+        m1: {
+          ad_measurement_enabled: true,
+          consent_decision_made: true,
+          eea_notice_acknowledged: true,
+          fledge_enabled: true,
+          topics_enabled: false
+        },
+        topics_consent: {
+          consent_given: false,
+          last_update_reason: 1,
+          last_update_time: Date.now() * 1000 - Date.UTC(1601, 0, 1) * 1000,
+          text_at_last_update: 'Turn on an ad privacy feature We’re launching new privacy features that give you more choice over the ads that you see. Ad topics help sites show you relevant ads while protecting your browsing history and identity. Chrome can note topics of interest based on your recent browsing history. Later, a site that you visit can ask Chrome for relevant topics to personalise the ads that you see. You can see ad topics in settings and block the ones that you don’t want shared with sites. Chrome also auto-deletes ad topics that are older than four weeks. You can change your mind at any time in Chrome settings More about ad topics What data is used: Your ad topics are based on your recent browsing history – a list of sites that you’ve visited using Chrome on this device. How we use this data: Chrome notes topics of interest as you browse. Topic labels are predefined and include things like Arts and entertainment, Shopping and Sports. Later, a site that you visit can ask Chrome for a few of your topics (but not your browsing history) to personalise the ads that you see. How you can manage your data: Chrome auto-deletes topics that are older than four weeks. As you keep browsing, a topic might reappear on the list. You can also block topics that you don’t want Chrome to share with sites and turn ad topics off at any time in Chrome settings. Learn more about how Google protects your data in our privacy policy.'
+        }
+      }
+    })
+  )
 }

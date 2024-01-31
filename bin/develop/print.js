@@ -1,4 +1,5 @@
 import Url from 'url'
+import path from 'path'
 import util from 'util'
 import p from './log.js'
 
@@ -6,11 +7,10 @@ import config from '../config.js'
 import api from './api.js'
 import c from '../color.js'
 
-p('\n' + padBoth('🔥' + (config.raw ? '' : ' at ' + api.url)) + '\n')
+p('\n' + padBoth('🔥' + (config.script ? ' ' + path.basename(config.entry) : ' at ' + api.url)) + '\n')
 
 api.browser.reload.observe(() => std({ from: 'browser', replace: 'browserhot', type: 'status', value: '🔄' }))
 api.browser.hotload.observe(() => std({ from: 'browser', replace: 'browserhot', type: 'status', value: '🔥' }))
-api.node.hotload.observe(() => std({ from: 'node', type: 'status', value: '🔥' }))
 
 api.log.observe(std)
 
@@ -38,9 +38,12 @@ function std(x) {
     ? (std.count > 1 ? '\x1B[F\x1B[G' : '') + time(x.timestamp) + c.gray`last line repeated ${ c.white(std.count) } times`
     : time(x.timestamp) + output
 
-  p(write)
+  p(x.right
+    ? padBetween(write, x.right)
+    : write
+  )
 
-  std.heading = heading
+  x.type !== 'status' && (std.heading = heading)
   std.output = output
   std.last = x
 }
@@ -101,8 +104,8 @@ function rawLength(x) {
 }
 
 function padBetween(a, b, prefix = 0) {
-  a = a.trim()
-  b = b.trim()
+  a = a.trimEnd()
+  b = b.trimStart()
 
   if (!b)
     return a

@@ -26,6 +26,7 @@ function navigated(url) {
 }
 
 ## Todo
+- allow direct views to route (`route({ '/' : s`...`(...) })`)
 - dialogs for installing packages
 - connect to all tabs (devtools)
 - p.alert (opens log window)
@@ -51,6 +52,9 @@ function navigated(url) {
 - fix bug in async components returning arrays (route especially)
 
 ## Thoughts
+- route.key ?
+- make route(path) relative
+- allow extend with route()`...`(...)
 - Ronald sin decorators
 - Should local redraw be raf throttled too?
 - should s.http only parse json if response header content-type ~= '/json'?

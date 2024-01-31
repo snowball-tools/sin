@@ -3,6 +3,7 @@ import URL from 'url'
 import path from 'path'
 import prexit from 'prexit'
 import cp from 'child_process'
+import color from '../color.js'
 
 import config from '../config.js'
 import api from './api.js'
@@ -13,15 +14,20 @@ const port = await reservePort()
     , dirname = path.dirname(URL.fileURLToPath(import.meta.url))
     , replace = Math.random()
 
+api.node.hotload.observe(() => std({ replace, from: 'node', type: 'status', value: '🔥' }))
+
 let node
   , ws
   , scripts = new Map()
+  , startPerf
 
 prexit(close)
 
 api.node.restart.observe(restart)
 
 async function restart(x) {
+  api.log({ replace, from: 'node', type: 'status', value: '🔄' })
+  await s.sleep(100)
   close()
   await start()
   x === 'reload' && s.sleep(200).then(() => api.browser.reload())
@@ -57,6 +63,7 @@ function close() {
 }
 
 async function start() {
+  startPerf = performance.now()
   let started
   const promise = new Promise(r => started = r)
 
@@ -97,15 +104,24 @@ async function start() {
   node.on('close', async(code, signal) => {
     ws && ws.close()
     ws = null
-    api.log({ replace, from: 'node', type: 'status', value: code ? '💥' : '🏁' })
-    await s.sleep(10)
-    code
-      ? api.log({ replace, from: 'node', type: 'error', value: 'Node exited with ' + code + ' ' + signal })
-      : prexit.exit()
+
+    api.log({
+      from: 'node',
+      type: 'status',
+      right: color.gray(duration()),
+      value: code
+        ? '💥 (' + code + ')'
+        : '🏁'
+    })
   })
 
   await promise
+  startPerf = performance.now()
   api.log({ replace, from: 'node', type: 'status', value: '🚀' })
+
+  function duration() {
+    return (performance.now() - startPerf).toFixed(2) + 'ms'
+  }
 
   function connect(url) {
     const requests = new Map()

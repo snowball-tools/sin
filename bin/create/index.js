@@ -6,7 +6,7 @@ import c from '../color.js'
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 
-const argv = process.argv.slice(2)
+const argv = process.argv.slice(3)
     , cwd = process.cwd()
     , xs = fs.readdirSync(cwd)
     , empty = !xs.some(x => x[0] !== '.')

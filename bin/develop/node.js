@@ -86,16 +86,14 @@ async function start() {
   )
 
   node.stdout.setEncoding('utf8')
-  node.stdout.on('data', data => config.debug && api.log({ from: 'node', type: 'stdout', args: data }))
-
+  node.stdout.on('data', data => api.log({ from: 'node', type: 'stdout', args: data }))
   node.stderr.setEncoding('utf8')
   node.stderr.on('data', async(data) => {
-    config.debug && api.log({ from: 'node', type: 'stderr', args: data })
-    if (data.includes('Debugger listening on ws://127.0.0.1:' + port)) {
-      ws = connect(data.slice(22).split('\n')[0].trim())
-    } else if (data.includes('Waiting for the debugger to disconnect...')) {
-      ws && setTimeout(() => ws.close(), 200)
-    }
+    data.includes('Debugger listening on ws://127.0.0.1:' + port)
+      ? ws = connect(data.slice(22).split('\n')[0].trim())
+      : data.includes('Waiting for the debugger to disconnect...')
+      ? ws && setTimeout(() => ws.close(), 200)
+      : api.log({ from: 'node', type: 'stderr', args: data })
   })
 
   node.on('message', x => api.browser.watch(x))

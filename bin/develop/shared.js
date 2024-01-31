@@ -31,10 +31,10 @@ const staticImport = /(?:`[^`]*`)|((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: 
 
 export function modify(x, path) {
   return jail(
-    x.replace(staticImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
-     .replace(dynamicImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
-     .replace(staticImportDir, (_, a, b, c) => a ? a + extensionless(b, path) + c : _)
+    x.replace(staticImportDir, (_, a, b, c) => a ? a + extensionless(b, path) + c : _)
      .replace(dynamicImportDir, (_, a, b, c) => a ? a + extensionless(b, path) + c : _)
+     .replace(staticImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
+     .replace(dynamicImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
   )
 }
 
@@ -62,7 +62,7 @@ function resolve(n) {
 
 export function extensionless(x, root = '') {
   x.indexOf('file:') === 0 && (x = x.slice(5))
-  root = path.isAbsolute(x) ? process.cwd() : path.basename(root)
+  root = path.isAbsolute(x) ? process.cwd() : root
   return path.extname(x) ? x
     : canRead(path.join(root, x, 'index.js')) ? x + '/index.js'
     : canRead(path.join(root, x + '.js')) ? x + '.js'

@@ -3,7 +3,7 @@ import path from 'path'
 import util from 'util'
 import p from './log.js'
 
-import config from '../config.js'
+import config from './config.js'
 import api from './api.js'
 import c from '../color.js'
 

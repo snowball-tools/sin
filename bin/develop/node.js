@@ -5,7 +5,7 @@ import prexit from 'prexit'
 import cp from 'child_process'
 import color from '../color.js'
 
-import config from '../config.js'
+import config from './config.js'
 import api from './api.js'
 import { reservePort, jail } from './shared.js'
 import s from '../../src/index.js'

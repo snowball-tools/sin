@@ -14,7 +14,7 @@ const port = await reservePort()
     , dirname = path.dirname(URL.fileURLToPath(import.meta.url))
     , replace = Math.random()
 
-api.node.hotload.observe(() => std({ replace, from: 'node', type: 'status', value: '🔥' }))
+api.node.hotload.observe(() => api.log({ replace, from: 'node', type: 'status', value: '🔥' }))
 
 let node
   , ws

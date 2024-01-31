@@ -72,7 +72,7 @@ async function start() {
     config.script ? config.entry : path.join(dirname, 'serve.js'),
     [],
     {
-      silent: true,
+      stdio: ['inherit', 'pipe', 'pipe', 'ipc'],
       execArgv: [
         '--import', '' + URL.pathToFileURL(path.join(dirname, 'import.js')),
         '--inspect=' + port,

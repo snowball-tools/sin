@@ -1,9 +1,10 @@
 import { Worker, SHARE_ENV } from 'worker_threads'
+import '../../ssr/index.js'
 
 import config from './config.js'
 
 const url = config.script
-  ? config.entry
+  ? './script.js'
   : './serve.js'
 
 await import(url)

@@ -117,6 +117,7 @@ async function connect(tab) {
     await request('Debugger.setBlackboxPatterns', { patterns: api.blackbox })
     await request('Network.enable')
     await request('Network.setCacheDisabled', { cacheDisabled: true })
+    await request('Log.enable')
     await request('Page.enable')
     await request('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
     false && setTimeout(() => {
@@ -139,6 +140,9 @@ async function connect(tab) {
 
     if (method === 'Page.frameNavigated' && !params.frame.parentId && params.frame.url.indexOf(config.origin) === 0)
       return api.url(params.frame.url)
+
+    if (method === 'Log.entryAdded')
+      return api.log({ from: 'browser', type: 'exception', type: params.entry.level, args: [{ type: 'string', value: params.entry.text }], stackTrace: { callFrames: [{ url: params.entry.url }]} })
 
     if (method === 'Runtime.consoleAPICalled')
       return api.log({ from: 'browser', ...params })

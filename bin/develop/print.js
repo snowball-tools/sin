@@ -179,9 +179,9 @@ function logStack(stack, max = 50) {
           (x.functionName || '') + ' @ '
         + [
           '.' + x.url.replace(config.origin, '').replace(Url.pathToFileURL(config.cwd), ''),
-          x.lineNumber + 1,
-          x.columnNumber + 1
-        ].join(':')
+          'lineNumber' in x && x.lineNumber + 1,
+          'columnNumber' in x && x.columnNumber + 1
+        ].filter(x => x).join(':')
       )
     )
 }

@@ -242,7 +242,7 @@ async function spawn() {
     x.stderr.setEncoding('utf8')
     x.stderr.on('data', () => resolve(x))
     x.stdout.setEncoding('utf8')
-    x.stdout.on('data', x => {
+    x.stdout.on('data', () => {
       opened = true
       resolve(x)
     })

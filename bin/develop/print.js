@@ -17,15 +17,18 @@ api.browser.hotload.observe(() => std({ from: 'browser', replace: 'browserhot', 
 
 api.log.observe(std)
 
-process.stdin.setRawMode(true)
-process.stdin.resume()
-process.stdin.on('data', x => {
-  x = x.toString()
-    x === '\u0003' ? prexit.exit()
-  : x === 'r' ? api.node.restart()
-  : x === 'i' ? api.log() && more(api.log())
-  : ''
-})
+if (process.stdin.isTTY) {
+  prexit(() => process.stdin.setRawMode(false))
+  process.stdin.setRawMode(true)
+  process.stdin.resume()
+  process.stdin.on('data', x => {
+    x = x.toString()
+      x === '\u0003' ? prexit.exit()
+    : x === 'r' ? api.node.restart()
+    : x === 'i' ? api.log() && more(api.log())
+    : ''
+  })
+}
 
 async function more({ ws, from, type, stackTrace, timestamp, args, replace }) {
   if (!ws)
@@ -195,9 +198,9 @@ function logArg(x, max) {
 
 function logError(e) {
   return [
-    { type: 'string', value: x.description.split('\n')[0] },
-    ...x.preview.properties.filter(x => x.name !== 'stack' && x.name !== 'message')
-  ].map(logArg)
+    { type: 'string', value: e.description.split('\n')[0] },
+    ...e.preview.properties.filter(x => x.name !== 'stack' && x.name !== 'message')
+  ].map(x => logArg(x, e.max))
 }
 
 function logArray(xs, max = 32) {

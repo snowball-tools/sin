@@ -22,7 +22,11 @@ let node
 prexit(close)
 
 api.node.restart.observe(restart)
-api.node.hotload.observe(() => api.log({ replace, from: 'node', type: 'status', value: '🔥' }))
+api.node.hotload.observe(() =>
+  node
+    ? api.log({ replace, from: 'node', type: 'status', value: '🔥' })
+    : restart()
+)
 
 async function restart(x) {
   api.log({ replace: 'nodeend', from: 'node', type: 'status', value: '🔄' })
@@ -57,13 +61,15 @@ api.node.hotload.observe(async x => {
 await start()
 
 async function close() {
-  node && (node.kill(), await new Promise(r => node.on('close', r)))
+  node && (node.kill(), node.connected && await new Promise(r => node.on('close', r)))
 }
 
 async function start() {
   startPerf = performance.now()
-  let started
-  const promise = new Promise(r => started = r)
+  let resolve
+    , reject
+
+  const promise = new Promise((r, e) => (resolve = r, reject = e))
 
   api.log({ replace, from: 'node', type: 'status', value: '⏳' })
   node = cp.fork(
@@ -91,14 +97,16 @@ async function start() {
       ? ws = connect(data.slice(22).split('\n')[0].trim())
       : data.includes('Waiting for the debugger to disconnect...')
       ? ws && setTimeout(() => ws.close(), 200)
-      : data !== 'Debugger attached.\n' && api.log({ from: 'node', type: 'stderr', args: data })
+      : data !== 'Debugger attached.\n' && !data.includes(api.log().exception.description)
+      ? api.log({ from: 'node', type: 'stderr', args: data })
+      : null
   })
 
   node.on('message', x => api.browser.watch(x))
 
   node.on('close', async(code, signal) => {
     ws && ws.close()
-    ws = null
+    ws = node = null
 
     api.log({
       replace: 'nodeend',
@@ -109,6 +117,9 @@ async function start() {
         ? '💥 (' + code + ')'
         : '🏁'
     })
+    code
+      ? reject('Exited with code: ' + code + (signal ? 'on ' + signal : ''))
+      : resolve()
   })
 
   await promise
@@ -149,7 +160,7 @@ async function start() {
       await request('Runtime.enable')
       await request('Runtime.setAsyncCallStackDepth', { maxDepth: 128 })
       await request('Debugger.enable')
-      started()
+      resolve()
     }
 
     function onmessage({ data }) {
@@ -168,12 +179,12 @@ async function start() {
       if (!requests.has(id))
         return
 
-      const { reject, resolve } = requests.get(id)
+      const x = requests.get(id)
       requests.delete(id)
 
       error
-        ? reject(error)
-        : resolve(result)
+        ? x.reject(error)
+        : x.resolve(result)
     }
 
     function parsed(script) {

@@ -5,7 +5,7 @@
 import fs from 'fs'
 import path from 'path'
 import util from 'util'
-import prexit from 'prexit'
+import prexit from '../prexit.js'
 import cp from 'child_process'
 
 import config from './config.js'

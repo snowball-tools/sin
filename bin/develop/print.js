@@ -1,6 +1,6 @@
 import Url from 'url'
 import path from 'path'
-import prexit from 'prexit'
+import prexit from '../prexit.js'
 
 import p from './log.js'
 import config from './config.js'

@@ -1,7 +1,7 @@
 import fs from 'fs'
 import URL from 'url'
 import path from 'path'
-import prexit from 'prexit'
+import prexit from '../prexit.js'
 import cp from 'child_process'
 import color from '../color.js'
 
@@ -108,7 +108,7 @@ async function start() {
     ws && ws.close()
     ws = node = null
 
-    api.log({
+    prexit.exiting || api.log({
       replace: 'nodeend',
       from: 'node',
       type: 'status',

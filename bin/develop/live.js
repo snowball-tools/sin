@@ -2,7 +2,7 @@ import path from 'path'
 import tls from 'tls'
 import net from 'net'
 import fs from 'fs/promises'
-import prexit from 'prexit'
+import prexit from '../prexit.js'
 
 import api from './api.js'
 

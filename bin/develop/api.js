@@ -4,7 +4,6 @@ import path from 'path'
 import config from './config.js'
 import s from '../../src/index.js'
 
-
 process.env.NODE_ENV = 'development'
 
 const api = {
@@ -21,7 +20,7 @@ const api = {
     hotload : s.event(),
     watch   : s.event()
   },
-  log: s.event()
+  log: s.live()
 }
 
 export default api

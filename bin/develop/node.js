@@ -14,8 +14,6 @@ const port = await reservePort()
     , dirname = path.dirname(URL.fileURLToPath(import.meta.url))
     , replace = Math.random()
 
-api.node.hotload.observe(() => api.log({ replace, from: 'node', type: 'status', value: '🔥' }))
-
 let node
   , ws
   , scripts = new Map()
@@ -24,11 +22,11 @@ let node
 prexit(close)
 
 api.node.restart.observe(restart)
+api.node.hotload.observe(() => api.log({ replace, from: 'node', type: 'status', value: '🔥' }))
 
 async function restart(x) {
-  api.log({ replace, from: 'node', type: 'status', value: '🔄' })
-  await s.sleep(100)
-  close()
+  api.log({ replace: 'nodeend', from: 'node', type: 'status', value: '🔄' })
+  await close()
   await start()
   x === 'reload' && s.sleep(200).then(() => api.browser.reload())
 }
@@ -58,8 +56,8 @@ api.node.hotload.observe(async x => {
 
 await start()
 
-function close() {
-  node && node.kill()
+async function close() {
+  node && (node.kill(), await new Promise(r => node.on('close', r)))
 }
 
 async function start() {
@@ -67,7 +65,7 @@ async function start() {
   let started
   const promise = new Promise(r => started = r)
 
-  api.log({ replace, from: 'node', type: 'status', value: node ? 'Restarting' : '⏳' })
+  api.log({ replace, from: 'node', type: 'status', value: '⏳' })
   node = cp.fork(
     config.script ? config.entry : path.join(dirname, 'serve.js'),
     [],
@@ -93,7 +91,7 @@ async function start() {
       ? ws = connect(data.slice(22).split('\n')[0].trim())
       : data.includes('Waiting for the debugger to disconnect...')
       ? ws && setTimeout(() => ws.close(), 200)
-      : api.log({ from: 'node', type: 'stderr', args: data })
+      : data !== 'Debugger attached.\n' && api.log({ from: 'node', type: 'stderr', args: data })
   })
 
   node.on('message', x => api.browser.watch(x))
@@ -103,6 +101,7 @@ async function start() {
     ws = null
 
     api.log({
+      replace: 'nodeend',
       from: 'node',
       type: 'status',
       right: color.gray(duration()),
@@ -158,11 +157,13 @@ async function start() {
       if (method === 'Debugger.scriptParsed' && params.url)
         return parsed(params)
 
-      if (method === 'Runtime.consoleAPICalled')
+      if (method === 'Runtime.consoleAPICalled') {
+        api.recent = params.args
         return api.log({ from: 'node', ...params })
+      }
 
       if (method === 'Runtime.exceptionThrown')
-        return api.log({ from: 'node', type: 'exception', ...params.exceptionDetails })
+        return api.log({ ws, from: 'node', type: 'exception', ...params.exceptionDetails })
 
       if (!requests.has(id))
         return

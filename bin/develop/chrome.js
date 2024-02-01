@@ -52,7 +52,9 @@ prexit(async() => {
   chrome.kill()
 })
 
-api.browser.hotload.observe(async x => {
+api.browser.hotload.observe(hotload)
+
+async function hotload(x) {
   await Promise.all([...tabs].map(async({ ws }) => {
     if (ws && ws.scripts.has(x.path)) {
       try {
@@ -78,7 +80,7 @@ api.browser.hotload.observe(async x => {
     }
   }))
   api.browser.redraw()
-})
+}
 
 async function connect(tab) {
   let id = 1
@@ -145,7 +147,7 @@ async function connect(tab) {
       return api.log({ from: 'browser', type: 'exception', type: params.entry.level, args: [{ type: 'string', value: params.entry.text }], stackTrace: { callFrames: [{ url: params.entry.url }]} })
 
     if (method === 'Runtime.consoleAPICalled')
-      return api.log({ from: 'browser', ...params })
+      return api.log({ ws, replace: Math.random(), from: 'browser', ...params })
 
     if (method === 'Runtime.exceptionThrown')
       return api.log({ from: 'browser', type: 'exception', ...params.exceptionDetails })

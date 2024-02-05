@@ -49,7 +49,7 @@
     "not-vue"
   ],
   "dependencies": {
-    "esbuild": "0.19.5",
-    "ey": "github:porsager/ey#f3c9d67e3f76bb6ef1f8982077f60e18d865d29f"
+    "esbuild": "0.20.0",
+    "ey": "2.0.0"
   }
 }

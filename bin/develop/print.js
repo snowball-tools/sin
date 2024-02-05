@@ -135,14 +135,17 @@ function logInfo(x) {
 
 function exception(x) {
   if (x.exception.type === 'string')
-    return { args: [x.exception] }
+    return { args: [x.exception], stackTrace: { callFrames: [x] } }
 
   const properties = x.exception?.preview?.properties?.filter(x => x.name !== 'stack' && x.name !== 'message') || []
   return {
     args: [
       {
         type: 'string',
-        value: x.exception.description.split('\n')[0]
+        value: [
+          x.exception.className + ':',
+          x.exception.preview.properties.find(x => x.name === 'message').value
+        ].filter(x => x).join(' ')
       },
       ...(properties.length ? [{
         type: 'object',

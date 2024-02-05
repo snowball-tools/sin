@@ -79,6 +79,7 @@ async function start() {
       stdio: ['inherit', 'pipe', 'pipe', 'ipc'],
       execArgv: [
         '--import', '' + URL.pathToFileURL(path.join(dirname, 'import.js')),
+        '--trace-uncaught',
         '--inspect=' + port,
         ...(
           process.argv.indexOf('--') > -1
@@ -97,7 +98,7 @@ async function start() {
       ? ws = connect(data.slice(22).split('\n')[0].trim())
       : data.includes('Waiting for the debugger to disconnect...')
       ? ws && setTimeout(() => ws.close(), 200)
-      : data !== 'Debugger attached.\n' && !data.includes(api.log().exception.description)
+      : data !== 'Debugger attached.\n' && !lastException(data)
       ? api.log({ from: 'node', type: 'stderr', args: data })
       : null
   })
@@ -125,6 +126,15 @@ async function start() {
   await promise
   startPerf = performance.now()
   api.log({ replace, from: 'node', type: 'status', value: '🚀' })
+
+  function lastException(x) {
+    if (x.includes(`internalBinding('errors').triggerUncaughtException(`))
+      return true
+
+    const l = api.log().exception
+    const message = l?.preview?.properties?.find(x => x.name === 'message')?.value || l?.description
+    return l && x.includes(message)
+  }
 
   function duration() {
     return (performance.now() - startPerf).toFixed(2) + 'ms'

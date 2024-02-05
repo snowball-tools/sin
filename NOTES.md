@@ -26,6 +26,7 @@ function navigated(url) {
 }
 
 ## Todo
+- consider allowing s([attrs], ...children) to work as div without ``
 - allow direct views to route (`route({ '/' : s`...`(...) })`)
 - dialogs for installing packages
 - connect to all tabs (devtools)

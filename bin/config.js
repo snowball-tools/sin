@@ -94,8 +94,14 @@ function getEntry(alt = '', initial) {
     : path.join(
       process.cwd(),
       alt,
-        x !== path.basename(process.cwd()) && fs.existsSync(x + '.js') ? x + '.js'
-      : x !== path.basename(process.cwd()) ? path.join(x, x.endsWith('.js') ? '' : 'index.js')
+      fs.existsSync(x + '.js')
+        ? x + '.js'
+        : fs.existsSync(x + '.ts')
+        ? x + '.ts'
+        : fs.existsSync(path.join(x, x.endsWith('.js') ? '' : 'index.js'))
+        ? path.join(x, x.endsWith('.js') ? '' : 'index.js')
+        : fs.existsSync(path.join(x, x.endsWith('.ts') ? '' : 'index.ts'))
+        ? path.join(x, x.endsWith('.ts') ? '' : 'index.ts')
       : 'index.js'
     )
 

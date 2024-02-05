@@ -3,6 +3,9 @@ import path from 'path'
 import fs from 'fs'
 import net from 'net'
 import fsp from 'fs/promises'
+import esbuild from 'esbuild'
+
+const sucrase = await import('sucrase').catch(e => null)
 
 export async function reservePort() {
   return new Promise(resolve => {
@@ -66,6 +69,8 @@ export function extensionless(x, root = '') {
   return path.extname(x) ? x
     : canRead(path.join(root, x, 'index.js')) ? x + '/index.js'
     : canRead(path.join(root, x + '.js')) ? x + '.js'
+    : canRead(path.join(root, x, 'index.ts')) ? x + '/index.ts'
+    : canRead(path.join(root, x + '.ts')) ? x + '.ts'
     : x
 }
 
@@ -77,8 +82,15 @@ function canRead(x) {
   }
 }
 
-export function transform(buffer, filePath) {
-  return filePath.endsWith('.js')
+export function transform(buffer, filePath, type, r) {
+  if (filePath.endsWith('.ts')) {
+    r.set('Content-Type', 'text/javascript')
+    buffer = sucrase
+      ? sucrase.transform('' + buffer, { transforms: ['typescript'] }).code
+      : esbuild.transformSync(buffer, { loader: 'ts' }).code
+  }
+
+  return /\.[jt]s$/.test(filePath)
     ? modify(Buffer.from(buffer).toString(), path.dirname(filePath))
     : buffer
 }

@@ -1,6 +1,6 @@
 import path from 'path'
 import fs from 'fs'
-import url from 'url'
+import URL from 'url'
 
 import { jail } from './shared.js'
 
@@ -8,21 +8,25 @@ const cwd = process.cwd()
 
 export async function resolve(specifier, context, nextResolve) {
   if (path.isAbsolute(specifier) && !specifier.startsWith(cwd))
-    specifier = url.pathToFileURL(path.join(cwd, specifier)).href
+    specifier = URL.pathToFileURL(path.join(cwd, specifier)).href
 
   const x = specifier.startsWith('./') || specifier.startsWith('../')
-    ? path.join(path.dirname(url.fileURLToPath(context.parentURL)), specifier)
+    ? path.join(path.dirname(URL.fileURLToPath(context.parentURL)), specifier)
     : specifier.startsWith('file://')
-    ? url.fileURLToPath(specifier)
+    ? URL.fileURLToPath(specifier)
     : null
 
-  return x
-    ? nextResolve(extensionless(specifier, x), context)
-    : nextResolve(specifier, context)
+  const result = x
+    ? extensionless(specifier, x)
+    : specifier
+
+  return nextResolve(ts(result), context)
 }
 
 export async function load(url, context, nextLoad) {
-  const result = await nextLoad(url, context)
+  const result = url.endsWith('.ts')
+    ? ({ format: 'module', shortCircuit: true, source: fs.readFileSync(url.startsWith('file://') ? URL.fileURLToPath(url) : url) })
+    : await nextLoad(url, context)
   if (result.source && (context.format === 'commonjs' || context.format === 'module'))
     result.source = jail(result.source.toString())
   return result
@@ -41,4 +45,8 @@ function canRead(x) {
   } catch (_) {
     return
   }
+}
+
+function ts(x) {
+  return canRead(x.slice(0, -2) + 'ts') ? x.slice(0, -2) + 'ts' : x
 }

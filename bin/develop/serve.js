@@ -12,9 +12,9 @@ const router = ey()
 const highjack = {
   compressions: false,
   cache: false,
-  transform(buffer, filePath) {
+  transform(buffer, filePath, type, r) {
     process.send(filePath)
-    return transform(buffer, filePath)
+    return transform(buffer, filePath, type, r)
   }
 }
 

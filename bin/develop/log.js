@@ -22,3 +22,11 @@ log.trace = function(...xs) {
   console.trace ? console.trace(...xs) : console.log(...xs) // eslint-disable-line
   return xs.pop()
 }
+
+log.observe = function(...xs) {
+  console.log(...xs) // eslint-disable-line
+  // we can use the stack trace as an id
+  // if typeof x is an object we monitor it for changes
+  // if x is a value we wait for new calls to observe
+  return xs.pop()
+}

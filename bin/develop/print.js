@@ -144,7 +144,7 @@ function exception(x) {
         type: 'string',
         value: [
           x.exception.className + ':',
-          x.exception.preview.properties.find(x => x.name === 'message').value
+          x.exception.preview.properties.find(x => x.name === 'message')?.value
         ].filter(x => x).join(' ')
       },
       ...(properties.length ? [{

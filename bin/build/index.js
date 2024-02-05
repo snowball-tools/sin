@@ -2,17 +2,17 @@ import path from 'path'
 import '../env.js'
 
 const argv = process.argv.slice(2)
-const entry = argv.find(x => x.startsWith('./') || x.endsWith('.js')) || ''
+const entry = argv.find(x => x.startsWith('./') || /\.[jt]s$/.test(x)) || ''
 const root = path.isAbsolute(entry) ? entry : path.join(process.cwd(), entry)
-const file = root.endsWith('.js')
+const file = /\.[jt]s$/.test(root)
 
 process.chdir(process.env.PWD = file ? path.dirname(root) : root)
 
 const build = (await import('../../build/index.js')).default
 
 await build(
-  entry
-    ? { entryPoints: [file ? root : path.join(root, 'index.js')] }
+  entry && file
+    ? { entryPoints: [root] }
     : {}
 )
 

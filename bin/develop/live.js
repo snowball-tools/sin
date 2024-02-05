@@ -2,26 +2,24 @@ import path from 'path'
 import tls from 'tls'
 import net from 'net'
 import fs from 'fs/promises'
+
 import prexit from '../prexit.js'
+import config from './config.js'
 
-import api from './api.js'
-
-const { project, port } = api
-
-await fs.mkdir(project, { recursive: true })
+await fs.mkdir(config.project, { recursive: true })
 const empty = Buffer.alloc(21)
 empty[0] = 2
 empty.writeUInt32BE(21, 1)
 
-const idPath = path.join(project, '.sin-live')
+const idPath = path.join(config.project, '.sin-live')
 let id = await fs.readFile(idPath).catch(() => [])
 id.length !== 21 && (id = empty)
 
-connect(id, port, true).then(
+connect(id, config.port, true).then(
   data => {
     fs.writeFile(idPath, data).catch(console.error) // eslint-disable-line
     console.log('Live at https://' + data.readBigInt64BE(5).toString(36) + '.live.sinjs.com') // eslint-disable-line
-    for (let i = 0; i < 10; i++) connect(id, port).catch(() => {})
+    for (let i = 0; i < 10; i++) connect(id, config.port).catch(() => {})
   },
   error => {
     console.log('Could not start live', error)

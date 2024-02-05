@@ -7,7 +7,7 @@ import color from '../color.js'
 
 import config from './config.js'
 import api from './api.js'
-import { reservePort, jail } from './shared.js'
+import { reservePort, jail, Watcher } from './shared.js'
 import s from '../../src/index.js'
 
 const port = await reservePort()
@@ -21,6 +21,7 @@ let node
 
 prexit(close)
 
+Watcher(restart).add('.env')
 api.node.restart.observe(restart)
 api.node.hotload.observe(() =>
   node

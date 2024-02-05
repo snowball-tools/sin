@@ -100,6 +100,7 @@ s.redraw = redraw
 s.mount = mount
 s.css = (...x) => parse(x, null, 0, true)
 s.css.alias = alias
+s.css.reset = reset
 s.style = styleElement
 s.animate = animate
 s.http = http
@@ -1215,4 +1216,28 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
   )
 
   return after
+}
+
+function reset() {
+  // I always want these
+  s.css`
+    *,*::before,*::after{box-sizing border-box}
+    input,button,textarea,select{font inherit;tt none}
+    *{m 0;p 0;overflow-wrap break-word;hyphens auto}
+    body{ff system-ui, sans-serif}
+    body{lh calc(1em + .42rem)}
+    img,svg,video,canvas,audio,iframe,embed,object{d block;va middle}
+    img,video{max-width 100%;h auto}
+    ol,ul{list-style none}
+    body{min-height 100svh}
+    body{-webkit-font-smoothing: antialiased;text-rendering: optimizeLegibility;}
+`
+
+  // These are more rare
+  s.css`
+    img,video{background-repeat no-repeat;background-size cover;object-size cover;shape-margin 0.75rem}
+    button,[type='button'],[type='reset'],[type='submit']{-webkit-appearance button;bc transparent;bi none}
+    button,input,optgroup,select,textarea{c inherit}
+    :target{scroll-margin-block 5ex}
+  `
 }

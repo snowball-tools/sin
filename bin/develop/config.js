@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import config from '../config.js'
 
-const port      = parseInt(config.option('--port', config.port || getPort(config.home)))
+const port      = parseInt(config.option('--port', config.port || process.env.PORT || getPort(config.home)))
     , project   = path.join(config.home, port + '-' + path.basename(config.cwd))
     , url       = getUrl(config.home, port)
     , origin    = new URL(url).origin

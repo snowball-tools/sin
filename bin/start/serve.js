@@ -121,7 +121,7 @@ async function runAcme() {
   await fsp.writeFile(acmeFile, JSON.stringify(acme, null, 2))
 
   setTimeout(runAcme, 12 * 60 * 60 * 1000).unref()
-  const dir = path.join(config.acme.dir, config.acme.ca + '_' + config.acme.domains.join(',').replace(/\*/g, '_'))
+  const dir = path.join(config.acme.dir, config.acme.ca + '_' + (config.acme.rsa ? 'rsa' + config.acme.rsa : '') + config.acme.domains.join(',').replace(/\*/g, '_'))
   const jsonPath = path.join(dir, 'cert.json')
   const certPath = path.join(dir, 'cert.pem')
   const keyPath = path.join(dir, 'key.pem')

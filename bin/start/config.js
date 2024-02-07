@@ -30,6 +30,8 @@ function getAcme() {
   return {
     dir        : option('--acme-dir', path.join(config.home, 'acme'), env.ACME_DIR),
     domains    : option('--acme-domain', option('--acme-domains') || env.ACME_DOMAIN || env.ACME_DOMAINS).split(' '),
+    challenge  : option('--acme-challenge', env.ACME_CHALLENGE),
+    rsa        : option('--acme-rsa', env.ACME_RSA),
     email      : option('--acme-email', env.ACME_EMAIL),
     test       : option('--acme-test', env.ACME_TEST),
     eab        : option('--acme-eab', env.ACME_EAB),

@@ -1,4 +1,4 @@
-#! /usr/bin/env NODE_NO_WARNINGS=1 NODE_EXPERIMENTAL_WEBSOCKET=1 node
+#! /usr/bin/env -S node --experimental-websocket --no-warnings
 
 import path from 'path'
 

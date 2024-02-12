@@ -23,7 +23,7 @@ export async function tryRead(x) {
 }
 
 export function jail(x) {
-  return x.replace(/((function.*?\)|=>)\s*{)/g, '$1eval(0);')
+  return ('' + x).replace(/((function.*?\)|=>)\s*{)/g, '$1eval(0);')
 }
 
 const staticImport = /(?:`[^`]*`)|((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: from )?\s*['"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)(['"])/g // eslint-disable

@@ -81,12 +81,7 @@ async function start() {
       execArgv: [
         '--import', '' + URL.pathToFileURL(path.join(dirname, 'import.js')),
         '--trace-uncaught',
-        '--inspect=' + port,
-        ...(
-          process.argv.indexOf('--') > -1
-            ? process.argv.slice(process.argv.indexOf('--'))
-            : []
-        )
+        '--inspect=' + port
       ]
     }
   )

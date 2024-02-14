@@ -10,7 +10,7 @@ import cp from 'child_process'
 import prexit from '../prexit.js'
 import config from './config.js'
 import api from './api.js'
-import { reservePort, modify } from './shared.js'
+import { modify } from './shared.js'
 
 import s from '../../src/index.js'
 
@@ -29,13 +29,13 @@ await updateTabs(true)
 
 prexit(async() => {
   try {
-    for (const [_, x] of tabs) {
+    for (const x of tabs.values()) {
       if (x.ws) {
         await x.ws.request('Browser.close')
         break
       }
     }
-  } catch(error) {
+  } catch (error) {
     chrome && chrome.kill()
   }
 })
@@ -75,7 +75,7 @@ async function updateTabs(launch) {
   const xs = await getTabs(config.origin)
   await Promise.all(
     xs.map(async x => {
-      if (launch && x.url === 'about:blank')
+      if (launch && (x.url === 'about:blank' || x.url === 'chrome://newtab/'))
         s.http(root + '/json/close/' + x.id, { responseType: 'text' })
       else if (x.url.indexOf(config.origin) === 0) {
         launch && tabs.size === 0 && s.http(root + '/json/activate/' + x.id).catch(noop)
@@ -85,7 +85,6 @@ async function updateTabs(launch) {
   )
 
   if (launch && tabs.size === 0) {
-    console.log('hej')
     const x = await s.http.put(root + '/json/new?' + api.url())
     await connect(x)
   }
@@ -159,7 +158,7 @@ async function connect(tab) {
       return api.url(params.frame.url)
 
     if (method === 'Log.entryAdded')
-      return api.log({ from: 'browser', type: 'exception', type: params.entry.level, args: [{ type: 'string', value: params.entry.text }], stackTrace: { callFrames: [{ url: params.entry.url }]} })
+      return api.log({ from: 'browser', type: params.entry.level, args: [{ type: 'string', value: params.entry.text }], stackTrace: { callFrames: [{ url: params.entry.url }] } })
 
     if (method === 'Runtime.consoleAPICalled')
       return api.log({ ws, replace: Math.random(), from: 'browser', ...params })
@@ -167,10 +166,7 @@ async function connect(tab) {
     if (method === 'Runtime.exceptionThrown')
       return api.log({ from: 'browser', type: 'exception', ...params.exceptionDetails })
 
-    if (method === 'Target.targetCreated')
-      return updateTabs()
-
-    if (method === 'Target.targetInfoChanged')
+    if (method === 'Target.targetCreated' || method === 'Target.targetInfoChanged')
       return updateTabs()
 
     if (!requests.has(id))

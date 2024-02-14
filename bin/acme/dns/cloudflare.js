@@ -10,7 +10,7 @@ export async function add(name, content, domain) {
   const x = await fetch('https://api.cloudflare.com/client/v4/zones/' + zone + '/dns_records', {
     method: 'POST',
     headers: {
-      'Authorization': 'Bearer ' + token,
+      Authorization: 'Bearer ' + token,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({

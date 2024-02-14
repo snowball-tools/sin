@@ -6,19 +6,14 @@ import '../env.js'
 import ssr from '../../ssr/index.js'
 import { wrap } from '../../ssr/shared.js'
 
-const argv = process.argv.slice(2)
-    , entry = argv.find(x => x.startsWith('./') || /\.[jt]s$/.test(x)) || ''
-    , root = path.isAbsolute(entry) ? entry : path.join(process.cwd(), entry)
-    , file = root.endsWith('.js')
-    , rootFile = file ? root : path.join(root, 'index.js')
-    , hasEntry = fs.readFileSync(rootFile, 'utf8').indexOf('export default ') !== -1
-    , mount = hasEntry ? (await import(rootFile)).default : {}
-    , generated = new Set()
-    , noscript = argv.some(x => x === '--noscript')
+import config from '../config.js'
+
+const generated = new Set()
+    , { mount } = config.resolve()
 
 fs.rmSync('+build', { recursive: true, force: true })
 fs.mkdirSync('+build', { recursive: true })
-noscript || await import('../build/index.js')
+config.noscript || await import('../build/index.js')
 const start = performance.now()
 fs.cpSync('+public', '+build', { recursive: true, force: true })
 await generate()
@@ -34,7 +29,7 @@ async function generate(location = '/') {
       , indexPath = path.join('+build', ...location.split('/'), 'index.html')
 
   const html = wrap(x, {
-    body: noscript
+    body: config.noscript
       ? ''
       : '<script type=module async defer src="/index.js"></script>'
   })

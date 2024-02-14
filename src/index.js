@@ -9,7 +9,6 @@ import {
   scrollRestore,
   isObservable,
   ignoredAttr,
-  getClasses,
   scrollSize,
   stackTrace,
   cleanSlash,
@@ -19,7 +18,6 @@ import {
   resolved,
   mergeTag,
   isTagged,
-  notValue,
   getName,
   isEvent,
   asArray,
@@ -893,7 +891,8 @@ function attributes(dom, view, context) {
         dom[deferrableSymbol] = view.attrs[attr]
       }
     } else if (attr === 'value' && getName(tag) === 'input' && dom.value !== '' + view.attrs[attr]) {
-      let start, end
+      let start
+        , end
       if (dom === document.activeElement) {
         start = dom.selectionStart
         end = dom.selectionEnd

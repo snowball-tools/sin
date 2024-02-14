@@ -1,12 +1,13 @@
 import s from 'SIN'
 import api from './api.js'
-import Color from './eyedropper/color.js'
+import { OKLCHtoHEX, OKLCHtoCSS } from './eyedropper/color.js'
 
 export default s(({ over, x, y }) => {
   let cursor
     , measuring = false
 
   const scrolling = s.live()
+      , xy = s.live([0, 0])
       , rect = s.live({ t: 0, r: 0, b: 0, l: 0 })
       , h = rect.get(({ b, t }) => b - t)
       , w = rect.get(({ r, l }) => r - l)
@@ -15,6 +16,7 @@ export default s(({ over, x, y }) => {
       , lr = rect.get(({ r }) => r - x - 9)
       , lb = rect.get(({ b }) => b - y - 9)
 
+  s.live.from(x, y, (x, y) => xy([x, y]))
   s.live.from(over, x, y, scrolling, (over, x, y) => {
     if (measuring)
       return
@@ -63,8 +65,9 @@ export default s(({ over, x, y }) => {
       () => () => over() && (over().style.cursor = cursor),
       () => over.observe(clearCursor),
       s.on(document, 'copy', e => {
+        const x = api.color()
         e.preventDefault()
-        e.clipboardData.setData('text/plain', api.color() + ' / ' + new Color(api.color()).to('srgb').toString({ format: 'hex' }))
+        e.clipboardData.setData('text/plain', OKLCHtoCSS(x) + ' / ' + OKLCHtoHEX(x))
         api.inspect(false)
       }),
       s.on(window, 'scroll', (e) => {
@@ -85,7 +88,7 @@ export default s(({ over, x, y }) => {
       transform translate(${
         x.get(x => x > 120 ? -108 : 8)
       }, ${
-        y.get(y => y > window.innerHeight - 60 && (x() < 120 || x() > window.innerWidth - 220)
+        xy.get(([x, y]) => y > window.innerHeight - 60 && (x < 120 || x > window.innerWidth - 200)
           ? -78
           : y > 60
           ? -40
@@ -106,20 +109,20 @@ export default s(({ over, x, y }) => {
       position absolute
       d flex
       ai center
-      w 200
+      w 180
       gap 8
       h 32
       l 0
       t 0
       transition transform 0.2s
       transform translate(${
-        x.get(x => x > window.innerWidth - 220 ? -208 : 8)
+        x.get(x => x > window.innerWidth - 200 ? -188 : 8)
       }, ${
-        y.get(y => y < 60
-          ? (x() > window.innerWidth - 220 || x() < 220 ? 48 : 8)
+        xy.get(([x, y]) => y < 60
+          ? (x <= 120 || x > window.innerWidth - 200 ? 48 : 8)
           : y > window.innerHeight - 60
           ? -40
-          : (x() < 220 || x() > window.innerWidth - 220 ? 8 : -40)
+          : (x <= 120 || x > window.innerWidth - 200 ? 8 : -40)
         )
       })
       fs 12
@@ -128,6 +131,7 @@ export default s(({ over, x, y }) => {
       bc rgb(0 0 0/.85)
       backdrop-filter blur(5)
       c white
+      white-space pre
     `(
       s`
         flex-shrink 0
@@ -136,9 +140,13 @@ export default s(({ over, x, y }) => {
         br 13
         bs 0 0 0 1 rgb(255 255 255/.5)
         transition background-color .1s
-        bc ${ api.color }
+        bc ${ api.color.get(OKLCHtoCSS) }
       `,
-      api.color
+      s`pre`(
+        api.color.get(([l, c, h]) =>
+          (l * 100).toFixed(1) + '% ' + c.toFixed(3) + ' ' + h.toFixed(1)
+        )
+      )
     ),
     [lr, lb, ll, lt].map((x, i) => [
       s`

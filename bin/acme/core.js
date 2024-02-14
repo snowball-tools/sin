@@ -93,7 +93,7 @@ async function Acme({
       throw new Error('ACME: Wildcard certificates only works with DNS challenges')
 
     const domains = [].concat(domain.split(','))
-    console.log(rsa)
+
     rsa && (rsa = parseInt(rsa === true ? 2048 : rsa))
     key || (key = await createPrivateKey(rsa))
     ca === 'sslcom' && rsa && (root = root.replace(/-ecc$/, '-rsa'))

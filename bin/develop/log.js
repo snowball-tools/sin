@@ -23,6 +23,12 @@ log.trace = function(...xs) {
   return xs.pop()
 }
 
+log.inspect = function(...xs) {
+  console.log(...xs)
+  // Consider having inspect pre stringify the args
+  return xs.pop()
+}
+
 log.observe = function(...xs) {
   console.log(...xs) // eslint-disable-line
   // we can use the stack trace as an id

@@ -1,4 +1,4 @@
-import Color from './color.js'
+import { P3toOKLCH, sRGBtoOKLCH } from './color.js'
 import { createRequire } from 'module'
 
 const eyeDropper = createRequire(import.meta.url)('./eyedropper.node')
@@ -18,9 +18,7 @@ export default function(fn) {
       return
 
     color = x
-    fn(
-      new Color(x[3] ? 'p3' : 'srgb',
-      x.slice(0, 3).map(x => x / 255)).to('oklch').toString({ precision: 3 }).replace('none', '0')
-    )
+    const xs = x.map(x => x / 255)
+    fn(x[3] ? P3toOKLCH(xs) : sRGBtoOKLCH(xs))
   }
 }

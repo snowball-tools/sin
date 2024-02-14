@@ -7,11 +7,10 @@ import color from '../color.js'
 
 import config from './config.js'
 import api from './api.js'
-import { reservePort, jail, Watcher } from './shared.js'
+import { jail, Watcher } from './shared.js'
 import s from '../../src/index.js'
 
-const port = await reservePort()
-    , dirname = path.dirname(URL.fileURLToPath(import.meta.url))
+const dirname = path.dirname(URL.fileURLToPath(import.meta.url))
     , replace = Math.random()
 
 let node
@@ -81,7 +80,7 @@ async function start() {
       execArgv: [
         '--import', '' + URL.pathToFileURL(path.join(dirname, 'import.js')),
         '--trace-uncaught',
-        '--inspect=' + port
+        '--inspect=' + config.nodePort
       ]
     }
   )
@@ -90,7 +89,7 @@ async function start() {
   node.stdout.on('data', data => api.log({ from: 'node', type: 'stdout', args: data }))
   node.stderr.setEncoding('utf8')
   node.stderr.on('data', async(data) => {
-    data.includes('Debugger listening on ws://127.0.0.1:' + port)
+    data.includes('Debugger listening on ws://127.0.0.1:' + config.nodePort)
       ? ws = connect(data.slice(22).split('\n')[0].trim())
       : data.includes('Waiting for the debugger to disconnect...')
       ? ws && setTimeout(() => ws.close(), 200)

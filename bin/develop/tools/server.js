@@ -1,6 +1,8 @@
 import ey from 'ey'
+
 import api from '../api.js'
 import editor from './editor.js'
+import config from '../config.js'
 import eyeDropper from './eyedropper/index.js'
 
 let eyeDropperStop
@@ -20,13 +22,7 @@ app.ws({
   message: (ws, { json }) => json.event && events[json.event](json.data, ws)
 })
 
-const { port } = await app.listen()
-
-process.env.SIN_TOOLS_PORT = port
-
-export default {
-  port
-}
+await app.listen(config.devPort)
 
 api.browser.reload.observe(x => publish('reload', x))
 api.browser.redraw.observe(x => publish('redraw', x))

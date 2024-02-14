@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import config from '../config.js'
+import { reservePort } from './shared.js'
 
 const port      = parseInt(config.option('--port', config.port || process.env.PORT || getPort(config.home)))
     , project   = path.join(config.home, port + '-' + path.basename(config.cwd))
@@ -8,6 +9,9 @@ const port      = parseInt(config.option('--port', config.port || process.env.PO
     , origin    = new URL(url).origin
     , noBrowser = config.option('--no-browser')
     , live      = config.option('--live')
+    , devPort   = process.env.SIN_TOOLS_PORT = await getDevPort()
+    , nodePort  = await reservePort()
+    , chromePort= await getChromePort()
 
 export default {
   ...config,
@@ -16,7 +20,10 @@ export default {
   port,
   project,
   url,
-  origin
+  origin,
+  devPort,
+  nodePort,
+  chromePort
 }
 
 function getPort() {
@@ -39,4 +46,28 @@ function getUrl() {
   return fs.existsSync(x)
     ? fs.readFileSync(x, 'utf8')
     : 'http://127.0.0.1:' + port
+}
+
+async function getDevPort() {
+  const portPath = path.join(project, '.sin-dev-port')
+  try {
+    await fs.accessSync(path.join(project, 'SingletonSocket'))
+    return parseInt(fs.readFileSync(portPath, 'utf8'))
+  } catch (error) {
+    const port = await reservePort()
+    fs.writeFileSync(portPath, '' + port)
+    return port
+  }
+}
+
+async function getChromePort() {
+  const portPath = path.join(project, '.sin-chrome-port')
+  try {
+    await fs.accessSync(path.join(project, 'SingletonSocket'))
+    return parseInt(fs.readFileSync(portPath, 'utf8'))
+  } catch (error) {
+    const port = await reservePort()
+    fs.writeFileSync(portPath, '' + port)
+    return port
+  }
 }

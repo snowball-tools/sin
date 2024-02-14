@@ -21,7 +21,8 @@ function connect() {
     location.protocol.replace('http', 'ws') + location.hostname + ':' + window.sindev.getAttribute('port')
   )
   ws.onmessage = onmessage
-  ws.onclose = () => setTimeout(connect, 100)
+  ws.onclose = () => setTimeout(connect, 200)
+  ws.onerror = error => debug && console.error(error)
 }
 
 function send(event, data) {

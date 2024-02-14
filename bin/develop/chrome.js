@@ -5,57 +5,46 @@
 import fs from 'fs'
 import path from 'path'
 import util from 'util'
-import prexit from '../prexit.js'
 import cp from 'child_process'
 
+import prexit from '../prexit.js'
 import config from './config.js'
 import api from './api.js'
 import { reservePort, modify } from './shared.js'
 
 import s from '../../src/index.js'
 
-const port = await getPort()
-    , root = 'http://127.0.0.1:' + port
+const root = 'http://127.0.0.1:' + config.chromePort
     , hmr = 'if(window.self === window.top)window.hmr=1;'
     , replace = Math.random()
 
 api.log({ replace, from: 'browser', type: 'status', value: '⏳' })
 ensurePrefs()
+
+const tabs = new Map()
+const noop = () => { }
+
 const chrome = await spawn()
-
-let started
-const start = new Promise(r => started = r)
-const tabs = new Set((await getTabs(config.origin)).filter(x => {
-  if (x.url === 'about:blank')
-    s.http(root + '/json/close/' + x.id, { responseType: 'text' })
-
-  if (x.url.indexOf(config.origin) === 0) {
-    s.http(root + '/json/activate/' + x.id, { responseType: 'text' })
-    connect(x)
-    return x
-  }
-}))
-
-if (tabs.size === 0) {
-  const x = await s.http.put(root + '/json/new?' + api.url())
-  connect(x)
-  tabs.add(x)
-}
-
-await start
-
-api.log({ replace, from: 'browser', type: 'status', value: '🚀' })
-
-// prexit.exit on last tab close()
+await updateTabs(true)
 
 prexit(async() => {
-  chrome.kill()
+  try {
+    for (const [_, x] of tabs) {
+      if (x.ws) {
+        await x.ws.request('Browser.close')
+        break
+      }
+    }
+  } catch(error) {
+    chrome && chrome.kill()
+  }
 })
 
 api.browser.hotload.observe(hotload)
+api.log({ replace, from: 'browser', type: 'status', value: '🚀' })
 
 async function hotload(x) {
-  await Promise.all([...tabs].map(async({ ws }) => {
+  await Promise.all([...tabs].map(async([_, { ws }]) => {
     if (ws && ws.scripts.has(x.path)) {
       try {
         const r = await ws.request('Debugger.setScriptSource', {
@@ -73,28 +62,54 @@ async function hotload(x) {
         })
       } catch (e) {
         config.debug && api.log({ from: 'browser', type: 'hotload error', args: util.inspect(e) })
-        ws.request('Page.reload').catch(() => { /* noop */ })
+        ws.request('Page.reload').catch(noop)
       }
     } else if (ws) {
-      ws.request('Page.reload').catch(() => { /* noop */ })
+      ws.request('Page.reload').catch(noop)
     }
   }))
   api.browser.redraw()
 }
 
+async function updateTabs(launch) {
+  const xs = await getTabs(config.origin)
+  await Promise.all(
+    xs.map(async x => {
+      if (launch && x.url === 'about:blank')
+        s.http(root + '/json/close/' + x.id, { responseType: 'text' })
+      else if (x.url.indexOf(config.origin) === 0) {
+        launch && tabs.size === 0 && s.http(root + '/json/activate/' + x.id).catch(noop)
+        await connect(x)
+      }
+    })
+  )
+
+  if (launch && tabs.size === 0) {
+    console.log('hej')
+    const x = await s.http.put(root + '/json/new?' + api.url())
+    await connect(x)
+  }
+}
+
 async function connect(tab) {
+  if (tabs.has(tab.webSocketDebuggerUrl))
+    return
+
+  tabs.set(tab.webSocketDebuggerUrl, tab)
   let id = 1
 
   const ws = new WebSocket(tab.webSocketDebuggerUrl)
-      , requests = new Map()
+  const requests = new Map()
+
+  tab.ws = ws
 
   ws.scripts = new Map()
-  tab.ws = ws
   ws.onmessage = onmessage
-  ws.onerror = () => { /* noop */ }
+  ws.onerror = noop
   ws.onclose = () => closed(tab)
-  ws.onopen = onopen
   ws.request = request
+
+  return new Promise(r => ws.onopen = () => (r(), onopen()))
 
   async function request(method, params) {
     return ws.readyState === 1 && new Promise((resolve, reject) => {
@@ -111,13 +126,13 @@ async function connect(tab) {
   }
 
   async function onopen() {
-    started()
     await request('Runtime.enable')
     await request('Runtime.setAsyncCallStackDepth', { maxDepth: 128 })
     await request('Runtime.evaluate', { expression: hmr })
     await request('Debugger.enable').catch(e => api.log({ from: 'browser', type: 'chrome error', args: String(e) }))
     await request('Debugger.setBlackboxPatterns', { patterns: api.blackbox })
     await request('Network.enable')
+    await request('Target.setDiscoverTargets', { discover: true })
     await request('Network.setCacheDisabled', { cacheDisabled: true })
     await request('Log.enable')
     await request('Page.enable')
@@ -152,6 +167,12 @@ async function connect(tab) {
     if (method === 'Runtime.exceptionThrown')
       return api.log({ from: 'browser', type: 'exception', ...params.exceptionDetails })
 
+    if (method === 'Target.targetCreated')
+      return updateTabs()
+
+    if (method === 'Target.targetInfoChanged')
+      return updateTabs()
+
     if (!requests.has(id))
       return
 
@@ -175,11 +196,9 @@ async function connect(tab) {
 }
 
 async function closed(tab) {
-  tabs.delete(tab)
-  if (tabs.size === 0 && (await getTabs(config.origin)).length === 0) {
-    chrome.kill()
+  tabs.delete(tab.webSocketDebuggerUrl)
+  if (tabs.size === 0 && (await getTabs(config.origin)).length === 0)
     prexit.exit()
-  }
 }
 
 function isFile(x) {
@@ -234,7 +253,7 @@ async function spawn() {
       '--disable-infobars',
       '--test-type', // Remove warning banner from --disable-web-security usage
       '--user-data-dir=' + config.project,
-      '--remote-debugging-port=' + port,
+      '--remote-debugging-port=' + config.chromePort,
       'about:blank'
     ], {
       detached: true
@@ -251,16 +270,6 @@ async function spawn() {
 
     x.on('close', () => opened || reject('closed'))
   })
-}
-
-function getPort() {
-  try {
-    return cp.execSync(`netstat -vanp tcp | grep " ${
-      fs.readlinkSync(config.project).split('\n').pop().trim().split('-').pop()
-    } "`, { encoding: 'utf8' }).match(/127\.0\.0\.1\.([0-9]{4,5}) /)[1]
-  } catch (error) {
-    return reservePort()
-  }
 }
 
 function ensurePrefs() {

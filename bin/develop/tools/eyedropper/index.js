@@ -1,7 +1,9 @@
+import { createRequire } from 'node:module'
 import { P3toOKLCH, sRGBtoOKLCH } from './color.js'
-import { createRequire } from 'module'
 
-const eyeDropper = createRequire(import.meta.url)('./eyedropper.node')
+const eyeDropper = process.platform === 'darwin'
+  && process.arch === 'arm64'
+  && createRequire(import.meta.url)('./eyedropper.node')
 
 export default function(fn) {
   let color
@@ -12,7 +14,7 @@ export default function(fn) {
   return () => clearInterval(timer)
 
   function fetch() {
-    const x = eyeDropper()
+    const x = eyeDropper ? eyeDropper() : [0, 0, 0]
 
     if (color && color[0] === x[0] && color[1] === x[1] && color[2] === x[2])
       return

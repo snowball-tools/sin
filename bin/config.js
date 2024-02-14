@@ -1,93 +1,123 @@
-import '../ssr/index.js' // mocks window
 
-import fsp from 'fs/promises'
-import fs from 'fs'
-import url from 'url'
-import path from 'path'
+import os from 'node:os'
+import fs from 'node:fs'
+import fsp from 'node:fs/promises'
+import url from 'node:url'
+import path from 'node:path'
+
+import '../ssr/index.js' // mocks window
+import args from './args.js'
 import c from './color.js'
 
-let [
-  runtime,
-  bin,
-  ...argv
-] = process.argv
-
 const env = process.env
-const shorts = argv.reduce((a, x) => a + (x.length >= 2 && x[0] === '-' && x[1] !== '-' ? x.slice(1) : ''), '')
-const longs = argv.filter(x => x.length >= 3 && x[0] === '-' && x[1] === '-')
+const [runtime, bin, ...argv] = process.argv
 
-const command     = env.SIN_COMMAND = getCommand()
-const needsEntry  = ['develop', 'start', 'build', 'generate'].includes(command)
-const entry       = env.SIN_ENTRY = needsEntry && getEntry()
-const local       = env.SIN_LOCAL = getLocal()
-const cwd         = env.PWD = env.SIN_PWD = needsEntry ? path.dirname(entry).replace('/+build', '') : process.cwd()
-
-// switch to target dir early and load .env
-process.cwd() !== cwd && process.chdir(cwd)
-await import('./env.js')
-
-const home        = option('--home', getHome())
-const script      = option('script')
-const serveStatic = option('static')
-const noscript    = option('--noscript')
-const debug       = option('--debug')
-
-export default {
-  runtime,
-  bin,
-  home,
-  command,
-  entry,
-  local,
-  script,
-  serveStatic,
-  noscript,
-  cwd,
-  debug,
-  option,
-  resolve
+let config
+try {
+  config = { runtime, bin, ...(await fromArgs()) }
+} catch (e) {
+  if (process.argv.includes('-d') || process.argv.includes('--debug'))
+    throw e
+  error(e)
 }
 
-function getCommand() {
-  if (env.SIN_COMMAND)
-    return env.SIN_COMMAND
+config.version && config.$[0] === 'version'
+config.help && config.$[0] === 'help'
 
-  const commands = {
-    b: 'build',
-    c: 'create',
-    d: 'develop',
-    g: 'generate',
-    h: 'help',
-    p: 'purge',
-    r: 'run',
-    s: 'start',
-    v: 'version',
-    i: 'install'
+export default config
+
+async function fromArgs() {
+  const acme = {
+    dir         : (x, xs) => path.join(xs.home, 'acme'),
+    domains     : x => (x || env.ACME_DOMAIN || env.ACME_DOMAINS || '').split(',').filter(x => x),
+    challenge   : getChallenge,
+    rsa         : x => x || env.ACME_RSA,
+    email       : x => x || env.ACME_EMAIL,
+    test        : x => x || env.ACME_TEST,
+    eab         : x => x || env.ACME_EAB,
+    kid         : x => x || env.ACME_KID,
+    key         : x => x || env.ACME_KEY,
+    ca          : x => x || env.ACME_CA || 'letsencrypt'
   }
 
-  const alias = {
-    prod        : 'start',
-    production  : 'start',
-    development : 'develop'
-  }
-
-  const first = argv[0] in alias && alias[argv[0]] || argv[0] || process.env.SIN_COMMAND
-      , help = (argv.some(x => x === '-h' || x === '--help') || argv.length === 0) && 'help'
-      , version = argv.some(x => x === '-v' || x === '--version') && 'version'
-
-  return first
-    && first[0] in commands
-    && commands[first[0]].slice(0, first.length) === first
-    && commands[first[0]]
-    || help
-    || version
+  return args(argv, {
+    env: 'SIN',
+    commands: {
+      acme      : { $: true, list: 1, renew: 1, delete: 1 },
+      build     : 1,
+      create    : 1,
+      develop   : { $: true, script: 1, static: 1 },
+      generate  : 1,
+      help      : 1,
+      purge     : 1,
+      run       : 1,
+      start     : { $: true, script: 1, static: 1 },
+      version   : 1,
+      install   : 1
+    },
+    parameters: {
+      entry       : getEntry,
+      cwd         : getCWD,
+      local       : getLocal,
+      home        : getHome,
+      port        : getPort,
+      domain      : null,
+      server      : null,
+      ssl         : {
+        mode        : getMode,
+        cert        : x => x || env.SSL_CERT,
+        key         : x => x || env.SSL_KEY,
+        passphrase  : x => x || env.SSL_PASSPHRASE
+      },
+      acme,
+      secure      : (x, xs) => !!(xs.ssl.cert || xs.acme.domains.length),
+      httpsPort   : (x, xs) => x || (xs.secure ? (x ? parseInt(x) : (xs.port || 443)) : null),
+      httpPort    : (x, xs) => xs.secure && xs.ssl.mode === 'only' ? null : (xs.secure ? 80 : x ? parseInt(x) : 80),
+      address     : x => x || env.ADDRESS || '0.0.0.0',
+      workers     : x => x ? x === 'cpus' ? os.cpus().length : parseInt(x) : 1
+    },
+    flags: {
+      version   : false,
+      debug     : false,
+      help      : false,
+      live      : false,
+      nochrome  : false,
+      noscript  : false,
+      script    : (x, xs) => xs._[1] === 'script',
+      static    : (x, xs) => xs._[1] === 'static'
+    },
+    alias: {
+      development: 'develop',
+      production: 'start',
+      prod: 'start',
+      '-p': '--port',
+      '-l': '--live',
+      '-c': '--chrome',
+      '-h': '--help',
+      '-v': '--version',
+      '-d': '--debug',
+      '--acme-domain': '--acme-domains',
+      ...(argv[0] === 'acme' ? Object.keys(acme).reduce((acc, x) => (
+        acc['--' + x] = '--acme-' + x,
+        acc
+      ), {}) : {})
+    }
+  })
 }
 
-function getEntry(alt = '', initial) {
-  if (process.env.SIN_ENTRY)
-    return process.env.SIN_ENTRY
+function needsEntry(config) {
+  return ('develop start'.includes(config.$[0]) && config.$[1] !== 'static')
+      || 'build generate'.includes(config.$[0])
+}
 
-  const x = argv.slice(1).find(x => !'script static'.includes(x) && x[0] !== '-') || ''
+function getEntry(x, config, read, alt = '', initial) {
+  if (x)
+    return x
+
+  if (!needsEntry(config))
+    return ''
+
+  x = config._[0] || ''
 
   const entry = path.isAbsolute(x)
     ? x
@@ -107,25 +137,35 @@ function getEntry(alt = '', initial) {
 
   try {
     fs.readFileSync(entry, { length: 1 })
-  } catch (error) {
-    if (!alt)
-      return getEntry('+build', entry)
-
-    const x = '🚨 Entry file '+  (initial || entry) + ' is not available (' + error.code + ')'
-    process.stderr.write(
-      '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) +
-      '\n ' + c.inverse(('   ' + x).padEnd(process.stdout.columns - 2, ' ')) +
-      '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) + '\n\n'
-    )
-    process.exit(1)
+    return entry
+  } catch (e) {
+    return alt
+      ? error('No access ' + (initial || entry) + ' (' + e.code + ')')
+      : getEntry(null, config, read, '+build', entry)
   }
-
-  return entry
 }
 
-function getLocal() {
-  if (env.SIN_LOCAL)
-    return env.SIN_LOCAL
+function error(x) {
+  process.stderr.write(
+    '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) +
+    '\n ' + c.inverse(('   🚨 ' + x).padEnd(process.stdout.columns - 2, ' ')) +
+    '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) + '\n\n'
+  )
+  process.exit(1)
+}
+
+async function getCWD(x, config) {
+  x = env.PWD = x || needsEntry(config)
+    ? path.dirname(config.entry).replace('/+build', '')
+    : process.cwd()
+  process.cwd() !== x && process.chdir(x)
+  await import('./env.js')
+  return x
+}
+
+function getLocal(x, xs) {
+  if (x)
+    return x
 
   const local = path.join(process.cwd(), 'node_modules', 'sin')
   return fs.existsSync(local)
@@ -133,20 +173,8 @@ function getLocal() {
     : path.join(url.fileURLToPath(new URL('.', import.meta.url)), '..')
 }
 
-export function option(name, fallback, parse = x => x) {
-  const envName = 'SIN_' + name.toUpperCase().replace(/^-+/, '').replace(/-/g, '_')
-  const value = (longs.find(x => x === name) && name)
-             || (shorts.includes(name[2]) && name)
-             || (argv.includes(name) && name)
-             || process.env[envName]
-             || fallback
-             || undefined
-
-  return value && parse(process.env[envName] = value)
-}
-
-function getHome() {
-  const x = env.SIN_HOME || path.join(
+function getHome(x) {
+  x = x || path.join(
     process.platform === 'win32' && env.USER_PROFILE || env.HOME,
     '.sin'
   )
@@ -154,12 +182,56 @@ function getHome() {
   return x
 }
 
-async function resolve() {
+function getPort(x, config) {
+  if (x || process.env.PORT)
+    return parseInt(x || process.env.PORT)
+
+  if (config.$[0] !== 'develop')
+    return
+
+  const file = path.join(config.home, '.ports')
+  const ports = fs.existsSync(file)
+    ? JSON.parse(fs.readFileSync(file, 'utf8'))
+    : {}
+
+  if (config.cwd in ports)
+    return ports[config.cwd]
+
+  const port = 1 + (Object.values(ports).sort().find((x, i, xs) => xs[i + 1] !== x + 1) || 1336)
+  ports[config.cwd] = port
+  fs.writeFileSync(file, JSON.stringify(ports))
+  return port
+}
+
+function getMode(x) {
+  x = x || env.SSL_MODE || 'redirect'
+  if (!'only redirect optional'.includes(x))
+    throw new Error('SSL Mode must be: only | redirect | optional')
+  return x
+}
+
+async function getChallenge(challenge, config, read) {
+  challenge = challenge || env.ACME_CHALLENGE || 'http-01'
+  if (challenge === 'http-01')
+    return challenge
+
+  const x = await import('./acme/dns/' + challenge + '.js')
+  if (x.auth) {
+    for (const value of Object.values(x.auth)) {
+      const obj = { [value.replace(/_/g, '-').toLowerCase()]: x => env[value] = x || env[value] }
+      await read(obj)
+    }
+  }
+
+  return challenge
+}
+
+export async function resolve() {
   const cwd = process.cwd()
-      , hasExport = (await fsp.readFile(entry, 'utf8')).match(/export([\s]+default\s|[\s]*{.*[\s]+as[\s]+default)/)
-      , main = hasExport && await import(entry)
+      , hasExport = config.entry && (await fsp.readFile(config.entry, 'utf8')).match(/export([\s]+default\s|[\s]*{.*[\s]+as[\s]+default)/)
+      , main = hasExport && await import(config.entry)
       , http = main && typeof main.default === 'function' && main
-      , src = !http && !noscript && path.basename(entry)
+      , src = !http && !config.noscript && path.basename(config.entry)
       , mod = src && (await fsp.stat(path.join(cwd, '+build', src)).catch(() => fsp.stat(path.join(cwd, src)))).mtimeMs.toFixed(0)
 
   return {

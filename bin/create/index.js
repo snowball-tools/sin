@@ -1,7 +1,8 @@
-import fs from 'fs'
-import cp from 'child_process'
-import path from 'path'
-import readline from 'readline'
+import fs from 'node:fs'
+import cp from 'node:child_process'
+import path from 'node:path'
+import readline from 'node:readline'
+
 import c from '../color.js'
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })

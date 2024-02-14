@@ -1,6 +1,7 @@
+import path from 'node:path'
+import fs from 'node:fs'
+
 import esbuild from 'esbuild'
-import path from 'path'
-import fs from 'fs'
 
 export default async function(x = {}) {
   const cwd = process.cwd()

@@ -1,8 +1,8 @@
-import path from 'path'
-import fs from 'fs'
-import URL from 'url'
+import path from 'node:path'
+import fs from 'node:fs'
+import URL from 'node:url'
 
-export async function resolve(specifier, context, nextResolve) {
+export function resolve(specifier, context, nextResolve) {
   if (path.isAbsolute(specifier) && !specifier.startsWith(process.cwd()))
     specifier = URL.pathToFileURL(path.join(process.cwd(), specifier)).href
 

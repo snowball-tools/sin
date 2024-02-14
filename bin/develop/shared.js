@@ -1,8 +1,9 @@
-import url from 'url'
-import path from 'path'
-import fs from 'fs'
-import net from 'net'
-import fsp from 'fs/promises'
+import url from 'node:url'
+import path from 'node:path'
+import fs from 'node:fs'
+import net from 'node:net'
+import fsp from 'node:fs/promises'
+
 import esbuild from 'esbuild'
 
 const sucrase = await import('sucrase').catch(e => null)

@@ -33,7 +33,7 @@ s.trust = trust
 let lastWasText = false
   , wasText = false
 
-const noscript = process.argv.includes('--noscript')
+const noscript = !process.env.SIN_SCRIPT
 const ignoredServerAttr = x => x !== 'href' && x !== 'type' && ignoredAttr(x)
 const uidSymbol = Symbol('uid')
 const defaultTimeout = 1000 * 60 * 2

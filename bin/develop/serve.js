@@ -2,11 +2,11 @@
 
 import ey from 'ey'
 
-import config from './config'
+import config, { resolve } from './config.js'
 import { transform } from './shared.js'
 import ssr, { wrap } from '../../ssr/index.js'
 
-const { server, mount, src } = await config.resolve()
+const { server, mount, src } = await resolve()
 const head = getTools()
 const router = ey()
 const highjack = {
@@ -21,7 +21,13 @@ const highjack = {
 if (server)
   typeof server.default === 'function' && await server.default(router)
 
-if (!config.static) {
+if (config.static) {
+  router.get(
+    router.files(config._[0] || process.cwd(), {
+      cache: false
+    })
+  )
+} else {
   router.get(r => {
     r.header('Cache-Control', 'no-store')
     if (r.url.indexOf('/.') !== -1) // Don't serve hidden paths or dir up hacks
@@ -60,7 +66,7 @@ await router.listen(config.port)
 function getTools() {
   return `
     <script type=module id=sindev ${ process.env.SIN_DEBUG ? 'debug' : '' } port="${ process.env.SIN_TOOLS_PORT }" ${
-      true || process.env.SIN_DEBUG
+      process.env.SIN_DEBUG
         ? 'src="/node_modules/sin/bin/develop/tools/index.js">'
         : 'src="/node_modules/sin/bin/develop/tools/dist.js">'
     }</script>

@@ -1,12 +1,11 @@
 export const timeout = 20000
 
-export async function add(name, content, domain) {
-  const zone = process.env.CF_ZONE
-      , token = process.env.CF_TOKEN
+export const auth = {
+  zone: 'CF_ZONE',
+  token: 'CF_TOKEN'
+}
 
-  if (!zone && !token)
-    throw new Error('ACME: You must supply env CF_ZONE and CF_TOKEN')
-
+export async function add(name, content, domain, { zone, token }) {
   const x = await fetch('https://api.cloudflare.com/client/v4/zones/' + zone + '/dns_records', {
     method: 'POST',
     headers: {
@@ -28,11 +27,11 @@ export async function add(name, content, domain) {
   return (await x.json()).result.id
 }
 
-export async function remove(id) {
-  await fetch('https://api.cloudflare.com/client/v4/zones/' + process.env.CF_ZONE + '/dns_records/' + id, {
+export async function remove(id, { zone, token }) {
+  await fetch('https://api.cloudflare.com/client/v4/zones/' + zone + '/dns_records/' + id, {
     method: 'DELETE',
     headers: {
-      Authorization: 'Bearer ' + process.env.CF_TOKEN,
+      Authorization: 'Bearer ' + token,
       'X-Auth-Email': ''
     }
   })

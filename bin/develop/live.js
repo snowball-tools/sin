@@ -1,7 +1,7 @@
-import path from 'path'
-import tls from 'tls'
-import net from 'net'
-import fs from 'fs/promises'
+import path from 'node:path'
+import tls from 'node:tls'
+import net from 'node:net'
+import fs from 'node:fs/promises'
 
 import prexit from '../prexit.js'
 import config from './config.js'

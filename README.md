@@ -1,9 +1,9 @@
 <img align="center" width="100%"
   alt="Finally a proper marriage of HTML, CSS & JS"
-  src="sin.svg?sanitize=true"
+  src="https://sinjs.com/sin.svg"
 />
 
-# 🔥 sìn
+# 🔥 Sìn.js
 
 Sin is a framework for the rest of us, who can see past the sophisticated bloat of the status quo.
 

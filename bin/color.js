@@ -1,4 +1,4 @@
-import util from 'util'
+import util from 'node:util'
 
 const style = Object.entries(util.inspect.colors).reduce((acc, [name, [start, end]]) => {
   acc[name] = (xs, ...args) => {

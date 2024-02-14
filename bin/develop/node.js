@@ -1,8 +1,9 @@
-import fs from 'fs'
-import URL from 'url'
-import path from 'path'
+import fs from 'node:fs'
+import URL from 'node:url'
+import path from 'node:path'
+import cp from 'node:child_process'
+
 import prexit from '../prexit.js'
-import cp from 'child_process'
 import color from '../color.js'
 
 import config from './config.js'
@@ -73,8 +74,8 @@ async function start() {
 
   api.log({ replace, from: 'node', type: 'status', value: '⏳' })
   node = cp.fork(
-    config.script ? config.entry : path.join(dirname, 'serve.js'),
-    [],
+    config.$[1] === 'script' ? config.entry : path.join(dirname, 'serve.js'),
+    process.argv.slice(2),
     {
       stdio: ['inherit', 'pipe', 'pipe', 'ipc'],
       execArgv: [

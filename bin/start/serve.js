@@ -3,26 +3,29 @@ import path from 'node:path'
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import { isMainThread, parentPort } from 'node:worker_threads'
+
 import ey from 'ey'
 
-import config from './config.js'
+import config, { resolve } from '../config.js'
 import Acme from '../acme/core.js'
 
 import { tryPromise } from '../../src/shared.js'
 import ssr, { wrap } from '../../ssr/index.js'
 
 let sslListener
-const { server, mount, src, mod } = await config.resolve(config.entry)
+const { server, mount, src, mod } = await resolve(config.entry)
 const router = ey()
 
-config.acme && router.route(Acme.route(isMainThread ? {} : { get: getFromParent }))
+config.acme.domains.length && router.route(Acme.route(isMainThread ? {} : { get: getFromParent }))
 
 if (server) {
   server.esbuild && (await import('../../build/index.js')).default(server.esbuild)
   server.default && await server.default(router)
 }
 
-if (!config.static) {
+if (config.static) {
+  router.get(router.files(config._[0] || process.cwd()))
+} else {
   router.get(router.files('+build'))
   router.get(router.files('+public'))
   router.get(render)
@@ -31,7 +34,7 @@ if (!config.static) {
 if (config.httpPort)
   await listenHttp()
 
-if (config.ssl) {
+if (config.secure) {
   await listenHttps()
   let certChangeThrottle
   fs.watch(config.ssl.cert, () => {
@@ -46,14 +49,11 @@ if (config.ssl) {
   })
 }
 
-
-
-
 async function listenHttp() {
-  if (config.ssl && config.ssl.mode === 'redirect') {
+  if (config.secure && config.ssl.mode === 'redirect') {
     const redirect = ey()
 
-    config.acme && redirect.route(Acme.route(isMainThread ? {} : { get: getFromParent }))
+    config.acme.domains.length && redirect.route(Acme.route(isMainThread ? {} : { get: getFromParent }))
     redirect.all(r => {
       r.statusEnd(301, {
         Location: 'https://' + (r.headers.host || config.domain).split(':')[0] + r.url + (r.rawQuery ? '?' + r.rawQuery : '')
@@ -91,7 +91,7 @@ function render(r) {
     x => {
       r.end(
         wrap(x, {
-          body: src && '<script type=module src="/' + (src + '?v=' + mod) + '"></script>'
+          body: src ? '<script type=module src="/' + (src + '?v=' + mod) + '"></script>' : ''
         }),
         x.status || 200,
         {
@@ -107,7 +107,7 @@ function render(r) {
 }
 
 async function listenHttps() {
-  isMainThread && config.acme && await runAcme()
+  isMainThread && config.acme.domains.length && await runAcme()
   sslListener && (sslListener.unlisten(), sslListener = null)
   sslListener = await router.listen(config.httpsPort, config.address, config.ssl)
   console.log('HTTPS Listening on', config.httpsPort) // eslint-disable-line
@@ -121,10 +121,10 @@ async function runAcme() {
   await fsp.writeFile(acmeFile, JSON.stringify(acme, null, 2))
 
   setTimeout(runAcme, 12 * 60 * 60 * 1000).unref()
-  const dir = path.join(config.acme.dir, config.acme.ca + '_' + (config.acme.rsa ? 'rsa' + config.acme.rsa : '') + config.acme.domains.join(',').replace(/\*/g, '_'))
+  const dir = path.join(config.acme.dir, config.acme.ca + (config.acme.rsa ? '-rsa' + config.acme.rsa : '') + '_' + config.acme.domains.join(',').replace(/\*/g, '_'))
   const jsonPath = path.join(dir, 'cert.json')
-  const certPath = path.join(dir, 'cert.pem')
-  const keyPath = path.join(dir, 'key.pem')
+  const certPath = config.ssl.cert || path.join(dir, 'cert.pem')
+  const keyPath = config.ssl.key || path.join(dir, 'key.pem')
   const cert = await readOrNull(certPath)
   const left = cert && new Date(new crypto.X509Certificate(cert).validTo).getTime() - Date.now()
 
@@ -135,9 +135,10 @@ async function runAcme() {
       console.log('ACME: Waiting for 15 seconds so key change can propogate remotely') // eslint-disable-line
       await new Promise(r => setTimeout(r, 15000))
     }
-    const x = await acme.create(config.acme.domains.join(' '), {
-      ...config.ssl,
-      ...config.acme
+    const x = await acme.create({
+      ...config.acme,
+      key: config.ssl.key && fs.readFileSync(keyPath, 'utf8'),
+      passphrase: config.ssl.passphrase
     })
     await fsp.mkdir(dir, { recursive: true })
     await Promise.all([

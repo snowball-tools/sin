@@ -2,10 +2,10 @@
 
 // https://chromedevtools.github.io/devtools-protocol/
 
-import fs from 'fs'
-import path from 'path'
-import util from 'util'
-import cp from 'child_process'
+import fs from 'node:fs'
+import path from 'node:path'
+import util from 'node:util'
+import cp from 'node:child_process'
 
 import prexit from '../prexit.js'
 import config from './config.js'

@@ -1,15 +1,15 @@
 import { Worker, SHARE_ENV } from 'node:worker_threads'
+
 import '../../ssr/index.js'
+import config from '../config.js'
 
-import config from './config.js'
-
-const url = config.script
+const url = config.$[1] === 'script'
   ? './script.js'
   : './serve.js'
 
 await import(url)
 
-const Acme = config.acme && await import('../acme/core.js').then(x => x.default)
+const Acme = config.acme.domains.length && await import('../acme/core.js').then(x => x.default)
 
 for (let i = 1; i < (config.workers || 0); i++) {
   const worker = new Worker(new URL(url, import.meta.url), {

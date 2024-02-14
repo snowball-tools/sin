@@ -1,7 +1,7 @@
-import Url from 'url'
-import path from 'path'
-import prexit from '../prexit.js'
+import Url from 'node:url'
+import path from 'node:path'
 
+import prexit from '../prexit.js'
 import p from './log.js'
 import config from './config.js'
 import api from './api.js'
@@ -10,7 +10,7 @@ import c from '../color.js'
 let lines = 1
   , indent = 0
 
-p('\n' + padBoth('🔥' + (config.script ? ' ' + path.basename(config.entry) : ' at ' + api.url)) + '\n')
+p('\n' + padBoth('🔥' + (config.$[1] === 'script' ? ' ' + path.basename(config.entry) : ' at ' + api.url)) + '\n')
 
 api.browser.reload.observe(() => std({ from: 'browser', replace: 'browserhot', type: 'status', value: '🔄' }))
 api.browser.hotload.observe(() => std({ from: 'browser', replace: 'browserhot', type: 'status', value: '🔥' }))

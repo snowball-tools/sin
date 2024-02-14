@@ -1,4 +1,5 @@
-import path from 'path'
+import path from 'node:path'
+
 import '../env.js'
 
 const argv = process.argv.slice(2)

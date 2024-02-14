@@ -1,7 +1,7 @@
-import os from 'os'
-import fs from 'fs'
-import cp from 'child_process'
-import path from 'path'
+import os from 'node:os'
+import fs from 'node:fs'
+import cp from 'node:child_process'
+import path from 'node:path'
 
 import api from '../api.js'
 

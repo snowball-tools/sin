@@ -83,22 +83,26 @@ async function Acme({
 
   return acme
 
-  async function create(domain, {
-    challenge: challenger = 'http-01',
-    key,
-    passphrase,
-    rsa
-  } = {}) {
-    if (challenger === 'http-01' && domain.includes('*'))
-      throw new Error('ACME: Wildcard certificates only works with DNS challenges')
+  async function create(options) {
+    let {
+      domains,
+      challenge: challenger = 'http-01',
+      key,
+      passphrase,
+      rsa
+    } = options
 
-    const domains = [].concat(domain.split(','))
+    if (domains.length === 0)
+      throw new Error('ACME: No domain(s) specified')
+
+    if (challenger === 'http-01' && domains.some(x => x.includes('*')))
+      throw new Error('ACME: Wildcard certificates only works with DNS challenges')
 
     rsa && (rsa = parseInt(rsa === true ? 2048 : rsa))
     key || (key = await createPrivateKey(rsa))
     ca === 'sslcom' && rsa && (root = root.replace(/-ecc$/, '-rsa'))
 
-    log('Create order for ', domains, 'using', ca)
+    log('Create order for', domains, 'using', ca)
     const request = await session(root, acmePair.privateKey, kid)
 
     const { finalize, authorizations } = await request(request.dir.newOrder, {
@@ -106,18 +110,22 @@ async function Acme({
     }).then(x => x.json())
 
     log('Starting challenges')
+
+    const dns = challenger !== 'http-01' && await import('./dns/' + challenger + '.js')
+    const dnsAuth = dns && getAuth(dns.auth, options.auth)
+
     for (const [i, auth] of authorizations.entries()) {
       const domain = domains[i]
       log('Request challenge for', domain)
 
       const challenge = (await request(auth, '').then(x => x.json())).challenges.find(x =>
-        challenger === 'http-01' ? x.type === challenger : x.type === 'dns-01'
+        dns ? x.type === 'dns-01' : x.type === challenger
       )
 
       const reply = challenge.token + '.' + await jwkThumbprint(acmePair.publicKey)
-      const id = challenger === 'http-01'
-        ? challenges.set(challenge.token, { domain, reply })
-        : await addDNS(challenger, reply, domain)
+      const challengeResponse = dns
+        ? await addDNS(dns, challenger, reply, domain, dnsAuth)
+        : challenges.set(challenge.token, { domain, reply })
 
       log('Ready to answer challenge for', domain)
       try {
@@ -127,20 +135,20 @@ async function Acme({
 
         while (status !== 'valid') {
           if (++retries > 10)
-            throw new Error('ACME: Challenge timed out during status - ' + status)
+            throw new Error('ACME: Challenge timed out during status: ' + status)
 
           body = await request(challenge.url, !status ? {} : '').then(x => x.json())
           status = body.status
           log('Challenge', status, 'for', domain)
           if (status === 'invalid')
-            throw new Error('ACME: Challenge failed with status - invalid ' + JSON.stringify(body))
+            throw new Error('ACME: Challenge failed with status: invalid ' + JSON.stringify(body))
           else if (status !== 'valid')
             await new Promise(r => setTimeout(r, retries * 1000))
         }
       } finally {
-        challenger === 'http-01'
-          ? challenges.delete(challenge.token)
-          : await import('./dns/' + challenger + '.js').then(x => x.remove(id))
+        dns
+          ? await import('./dns/' + challenger + '.js').then(x => x.remove(challengeResponse, dnsAuth))
+          : challenges.delete(challenge.token)
       }
     }
 
@@ -158,17 +166,17 @@ async function Acme({
     log('Await certificate')
     while (status !== 'valid') {
       if (++retries > 10)
-        throw new Error('ACME: Challenge timed out during status - ' + status + ' ' + JSON.stringify(body))
+        throw new Error('ACME: Challenge timed out during status: ' + status + ' ' + JSON.stringify(body))
 
       const x = await request(location)
       body = await x.json()
       status = body.status
       const retry = x.headers.get('retry-after') || 10
-      log('Status - ' + status, ...(status !== 'valid' && retry ? ['retry in', retry, 'seconds'] : []))
+      log('Status: ' + status, ...(status !== 'valid' && retry ? ['retry in', retry, 'seconds'] : []))
       if (status === 'processing')
         await new Promise(r => setTimeout(r, retry * 1000))
       else if (status !== 'valid')
-        throw new Error('ACME: Challenge failed with status - ' + status + ' ' + JSON.stringify(body))
+        throw new Error('ACME: Challenge failed with status: ' + status + ' ' + JSON.stringify(body))
     }
 
     log('Fetch certificate URL')
@@ -183,19 +191,28 @@ async function Acme({
     ).then(x => x.text())
 
     log('Certificate ready')
-    return {
-      cert,
-      key
-    }
-  }
 
-  async function addDNS(challenger, reply, domain) {
-    const { add, timeout = 20000 } = await import('./dns/' + challenger + '.js')
-    log('Set TXT record for', domain, 'using', challenger)
-    const x = await add('_acme-challenge.' + domain.replace('*.', ''), await sha256base64(reply), domain)
-    log('TXT record set for', domain, 'wait', timeout / 1000, 'seconds for propogation')
-    await new Promise(r => setTimeout(r, timeout))
-    return x
+    return {
+      created: new Date(),
+      expires: new Date(new crypto.X509Certificate(cert).validTo),
+      challenge: challenger,
+      auth: dnsAuth,
+      passphrase,
+      domains,
+      cert,
+      rsa,
+      key,
+      ca
+    }
+
+    function getAuth(auth, oldAuth) {
+      return Object.entries(auth).reduce((acc, [key, value]) => {
+        acc[key] = process.env[value] || oldAuth[key]
+        if (!acc[key])
+          throw new Error('ACME: Missing auth ' + value + ' for ' + challenger)
+        return acc
+      }, {})
+    }
   }
 
   async function revoke(certificate, options) {
@@ -260,6 +277,14 @@ async function Acme({
 
     log('New account created')
     return x.headers.get('location')
+  }
+
+  async function addDNS(dns, challenger, reply, domain, dnsAuth) {
+    log('Set TXT record for', domain, 'using', challenger)
+    const x = await dns.add('_acme-challenge.' + domain.replace('*.', ''), await sha256base64(reply), domain, dnsAuth)
+    log('TXT record set for', domain, 'wait', dns.timeout / 1000, 'seconds for propogation')
+    await new Promise(r => setTimeout(r, dns.timeout))
+    return x
   }
 }
 
@@ -502,7 +527,6 @@ async function fetch(url, options = {}) {
       return x
 
     throw Object.assign(new Error('Bad status: ' + x.status), {
-      response: x,
       status: x.status,
       body: await x.text()
     })

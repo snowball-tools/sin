@@ -1,9 +1,9 @@
 /* eslint no-console: 0 */
 
-import '../../ssr/index.js'
+import fs from 'node:fs'
+import path from 'node:path'
 
-import fs from 'fs'
-import path from 'path'
+import '../../ssr/index.js'
 import s from '../../src/index.js'
 
 const depVersion = pkg(
@@ -37,4 +37,3 @@ function pkg(x) {
     ? fs.readFileSync(x) && JSON.parse(fs.readFileSync(x))
     : { dependencies: {}, packages: {} }
 }
-

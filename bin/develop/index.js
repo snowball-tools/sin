@@ -7,4 +7,4 @@ import config from './config.js'
 await import('./tools/server.js')
 await import('./node.js')
 config.live && await import('./live.js')
-config.script || config.noBrowser || await import('./chrome.js')
+config.script || config.nochrome || await import('./chrome.js')

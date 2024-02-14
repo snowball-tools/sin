@@ -1,15 +1,15 @@
-import fs from 'fs'
-import fsp from 'fs/promises'
-import path from 'path'
+import fs from 'node:fs'
+import fsp from 'node:fs/promises'
+import path from 'node:path'
 
 import '../env.js'
 import ssr from '../../ssr/index.js'
 import { wrap } from '../../ssr/shared.js'
 
-import config from '../config.js'
+import config, { resolve } from '../config.js'
 
 const generated = new Set()
-    , { mount } = config.resolve()
+    , { mount } = resolve()
 
 fs.rmSync('+build', { recursive: true, force: true })
 fs.mkdirSync('+build', { recursive: true })
@@ -29,9 +29,7 @@ async function generate(location = '/') {
       , indexPath = path.join('+build', ...location.split('/'), 'index.html')
 
   const html = wrap(x, {
-    body: config.noscript
-      ? ''
-      : '<script type=module async defer src="/index.js"></script>'
+    body: config.noscript ? '' : '<script type=module async defer src="/index.js"></script>'
   })
 
   await fsp.mkdir(path.dirname(indexPath), { recursive: true, force: true })

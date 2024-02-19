@@ -9,7 +9,7 @@ import { wrap } from '../../ssr/shared.js'
 import config, { resolve } from '../config.js'
 
 const generated = new Set()
-    , { mount } = resolve()
+    , { mount } = await resolve()
 
 fs.rmSync('+build', { recursive: true, force: true })
 fs.mkdirSync('+build', { recursive: true })

@@ -8,7 +8,7 @@ import color from '../color.js'
 
 import config from './config.js'
 import api from './api.js'
-import { jail, Watcher } from './shared.js'
+import { modify, Watcher } from './shared.js'
 import s from '../../src/index.js'
 
 const dirname = path.dirname(URL.fileURLToPath(import.meta.url))
@@ -43,8 +43,9 @@ api.node.hotload.observe(async x => {
   try {
     const r = ws && await ws.request('Debugger.setScriptSource', {
       scriptId: scripts.get(x.path),
-      scriptSource: jail(x.next)
+      scriptSource: modify(x.next, x.path)
     })
+
     r && r.status === 'CompileError' && api.log({
       from: 'browser',
       type: 'hotload error',
@@ -54,7 +55,7 @@ api.node.hotload.observe(async x => {
       }
     })
   } catch (e) {
-    config.debug && api.debug(e, x)
+    config.debug && console.log(e, x)
     restart()
   }
 })

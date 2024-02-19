@@ -33,13 +33,23 @@ const staticImport = /(?:`[^`]*`)|((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: 
     , dynamicImportDir = /(?:`[^`]*`)|([^$.]import\(\s?['"])((?:\.\/|\.\.\/|\/)+?[a-zA-Z0-9@/._-]+?(?<!\.[tj]s))(['"]\s?\))/g
     , resolveCache = Object.create(null)
 
-export function modify(x, path) {
-  return jail(
-    x.replace(staticImportDir, (_, a, b, c) => a ? a + extensionless(b, path) + c : _)
-     .replace(dynamicImportDir, (_, a, b, c) => a ? a + extensionless(b, path) + c : _)
-     .replace(staticImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
-     .replace(dynamicImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
-  )
+export function modify(x, file) {
+  if (file.endsWith('.ts')) {
+    x = sucrase
+      ? sucrase.transform(x, { transforms: ['typescript'] }).code
+      : esbuild.transformSync(x, { loader: 'ts' }).code
+  }
+
+  return jail(x)
+}
+
+export function rewrite(x, file) {
+  const dir = path.dirname(file)
+  return modify(x, file)
+    .replace(staticImportDir, (_, a, b, c) => a ? a + extensionless(b, dir) + c : _)
+    .replace(dynamicImportDir, (_, a, b, c) => a ? a + extensionless(b, dir) + c : _)
+    .replace(staticImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
+    .replace(dynamicImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
 }
 
 function resolve(n) {
@@ -84,15 +94,9 @@ function canRead(x) {
 }
 
 export function transform(buffer, filePath, type, r) {
-  if (filePath.endsWith('.ts')) {
-    r.set('Content-Type', 'text/javascript')
-    buffer = sucrase
-      ? sucrase.transform('' + buffer, { transforms: ['typescript'] }).code
-      : esbuild.transformSync(buffer, { loader: 'ts' }).code
-  }
-
+  r.headers.accept === '*/*' && r.set('Content-Type', 'text/javascript')
   return /\.[jt]s$/.test(filePath)
-    ? modify(Buffer.from(buffer).toString(), path.dirname(filePath))
+    ? rewrite(Buffer.from(buffer).toString(), filePath)
     : buffer
 }
 

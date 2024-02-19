@@ -24,8 +24,8 @@ export function loader(fn) {
     const result = url.endsWith('.ts')
       ? ({ format: 'module', shortCircuit: true, source: fs.readFileSync(url.startsWith('file://') ? URL.fileURLToPath(url) : url) })
       : await nextLoad(url, context)
-    if (fn && result.source && (context.format === 'commonjs' || context.format === 'module'))
-      result.source = fn(result.source)
+    if (fn && result.source && (result.format === 'module' || context.format === 'commonjs' || context.format === 'module'))
+      result.source = fn(result.source, url)
     return result
   }
 }

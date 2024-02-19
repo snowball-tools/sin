@@ -10,7 +10,7 @@ import cp from 'node:child_process'
 import prexit from '../prexit.js'
 import config from './config.js'
 import api from './api.js'
-import { modify } from './shared.js'
+import { rewrite } from './shared.js'
 
 import s from '../../src/index.js'
 
@@ -49,7 +49,7 @@ async function hotload(x) {
       try {
         const r = await ws.request('Debugger.setScriptSource', {
           scriptId: ws.scripts.get(x.path),
-          scriptSource: modify(x.next)
+          scriptSource: rewrite(x.next, x.path)
         })
 
         r.status === 'CompileError' && api.log({

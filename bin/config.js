@@ -83,8 +83,8 @@ async function fromArgs() {
       live      : false,
       nochrome  : false,
       noscript  : false,
-      script    : (x, xs) => xs._[1] === 'script',
-      static    : (x, xs) => xs._[1] === 'static'
+      script    : (x, xs) => xs.$[1] === 'script',
+      static    : (x, xs) => xs.$[1] === 'static'
     },
     alias: {
       development: 'develop',

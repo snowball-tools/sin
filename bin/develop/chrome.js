@@ -28,15 +28,16 @@ const chrome = await spawn()
 await updateTabs(true)
 
 prexit(async() => {
+  let ok
   try {
     for (const x of tabs.values()) {
       if (x.ws) {
-        await x.ws.request('Browser.close')
+        ok = await x.ws.request('Browser.close')
         break
       }
     }
-  } catch (error) {
-    chrome && chrome.kill()
+  } finally {
+    ok || chrome.kill()
   }
 })
 

@@ -137,14 +137,6 @@ async function connect(tab) {
     await request('Log.enable')
     await request('Page.enable')
     await request('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
-    false && setTimeout(() => {
-      request('Emulation.setDeviceMetricsOverride', {
-        width: 320,
-        height: 480,
-        deviceScaleFactor: 2,
-        mobile: true
-      }).then(console.log, console.error)
-    }, 2000)
   }
 
   function onmessage({ data }) {

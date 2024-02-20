@@ -7,11 +7,12 @@ import { reservePort } from './shared.js'
 const project = path.join(config.home, config.port + '-' + path.basename(config.cwd))
 fs.mkdirSync(project, { recursive: true })
 
-const url        = getUrl(config.home, config.port)
+const env        = process.env
+    , url        = env.SIN_URL = env.SIN_URL || getUrl(config.home, config.port)
     , origin     = new URL(url).origin
-    , devPort    = process.env.SIN_TOOLS_PORT = await getDevPort()
-    , nodePort   = await reservePort()
-    , chromePort = await getChromePort()
+    , devPort    = env.SIN_DEV_PORT = env.SIN_DEV_PORT || await getDevPort()
+    , nodePort   = env.SIN_NODE_PORT = env.SIN_NODE_PORT || await reservePort()
+    , chromePort = env.SIN_CHROME_PORT = env.SIN_CHROME_PORT || await getChromePort()
 
 export { resolve }
 

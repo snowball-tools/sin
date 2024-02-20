@@ -65,7 +65,7 @@ await router.listen(config.port)
 
 function getTools() {
   return `
-    <script type=module id=sindev ${ process.env.SIN_DEBUG ? 'debug' : '' } port="${ process.env.SIN_TOOLS_PORT }" ${
+    <script type=module id=sindev port="${ process.env.SIN_DEV_PORT }" ${ process.env.SIN_DEBUG ? 'debug' : '' } ${
       process.env.SIN_DEBUG
         ? 'src="/node_modules/sin/bin/develop/tools/index.js">'
         : 'src="/node_modules/sin/bin/develop/tools/dist.js">'

@@ -1217,7 +1217,7 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
   return after
 }
 
-function reset() {
+function reset(x = [], ...xs) {
   // I always want these
   s.css`
     *,*::before,*::after{box-sizing border-box}
@@ -1230,7 +1230,7 @@ function reset() {
     ol,ul{list-style none}
     body{min-height 100svh}
     body{-webkit-font-smoothing: antialiased;text-rendering: optimizeLegibility;}
-`
+  `
 
   // These are more rare
   s.css`
@@ -1239,4 +1239,6 @@ function reset() {
     button,input,optgroup,select,textarea{c inherit}
     :target{scroll-margin-block 5ex}
   `
+
+  return s.css(x, ...xs)
 }

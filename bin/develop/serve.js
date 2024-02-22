@@ -46,6 +46,9 @@ if (config.static) {
   router.get(router.files(highjack))
 
   router.get(async r => {
+    if (r.url.match(/\.[a-z0-9]+$/i) && !(r.headers.accept || '').startsWith('text/html'))
+      return
+
     const x = await ssr(
       mount,
       {},

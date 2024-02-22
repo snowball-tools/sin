@@ -82,6 +82,9 @@ function getFromParent(challenge) {
 }
 
 function render(r) {
+  if (r.url.match(/\.[a-z0-9]+$/i) && !(r.headers.accept || '').startsWith('text/html'))
+    return
+
   return tryPromise(
     ssr(
       mount,

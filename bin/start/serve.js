@@ -6,11 +6,12 @@ import { isMainThread, parentPort } from 'node:worker_threads'
 
 import ey from 'ey'
 
+import ssr, { wrap } from '../../ssr/index.js'
+import { tryPromise } from '../../src/shared.js'
+
 import config, { resolve } from '../config.js'
 import Acme from '../acme/core.js'
 
-import { tryPromise } from '../../src/shared.js'
-import ssr, { wrap } from '../../ssr/index.js'
 
 let sslListener
 const { server, mount, src, mod } = await resolve(config.entry)

@@ -187,13 +187,13 @@ function logArg(x, max) {
     : x.type === 'undefined' ? c.gray('undefined')
     : x.type === 'function' ? c.gray(x.className || 'Function')
     : x.type === 'object' ? (
-        x.preview ? (
+        x.subtype === 'null' ? c.gray('null')
+      : x.subtype === 'date' && !Number.isNaN(Date.parse(x.description)) ? c.magenta(new Date(x.description).toISOString())
+      : x.preview ? (
           x.subtype === 'array' ? logArray(x.preview.properties, max)
         : x.subtype === 'error' ? logError(x)
         : logObject(x.preview.properties, x.preview.overflow, max)
       )
-      : x.subtype === 'null' ? c.gray('null')
-      : x.subtype === 'date' ? c.magenta(new Date(x.description).toISOString())
       : '{…}'
     )
     : x.value

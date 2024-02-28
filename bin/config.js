@@ -43,6 +43,7 @@ async function fromArgs() {
   return args(argv, {
     env: 'SIN',
     commands: {
+      $         : 'help',
       acme      : { $: true, list: 1, renew: 1, delete: 1 },
       build     : 1,
       create    : 1,
@@ -92,7 +93,7 @@ async function fromArgs() {
       prod: 'start',
       '-p': '--port',
       '-l': '--live',
-      '-c': '--chrome',
+      '-n': '--nochrome',
       '-h': '--help',
       '-v': '--version',
       '-d': '--debug',

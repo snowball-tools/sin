@@ -35,8 +35,10 @@ export default async function(argv, options) {
     if (command) {
       process.env[commandEnv] = command
     } else {
-      if (commands.$)
+      if ('$' in commands) {
+        result.$.push(process.env[commandEnv] = commands.$)
         break
+      }
       throw new Error('Unknown command \'' + argv[0] + '\' - check help')
     }
   }

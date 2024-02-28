@@ -1,7 +1,7 @@
 <![Sin](https://sinjs.com/sin.svg)
 
 - 🔥 Full Stack Web Framework
-- 💍 HTML + CSS + JS in a sinful threesome
+- 💍 HTML, CSS & JS in a sinful threesome
 - 🧐 SPA, MPA, SSR, SSG, CLI, ACME, WAT
 - 👩‍💻 Best DX in town (sub eye blink Hot reload)
 - 💨 Lean and Fast (Only 2 dependencies) 12kbish
@@ -32,7 +32,7 @@ import sin from 'https://sinjs.com'
 
 ### Local development
 ```bash
-$ npx sin create
+npx sin create
 ```
 
 #### Good old fashioned non module script
@@ -54,24 +54,27 @@ $ npx sin create
   - variables
   - reset
   - animations
-  - s.animate
 * [Events](#events)
   - onclick
   - s.on
   - dom lifecycle
+  - s.animate
 * [Components](#components)
   - styled
   - stateless
   - stateful
   - async
 * [Routing](#routing)
+  - context.route
   - href
-  - Recursive
-  - Lazy
-  - Query
+  - Recursive nested context
+  - Lazy /yo: () => import('./yo.js') - code splitting
+  - Query route.query
 * [Structure](#structure)
   - index.js
   - +/index.js
+  - export default s.mount // ssr
+  - export default function(app) // server routing
   - +build
   - +public
 * [HTTP](#http)
@@ -79,7 +82,9 @@ $ npx sin create
   - s.http.get
   - ...
 * [CLI](#cli)
-  - live
+  - dev
+  - prod
+  - --live
   - building
 
 ## Components

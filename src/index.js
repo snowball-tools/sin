@@ -92,7 +92,7 @@ s.redrawing = false
 s.sleep = (x, ...xs) => new Promise(r => setTimeout(r, x, ...xs))
 s.with = (x, fn) => x === undefined ? x : fn(x)
 s.isAttrs = isAttrs
-s.isServer = false
+s.isServer = window.isServerSin || false
 s.pathmode = ''
 s.redraw = redraw
 s.mount = mount

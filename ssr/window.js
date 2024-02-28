@@ -14,6 +14,7 @@ class Node {
 export default window
 
 Object.assign(window, {
+  isServerSin: true,
   Node,
   XMLHttpRequest,
   scrollTo: noop,

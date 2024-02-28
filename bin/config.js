@@ -228,8 +228,8 @@ async function getChallenge(challenge, config, read) {
 
 export async function resolve() {
   const cwd = process.cwd()
-      , hasExport = config.entry && (await fsp.readFile(config.entry, 'utf8')).match(/export([\s]+default\s|[\s]*{.*[\s]+as[\s]+default)/)
-      , main = hasExport && await import(config.entry)
+      , hasExport = config.entry && (await fsp.readFile(config.entry, 'utf8')).match(/export(\s+default\s|\s*{\s*\w*\s+as\s+default)/)
+      , main = hasExport && (globalThis.window = (await import('../ssr/window.js')).default, await import(config.entry))
       , http = main && typeof main.default === 'function' && main
       , src = !http && !config.noscript && path.basename(config.entry)
       , mod = src && (await fsp.stat(path.join(cwd, '+build', src)).catch(() => fsp.stat(path.join(cwd, src)))).mtimeMs.toFixed(0)

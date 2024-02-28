@@ -113,24 +113,24 @@ wonderButton({
 
 
 ## The Stateless Component `s(() => ...)`
+
+The Stateless component accepts an object for attributes and an array of children  
 ```js
 // Definition
-const wonderButton = s(({ onclick, ...attrs }, children) =>
-  s`button
-    background hotpink
-  `({
+const statelessWonderButton = s(({ onclick, ...attrs }, children) =>
+  wonderButton({
     ...attrs,
     onclick: e => {
       alert('I was clicked')
       onclick(e)
     }
-  }
+  },
     children
   )
 )
 
 // Usage
-wonderButton({
+statelessWonderButton({
   onclick: () => alert('Are you really using alert? Yuck!')
 },
   'My wonderful button!'
@@ -139,7 +139,37 @@ wonderButton({
 
 ## The Stateful Component `s(() => () => ...)`
 
+The Stateful Component retains its state across redraws.
+```js
+// Definition
+const wonderStateButton = s(() => {
+  let count = 0
+  return () => wonderButton({
+  onclick: () => count++
+  },
+  `My wonderful button was clicked ${count} time${0 == count || count > 1 ? "'s" : "" }!`
+  )
+})
+
+// Usage
+s.mount(() => WonderStateButton)
+```
+The Async Component accepts an object that can handle the loading and error states.
 ## The Async Component `s(async() => () => ...)`
+```js
+// Definition
+const wonderAsyncButton = s(
+  {loading: wonderButton('Fetching Data...'), error: e => wonderButton(`oh oh there was an error: ${e}`)},
+  async () => {
+    let users = []
+    users = await s.sleep(3000).then(_ => s.http('https://jsonplaceholder.typicode.com/users'))
+    return async ()=>  wonderButton('Data Fetched Successfully'
+  )
+})
+
+// Usage
+s.mount(() => wonderAsyncButton)
+```
 
 # Routing
 

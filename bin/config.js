@@ -146,7 +146,7 @@ function getEntry(x, config, read, alt = '', initial) {
   }
 }
 
-function error(x) {
+export function error(x) {
   process.stderr.write(
     '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) +
     '\n ' + c.inverse(('   🚨 ' + x).padEnd(process.stdout.columns - 2, ' ')) +

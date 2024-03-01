@@ -364,7 +364,7 @@ function endBlock() {
     rule += propValue(rule, 'animation', animation + ' ' + temp)
     animation = ''
   } else {
-    const closing = selectors.map(x => x.charCodeAt(0) === 64 && isNested(x) ? '}' : '').join('')
+    const closing = selectors.map(x => x.charCodeAt(0) === 64 && isNested(x) ? '}' : '').join('') // @
     selectors.pop()
     selectors.length && selectors[0].indexOf('@keyframes') === 0
       ? rules[selectors[0]] = (rules[selectors[0]] || '') + selector + '{' + rule + '}'
@@ -433,7 +433,7 @@ export function formatValue(v, { property, fns, unit }) {
     return v + unit
 
   typeof v !== 'string' && (v = '' + v)
-  if (v.charCodeAt(0) === 36)
+  if (v.charCodeAt(0) === 36) // $
     return 'var(--' + v.slice(1) + ')'
 
   x = v

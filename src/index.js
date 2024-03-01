@@ -526,7 +526,7 @@ function Ret(dom, first = dom, last = first) {
 }
 
 function fromComment(dom) {
-  if (!dom || dom.nodeType !== 8 || dom.data.charCodeAt(0) !== 91)
+  if (!dom || dom.nodeType !== 8 || dom.data.charCodeAt(0) !== 91) // [
     return
 
   let l = parseInt(dom.data.slice(1))

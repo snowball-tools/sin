@@ -129,7 +129,7 @@ function matchRoutes(routes, paths) {
   let view
 
   function tryMatch(m, v) {
-    m.charCodeAt(0) !== 47 && (m = '/' + m)
+    m.charCodeAt(0) !== 47 && (m = '/' + m) // /
     m = tokenizePath(cleanSlash(m))
 
     if (typeof v === 'object' && v != null) {

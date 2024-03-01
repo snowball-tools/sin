@@ -1226,10 +1226,10 @@ function reset(x = [], ...xs) {
     input,button,textarea,select{font inherit;tt none}
     *{m 0;p 0;overflow-wrap break-word;hyphens auto}
     body{ff system-ui, sans-serif}
-    body{lh calc(1em + .42rem)}
+    p{lh 1.5}
     img,svg,video,canvas,audio,iframe,embed,object{d block;va middle}
     img,video{max-width 100%;h auto}
-    ol,ul{list-style none}
+    ol,ul,li{list-style none}
     body{min-height 100svh}
     body{-webkit-font-smoothing: antialiased;text-rendering: optimizeLegibility;}
   `

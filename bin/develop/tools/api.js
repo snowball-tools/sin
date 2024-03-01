@@ -22,7 +22,7 @@ function connect() {
   )
   ws.onmessage = onmessage
   ws.onclose = () => setTimeout(connect, 200)
-  ws.onerror = error => debug && console.error(error)
+  ws.onerror = error => debug && console.error(error) // eslint-disable-line
 }
 
 function send(event, data) {

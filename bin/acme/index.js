@@ -8,7 +8,7 @@ import config from '../config.js'
 import c from '../color.js'
 
 
-const log = console.log
+const log = console.log // eslint-disable-line
 ;({ create, list, renew, delete: del })[config.$[1] || 'create']()
 
 async function create() {

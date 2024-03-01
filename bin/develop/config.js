@@ -8,7 +8,7 @@ const project = path.join(config.home, config.port + '-' + path.basename(config.
 fs.mkdirSync(project, { recursive: true })
 
 const env        = process.env
-    , url        = env.SIN_URL = env.SIN_URL || getUrl(config.home, config.port)
+    , url        = env.SIN_URL = env.SIN_URL || getUrl(config.home, config.port)
     , origin     = new URL(url).origin
     , devPort    = env.SIN_DEV_PORT = env.SIN_DEV_PORT || await getDevPort()
     , nodePort   = env.SIN_NODE_PORT = env.SIN_NODE_PORT || await reservePort()

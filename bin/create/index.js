@@ -76,7 +76,7 @@ mk(target, 'package.json', JSON.stringify(pkg, null, 2))
 git && (cp.execSync('git init', { stdio: 'inherit' }), mk(target, '.gitignore', 'node_modules'))
 install && cp.execSync(npm + ' install porsager/sin', { stdio: 'inherit' })
 
-!global.print && console.log(
+!global.print && console.log( // eslint-disable-line
   cd
     ? '\nRun `cd ' + name + '` and then `' + run + ' dev` to start developing\n'
     : '\nRun `' + run + ' dev` to start developing\n'

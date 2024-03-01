@@ -55,7 +55,7 @@ api.node.hotload.observe(async x => {
       }
     })
   } catch (e) {
-    config.debug && console.log(e, x)
+    config.debug && console.log(e, x) // eslint-disable-line
     restart()
   }
 })

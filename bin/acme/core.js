@@ -102,7 +102,7 @@ async function Acme({
     key || (key = await createPrivateKey(rsa))
     ca === 'sslcom' && rsa && (root = root.replace(/-ecc$/, '-rsa'))
 
-    log('Create', rsa ? 'rsa' + rsa : 'ecdsa', 'order for', domains, 'using', ca, )
+    log('Create', rsa ? 'rsa' + rsa : 'ecdsa', 'order for', domains, 'using', ca)
     const request = await session(root, acmePair.privateKey, kid)
 
     const { finalize, authorizations } = await request(request.dir.newOrder, {

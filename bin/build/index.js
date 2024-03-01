@@ -17,4 +17,4 @@ await build(
     : {}
 )
 
-console.log('Finished in', performance.now())
+console.log('Finished in', performance.now()) // eslint-disable-line

@@ -24,7 +24,7 @@ log.trace = function(...xs) {
 }
 
 log.inspect = function(...xs) {
-  console.log(...xs)
+  console.log(...xs) // eslint-disable-line
   // Consider having inspect pre stringify the args
   return xs.pop()
 }

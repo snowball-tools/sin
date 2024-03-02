@@ -1,5 +1,4 @@
 import window from './window.js'
-import View from '../src/view.js'
 import {
   cleanHref,
   className,
@@ -55,13 +54,14 @@ const voidTags = new Set([
 ])
 
 export default function(mount, serverAttrs = {}, serverContext = {}) {
-  let { view = () => '', attrs = {}, context = {} } = mount || {}
+  let { view = () => '', attrs = {}, context = {}, View } = mount || {}
   serverContext.location = window.location = asLocation(
     typeof serverContext.location === 'string'
       ? new URL(serverContext.location, 'http://localhost/')
       : serverContext.location
   )
 
+  serverContext.View = View
   serverContext.query = query(s, window.location)
 
   const headers = {
@@ -77,6 +77,7 @@ export default function(mount, serverAttrs = {}, serverContext = {}) {
     lang: s.live(),
     title: s.live(''),
     status: s.live(200),
+    doctype: s.live('html'),
     links: s.live('', x => links.add(x)),
     head: s.live('', x => [].concat(x).forEach(x => head += typeof x === 'string' ? x : update(x, { ...context, noscript: true }))),
     headers: s.live({}, x => Object.assign(headers, x))
@@ -131,7 +132,7 @@ function update(view, context) {
   wasText = false
   const x = isFunction(view)
     ? update(view(), context)
-    : view instanceof View
+    : view instanceof context.View
       ? view.component
         ? updateComponent(view, context)
         : updateElement(view, context)

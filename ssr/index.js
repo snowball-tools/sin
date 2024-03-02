@@ -54,7 +54,10 @@ const voidTags = new Set([
 ])
 
 export default function(mount, serverAttrs = {}, serverContext = {}) {
-  let { view = () => '', attrs = {}, context = {}, View } = mount || {}
+  if (!mount)
+    return {}
+
+  let { view, attrs, context, View } = mount
   serverContext.location = window.location = asLocation(
     typeof serverContext.location === 'string'
       ? new URL(serverContext.location, 'http://localhost/')

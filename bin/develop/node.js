@@ -9,7 +9,6 @@ import color from '../color.js'
 import config from './config.js'
 import api from './api.js'
 import { modify, Watcher } from './shared.js'
-import s from '../../src/index.js'
 
 const dirname = path.dirname(URL.fileURLToPath(import.meta.url))
     , replace = Math.random()
@@ -33,7 +32,7 @@ async function restart(x) {
   api.log({ replace: 'nodeend', from: 'node', type: 'status', value: '🔄' })
   await close()
   await start()
-  x === 'reload' && s.sleep(200).then(() => api.browser.reload())
+  x === 'reload' && setTimeout(() => api.browser.reload(), 200)
 }
 
 api.node.hotload.observe(async x => {

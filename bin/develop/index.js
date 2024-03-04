@@ -1,4 +1,6 @@
 import './log.js'
+import '../../ssr/index.js'
+
 import './print.js'
 import './watch.js'
 

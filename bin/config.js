@@ -5,7 +5,6 @@ import fsp from 'node:fs/promises'
 import url from 'node:url'
 import path from 'node:path'
 
-import '../ssr/index.js' // mocks window
 import args from './args.js'
 import c from './color.js'
 

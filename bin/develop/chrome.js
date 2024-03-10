@@ -215,7 +215,11 @@ function getPath() {
     return process.env.CHROME_PATH.trim() // eslint-disable-line
 
   if (process.platform === 'darwin') {
-    return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+    return [
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+
+    ].find(fs.existsSync)
   } else if (process.platform === 'linux') {
     return cp.execSync('which google-chrome || which chromium || echo', { encoding: 'utf8' }).trim()
       || '/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe'

@@ -195,7 +195,7 @@ The most popular CSS properties can be references by its initials. A few popular
 
 ### Minimum node version
 
-The Sin CLI uses features introduced in node.js version 20, so you need to use this environment for development. This is also required for production when using the built-in sin runtime.
+The Sin CLI uses features introduced in node.js version 20.10, so you need to use this environment for development. This is also required for production when using the built-in sin runtime.
 
 ### sin create
 

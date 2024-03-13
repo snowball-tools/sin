@@ -235,9 +235,19 @@ export async function resolve() {
       , mod = src && (await fsp.stat(path.join(cwd, '+build', src)).catch(() => fsp.stat(path.join(cwd, src)))).mtimeMs.toFixed(0)
 
   return {
-    server: http ? main : (await import(path.join(cwd, '+', 'index.js')).catch(err => err.code === 'ERR_MODULE_NOT_FOUND' ? null : Promise.reject(err))),
+    server: http ? main : await defaultServer(),
     mount: !http && main && main.default,
     src,
     mod
+  }
+
+  async function defaultServer() {
+    const defaultServerPath = path.join(cwd, '+', 'index.js')
+    try {
+      return await import(defaultServerPath)
+    } catch(error) {
+      if (!error.url || error.code !== 'ERR_MODULE_NOT_FOUND' || url.fileURLToPath(error.url) !== defaultServerPath)
+        throw error
+    }
   }
 }

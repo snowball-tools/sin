@@ -116,7 +116,8 @@ export default function router(s, root, rootContext, parent) {
       key,
       route,
       ...route.params,
-      ...(root + path === key && routeState[root + path] || window.history.state || {})
+      ...(root + path === key && routeState[root + path] || window.history.state || {}),
+      ...options
     },
       view
     )

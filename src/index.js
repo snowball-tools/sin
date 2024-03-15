@@ -109,6 +109,7 @@ s.trust = trust
 s.route = router(s, '', { location: window.location, query: query(s, window.location) })
 s.window = window
 s.scroll = true
+s.View = View
 s.error = s((error) => {
   console.error(error) // eslint-disable-line
   return () => s`pre;all initial;d block;c white;bc #ff0033;p 8 12;br 6;overflow auto;fs 12`(s`code`(

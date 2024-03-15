@@ -7,7 +7,7 @@ export default function(s) {
       return component.apply(null, arguments)
 
     const { tag, attrs } = compileSelector(a)
-    b && typeof b === 'object' && b instanceof Date === false && Array.isArray(b) === false && b instanceof View === false
+    b && typeof b === 'object' && b instanceof Date === false && Array.isArray(b) === false && b instanceof s.View === false
       ? Object.assign(attrs, b, mergeClass(attrs, b))
       : rest.unshift(b)
 
@@ -48,28 +48,29 @@ export default function(s) {
     return selectorCache[selector] = { tag, attrs }
   }
 
-  function component(c, b, ...children) {
+  function component(c, ...children) {
+    const a = isAttrs(children[0]) ? children.shift() : {}
     return s(() => {
       const state = {}
-      const attrs = {}
+      const attrs = { ...a }
+      call(c.oninit || c, [{ attrs, state, children }], c)
 
-      isAttrs(b)
-        ? Object.assign(attrs, b)
-        : children.unshift(b)
+      return ({ attrs, children }) => {
+        const view = c.view({ state, attrs, children })
+        view.attrs ? (
+          view.attrs.dom = view.attrs.dom
+            ? [fn].concat(view.attrs.dom)
+            : fn
+        ) :
+        view.attrs = { dom: fn }
+        return view
 
-      c = typeof c === 'function'
-        ? call(c, [{ attrs, state, children }])
-        : (call(c.oninit, [{ attrs, state, children }]), c)
-
-      return (attrs, children) => {
-        return c.view({ state, attrs, children })
+        function fn(dom) {
+          call(c.oncreate, [{ state, attrs, children, dom }], c)
+          return () => call(c.onbeforeremove || c.onremove, [{ state, attrs, children, dom }])
+        }
       }
-    })({
-      dom: () => {
-        call(c.oncreate)
-        return call(c.onbeforeremove || c.onremove)
-      }
-    }, ...children)
+    })({ attrs: a, children })
   }
 
   function isAttrs(x) {
@@ -78,7 +79,7 @@ export default function(s) {
   }
 
   function call(x, args) {
-    return x && x.apply(null, args)
+    return x && typeof x === 'function' && x.apply(null, args)
   }
 
   m.mount = function(dom, view) {

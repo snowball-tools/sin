@@ -122,7 +122,7 @@ function renderProp(x) {
 function splitSelector(x) {
   return raw
     ? x
-    : x.replace(/,\s*[:[]?/g, x => noSpace(x.charCodeAt(x.length - 1)) ? ',&' + last(x) : ',& ')
+    : x.replace(/,\s*[:[&]?/g, x => noSpace(x.charCodeAt(x.length - 1)) ? ',&' + last(x) : ',& ')
 }
 
 function insert(rule, index) {

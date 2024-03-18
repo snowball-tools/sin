@@ -78,6 +78,7 @@ let start = -1
   , startChar = -1
   , quote = -1
   , char = -1
+  , prev = -1
   , lastSpace = -1
   , numberStart = -1
   , fontFaces = -1
@@ -95,6 +96,7 @@ let start = -1
   , id = ''
   , classes = ''
   , x = ''
+  , f = -1
   , value = ''
   , varName = ''
   , rules = null
@@ -269,6 +271,7 @@ function aliases(x) {
 
 function parseStyles(idx, end) {
   for (let i = idx; i <= x.length; i++) { // rewrite to i < length and avoid NaN charCode
+    prev = char
     char = x.charCodeAt(i)
     i < x.length && (hash = Math.imul(31, hash) + char | 0)
 
@@ -381,10 +384,12 @@ function endBlock() {
 function handleValue(i) {
   isNumber(char)
     ? numberStart === -1 && (numberStart = i)
+    : char === 40
+    ? cssVar = -1
     : afterValue(i)
 
   if (char === 40) // (
-    fn.push(x.slice(Math.max(lastSpace, valueStart), i))
+    fn.push(prev === 36 ? (valueStart++, f = i, 'calc') : x.slice(Math.max(lastSpace, valueStart), i)) // $
   else if (char === 41) // )
     fn.pop()
   else if (char === 9 || char === 32) // \t ws
@@ -403,10 +408,10 @@ function addCssVar(i) {
 
 function addUnit(i) {
   if (!isUnit(char) && x.charCodeAt(lastSpace) !== 35) { // #
-    value = value + x.slice(valueStart, i) + getUnit(prop, last(fn))
+    value = value + (f === -1 ? '' : 'calc') + x.slice(valueStart, i) + getUnit(prop, last(fn))
     valueStart = i
   }
-  numberStart = -1
+  numberStart = f = -1
 }
 
 function getUnit(prop, fn = '') {

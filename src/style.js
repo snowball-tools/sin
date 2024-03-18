@@ -108,7 +108,9 @@ let start = -1
   , fn = []
 
 function shorthand(x) {
-  return shorthands[x] || x
+  return x.charCodeAt(0) === 36
+    ? '--' + x.slice(1)
+    : shorthands[x] || x
 }
 
 function propValue(r, x, v) {

@@ -88,6 +88,7 @@ let start = -1
   , lastSpace = -1
   , numberStart = -1
   , fontFaces = -1
+  , cssVarAlpha = -1
   , cssVar = -1
   , temp = ''
   , prop = ''
@@ -326,7 +327,9 @@ function addRule(i) {
 }
 
 function afterValue(i) {
-  cssVar !== -1
+  cssVarAlpha !== -1
+    ? addCssVarAlpha(i)
+    : cssVar !== -1
     ? addCssVar(i)
     : numberStart !== -1 && addUnit(i)
 }
@@ -402,14 +405,28 @@ function handleValue(i) {
     lastSpace = i + 1
   else if (char === 36) // $
     cssVar = i
+  else if (char === 47) // $
+    cssVarAlpha = i
 }
 
 function addCssVar(i) {
-  if (!isLetter(char)) {
+  if (x.charCodeAt(i) === 47) { // /
+    cssVarAlpha = i
+  } else if (!isLetter(char)) {
     value = value + x.slice(valueStart, cssVar) + 'var(--' + x.slice(cssVar + 1, i) + ')'
     valueStart = i
     cssVar = -1
   }
+}
+
+function addCssVarAlpha(i) {
+  value = value
+    + x.slice(valueStart, cssVar)
+    + 'color-mix(in oklab, var(--' + x.slice(cssVar + 1, cssVarAlpha) + '), transparent '
+    + (100 - x.slice(cssVarAlpha + 1, i) * (x.charCodeAt(i) === 37 ? 1 : 100)).toFixed(0) // %
+    + '%)'
+  valueStart = i + 1
+  cssVar = cssVarAlpha = -1
 }
 
 function addUnit(i) {

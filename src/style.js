@@ -148,9 +148,9 @@ function insert(rule, index) {
 export function parse([xs, ...args], parent, nesting = 0, root = false) {
   style || styleElement()
   if (cache.has(xs)) {
-    const prev = cache.get(xs)
+    const cached = cache.get(xs)
     return {
-      ...prev,
+      ...cached,
       parent,
       args
     }

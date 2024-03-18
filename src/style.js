@@ -411,6 +411,9 @@ function addUnit(i) {
 
 function getUnit(prop, fn = '') {
   prop = shorthand(prop)
+  if (prop.charCodeAt(0) === 45  && prop.charCodeAt(1) === 45) // -
+    return ''
+
   const id = prop + ',' + fn
   if (hasOwn.call(unitCache, id))
     return unitCache[id]

@@ -8,12 +8,18 @@ const prefix = 's'
     , doc = window.document
     , vendorRegex = /^(ms|moz|webkit)[-A-Z]/i
     , div = doc.createElement('div')
+    , unitsCache = new Map()
     , aliasCache = {}
     , propCache = {}
     , unitCache = {}
 
 export const styleElement = x => style || (style = x || doc.querySelector('style.sin') || doc.createElement('style'))
 export const cssRules = () => style ? style.sheet.cssRules : []
+
+export const unit = (k, fn) => typeof fn === 'function'
+  ? unitsCache.set(k.charCodeAt(0), fn)
+  : Object.entries(k).forEach(([k, fn]) => unitsCache.set(k.charCodeAt(0), fn))
+
 export const alias = (k, v) => typeof v === 'string'
   ? aliasCache['@' + k] = v
   : Object.entries(k).forEach(([k, v]) => alias(k, v))
@@ -407,7 +413,12 @@ function addCssVar(i) {
 }
 
 function addUnit(i) {
-  if (!isUnit(char) && x.charCodeAt(lastSpace) !== 35) { // #
+  if (isUnit(char)) {
+    if (unitsCache.has(char)) {
+      value = value + unitsCache.get(char)(x.slice(valueStart, i))
+      valueStart = i + 1
+    }
+  } else if (x.charCodeAt(lastSpace) !== 35) { // #
     value = value + (f === -1 ? '' : 'calc') + x.slice(valueStart, i) + getUnit(prop, last(fn))
     valueStart = i
   }

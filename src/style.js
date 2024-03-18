@@ -317,9 +317,9 @@ function addRule(i) {
 }
 
 function afterValue(i) {
-  numberStart !== -1
-    ? addUnit(i)
-    : cssVar !== -1 && addCssVar(i)
+  cssVar !== -1
+    ? addCssVar(i)
+    : numberStart !== -1 && addUnit(i)
 }
 
 function startBlock(i) {

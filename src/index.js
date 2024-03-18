@@ -95,6 +95,7 @@ s.isAttrs = isAttrs
 s.isServer = window.isServerSin || false
 s.pathmode = ''
 s.redraw = redraw
+s.redraw.force = force
 s.mount = mount
 s.css = (...x) => parse(x, null, 0, true)
 s.css.alias = alias
@@ -310,6 +311,13 @@ function redraw() {
       : new Promise(r => redrawed = r)
   }
   return redrawer
+}
+
+function force() {
+  return new Promise(r => {
+    redrawed = r
+    globalRedraw()
+  })
 }
 
 function globalRedraw() {

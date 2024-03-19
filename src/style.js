@@ -4,7 +4,7 @@ import { popular, initials } from './shorthands.js'
 
 let style
 
-const prefix = '🅢'
+const prefix = 's'
     , doc = window.document
     , vendorRegex = /^(ms|moz|webkit)[-A-Z]/i
     , div = doc.createElement('div')

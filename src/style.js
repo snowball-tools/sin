@@ -171,7 +171,7 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
   path = '&&'
   name = id = classes = rule = value = prop = ''
   selectors.length = hash = 0
-  lastSpace = valueStart = fontFaces = startChar = cssVar = -1
+  lastSpace = valueStart = fontFaces = startChar = cssVar = cssVarAlpha = -1
   rules = raw ? {} : null
   hasRules = false
   styles = false
@@ -191,7 +191,7 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
       if (cssVars && valueStart >= 0 && arg !== '6invalidate') {
         temp = prefix + Math.abs(hash).toString(31)
         vars[varName = '--' + temp + j] = { property: prop, fns: fn.slice(-1), unit: getUnit(prop, last(fn)), index: j }
-        value += before + 'var(' + varName + ')'
+        value += before + 'var(' + varName + ')' + (cssVarAlpha === -1 ? '' : (cssVarAlpha = -1, args[j] = toOpacity('' + args[j], 0), ')'))
         valueStart = 0
       } else {
         const x = before + arg + getUnit(prop, last(fn))
@@ -423,10 +423,15 @@ function addCssVarAlpha(i) {
   value = value
     + x.slice(valueStart, cssVar)
     + 'color-mix(in oklab, var(--' + x.slice(cssVar + 1, cssVarAlpha) + '), transparent '
-    + (100 - x.slice(cssVarAlpha + 1, i) * (x.charCodeAt(i) === 37 ? 1 : 100)).toFixed(0) // %
-    + '%)'
+    + (x.length === cssVarAlpha + 1 ? '' : toOpacity(x.slice(cssVarAlpha + 1, i + 1)) + ')')
+
   valueStart = i + 1
-  cssVar = cssVarAlpha = -1
+  cssVar = -1
+}
+
+function toOpacity(x) {
+  cssVarAlpha = -1
+  return (100 - (x.charCodeAt(x.length - 1) === 37 ? x.slice(0, -1) : x * 100)).toFixed(0) + '%' // %
 }
 
 function addUnit(i) {

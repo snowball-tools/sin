@@ -432,7 +432,7 @@ function addCssVarAlpha(i) {
 function addUnit(i) {
   if (isUnit(char)) {
     if (unitsCache.has(char)) {
-      value = value + unitsCache.get(char)(x.slice(valueStart, i))
+      value = value + x.slice(valueStart, numberStart) + unitsCache.get(char)(x.slice(numberStart, i))
       valueStart = i + 1
     }
   } else if (x.charCodeAt(lastSpace) !== 35) { // #

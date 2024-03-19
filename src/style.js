@@ -190,8 +190,8 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
       window.isServer && isFunction(arg) && !isObservable(arg) && (arg = '6invalidate')
       if (cssVars && valueStart >= 0 && arg !== '6invalidate') {
         temp = prefix + Math.abs(hash).toString(31)
-        vars[varName = '--' + temp + j] = { property: prop, fns: fn.slice(-1), unit: getUnit(prop, last(fn)), index: j }
-        value += before + 'var(' + varName + ')' + (cssVarAlpha === -1 ? '' : (args[j] = getOpacityArg(args[j]), ')'))
+        vars[varName = '--' + temp + j] = { property: prop, fns: fn.slice(-1), unit: getUnit(prop, last(fn)), index: j, transform: cssVarAlpha !== -1 && getOpacityArg }
+        value += before + 'var(' + varName + ')' + (cssVarAlpha === -1 ? '' : (cssVarAlpha = -1, ')'))
         valueStart = 0
       } else {
         const x = before + arg + getUnit(prop, last(fn))
@@ -435,7 +435,6 @@ function getOpacity(x, after) {
 }
 
 function getOpacityArg(x) {
-  cssVarAlpha = -1
   return (100 - (typeof x === 'string' && x.charCodeAt(x.length - 1) === 37 ? x.slice(0, -1) : x * 100)).toFixed(0) + '%' // %
 }
 
@@ -472,8 +471,9 @@ function getUnit(prop, fn = '') {
   )
 }
 
-export function formatValue(v, { property, fns, unit }) {
+export function formatValue(v, { property, fns, unit, transform }) {
   isFunction(v) && (v = v())
+  transform && (v = transform(v))
   if (!v && v !== 0)
     return ''
 

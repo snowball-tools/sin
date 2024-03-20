@@ -405,7 +405,7 @@ function handleValue(i) {
     lastSpace = i + 1
   else if (char === 36) // $
     cssVar = i
-  else if (char === 47) // $
+  else if (cssVar !== -1 && char === 47)// /
     cssVarAlpha = i
 }
 

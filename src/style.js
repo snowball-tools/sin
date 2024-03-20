@@ -398,7 +398,7 @@ function handleValue(i) {
     : afterValue(i)
 
   if (char === 40) // (
-    fn.push(prev === 36 ? (valueStart++, f = i, 'calc') : x.slice(Math.max(lastSpace, valueStart), i)) // $
+    fn.push(prev === 36 ? (valueStart++, f = i, value += 'calc') : x.slice(Math.max(lastSpace, valueStart), i)) // $
   else if (char === 41) // )
     fn.pop()
   else if (char === 9 || char === 32) // \t ws
@@ -445,7 +445,7 @@ function addUnit(i) {
       valueStart = i + 1
     }
   } else if (x.charCodeAt(lastSpace) !== 35) { // #
-    value = value + (f === -1 ? '' : 'calc') + x.slice(valueStart, i) + getUnit(prop, last(fn))
+    value = value + x.slice(valueStart, i) + getUnit(prop, last(fn))
     valueStart = i
   }
   numberStart = f = -1

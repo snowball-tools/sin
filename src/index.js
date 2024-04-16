@@ -56,9 +56,11 @@ let afterUpdate = []
 
 export default function s(...x) {
   const type = typeof x[0]
-  return type === 'string' || x[0] instanceof View
+  return type === 'string'
     ? S(Object.assign([x[0]], { raw: [] }))(...x.slice(1))
-    : bind(S, isTagged(x[0])
+    : hasOwn.call(x[0], sSymbol)
+      ? x[0](...x.slice(1))
+      : bind(S, isTagged(x[0])
         ? tagged(x)
         : type === 'function'
           ? new View(s.redrawing, x)

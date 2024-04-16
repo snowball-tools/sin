@@ -56,7 +56,7 @@ let afterUpdate = []
 
 export default function s(...x) {
   const type = typeof x[0]
-  return type === 'string'
+  return type === 'string' || x[0] instanceof View
     ? S(Object.assign([x[0]], { raw: [] }))(...x.slice(1))
     : bind(S, isTagged(x[0])
         ? tagged(x)

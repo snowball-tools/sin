@@ -56,9 +56,10 @@ async function listenHttp() {
 
     config.acme.domains.length && redirect.route(Acme.route(isMainThread ? {} : { get: getFromParent }))
     redirect.all(r => {
-      r.statusEnd(301, {
-        Location: 'https://' + (r.headers.host || config.domain).split(':')[0] + r.url + (r.rawQuery ? '?' + r.rawQuery : '')
-      })
+      const target = r.headers.host || config.domain
+      target
+        ? r.statusEnd(301, { Location: 'https://' + target.split(':')[0] + r.url + (r.rawQuery ? '?' + r.rawQuery : '') })
+        : r.statusEnd(404)
     })
     await redirect.listen(config.httpPort, config.address)
     console.log('HTTP Redirecting to HTTPS on', config.httpPort) // eslint-disable-line

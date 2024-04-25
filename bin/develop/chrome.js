@@ -65,6 +65,8 @@ async function hotload(x) {
         config.debug && api.log({ from: 'browser', type: 'hotload error', args: util.inspect(e) })
         ws.request('Page.reload').catch(noop)
       }
+    } else if (ws && ws.sheets.has(x.path)) {
+      ws.request('CSS.setStyleSheetText', { styleSheetId: ws.sheets.get(x.path), text: x.next })
     } else if (ws) {
       ws.request('Page.reload').catch(noop)
     }
@@ -104,6 +106,7 @@ async function connect(tab) {
   tab.ws = ws
 
   ws.scripts = new Map()
+  ws.sheets = new Map()
   ws.onmessage = onmessage
   ws.onerror = noop
   ws.onclose = () => closed(tab)
@@ -136,6 +139,8 @@ async function connect(tab) {
     await request('Network.setCacheDisabled', { cacheDisabled: true })
     await request('Log.enable')
     await request('Page.enable')
+    await request('DOM.enable')
+    await request('CSS.enable')
     await request('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
   }
 
@@ -143,6 +148,9 @@ async function connect(tab) {
     const { id, method, params, error, result } = JSON.parse(data)
     if (method === 'Debugger.scriptParsed' && params.url)
       return parsed(params)
+
+    if (method === 'CSS.styleSheetAdded')
+      return css(params.header)
 
     if (method === 'Page.navigatedWithinDocument' && params.url.indexOf(config.origin) === 0)
       return api.url(params.url)
@@ -182,6 +190,20 @@ async function connect(tab) {
     ws.scripts.set(p, script.scriptId)
     api.browser.watch(p)
   }
+
+  function css(sheet) {
+    if (!sheet.sourceURL)
+      return
+
+    const x = path.join(config.cwd, '+public', new URL(sheet.sourceURL).pathname)
+    if (sheet.sourceURL.indexOf(config.origin) !== 0 || !isFile(x))
+      return
+
+    const p = fs.realpathSync(path.isAbsolute(x) ? x : path.join(process.cwd(), x))
+    ws.sheets.set(p, sheet.styleSheetId)
+    api.browser.watch(p)
+  }
+
 }
 
 async function closed(tab) {

@@ -100,9 +100,15 @@ export function transform(buffer, filePath, type, r) {
     : buffer
 }
 
-function pkgLookup(x, abs = x) {
-  const pkg = JSON.parse(fs.readFileSync(path.join(abs, 'package.json'), 'utf8'))
-  return x + '/' + (pkg.module || pkg.unpkg || pkg.main || 'index.js').replace(/^\.\//, '')
+function pkgLookup(x, abs) {
+  const pkg = JSON.parse(fs.readFileSync(path.join(abs || x, 'package.json'), 'utf8'))
+  const entry = pkg.exports?.['.'].browser?.import || (pkg.browser
+    ? typeof pkg.browser === 'string'
+      ? pkg.browser
+      : pkg.browser[pkg.module || pkg.main]
+    : pkg.module || pkg.main
+  )
+  return x + '/' + entry.replace(/^\.\//, '')
 }
 
 export function Watcher(fn) {

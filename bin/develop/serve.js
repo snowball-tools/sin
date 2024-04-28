@@ -9,7 +9,7 @@ import ssr, { wrap } from '../../ssr/index.js'
 const { server, mount, src } = await resolve()
 const head = getTools()
 const router = ey()
-const highjack = {
+const hijack = {
   compressions: false,
   cache: false,
   transform(buffer, filePath, type, r) {
@@ -42,9 +42,9 @@ if (config.static) {
     })
   )
 
-  router.get('/node_modules/sin', router.files(config.local, highjack))
-  router.get('/node_modules/SIN', router.files(config.local, highjack))
-  router.get(router.files(highjack))
+  router.get('/node_modules/sin', router.files(config.local, hijack))
+  router.get('/node_modules/SIN', router.files(config.local, hijack))
+  router.get(router.files(hijack))
   router.get('/favicon.ico', r => r.end(favicon()))
 
   router.get(async r => {

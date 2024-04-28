@@ -6,7 +6,10 @@ import fsp from 'node:fs/promises'
 
 import esbuild from 'esbuild'
 
+import replace from './replace.js'
+
 const sucrase = await import('sucrase').catch(e => null)
+const resolveCache = Object.create(null)
 
 export async function reservePort() {
   return new Promise(resolve => {
@@ -27,12 +30,6 @@ export function jail(x) {
   return ('' + x).replace(/((function.*?\)|=>)\s*{)/g, '$1eval(0);')
 }
 
-const staticImport = /(?:`[^`]*`)|((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: from )?\s*['"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)(['"])/g // eslint-disable
-    , dynamicImport = /(?:`[^`]*`)|([^$.]import\(\s?['"])([a-zA-Z1-9@][a-zA-Z0-9@/._-]*)(['"]\s?\))/g
-    , staticImportDir = /(?:`[^`]*`)|((?:import|export)\s*[{}0-9a-zA-Z*,\s]*\s*(?: from )?\s*['"])((?:\.\/|\.\.\/|\/)+?[a-zA-Z0-9@./_-]+?(?<!\.[tj]s))(['"])/g // eslint-disable
-    , dynamicImportDir = /(?:`[^`]*`)|([^$.]import\(\s?['"])((?:\.\/|\.\.\/|\/)+?[a-zA-Z0-9@/._-]+?(?<!\.[tj]s))(['"]\s?\))/g
-    , resolveCache = Object.create(null)
-
 export function modify(x, file) {
   if (file.endsWith('.ts')) {
     x = sucrase
@@ -41,15 +38,22 @@ export function modify(x, file) {
   }
 
   return jail(x)
+
+export function isScript(x) {
+  return /\.[jt]sx?$/i.test(x)
 }
 
 export function rewrite(x, file) {
   const dir = path.dirname(file)
-  return modify(x, file)
-    .replace(staticImportDir, (_, a, b, c) => a ? a + extensionless(b, dir) + c : _)
-    .replace(dynamicImportDir, (_, a, b, c) => a ? a + extensionless(b, dir) + c : _)
-    .replace(staticImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
-    .replace(dynamicImport, (_, a, b, c) => a ? a + '/' + resolve(b) + c : _)
+  return replace(
+    modify(x, file),
+    x => {
+      isScript(x) || (x = extensionless(x, dir))
+      return x.match(/^[a-zA-Z0-9@]/)
+        ? '/' + resolve(x)
+        : x
+    }
+  )
 }
 
 function resolve(n) {
@@ -77,11 +81,11 @@ function resolve(n) {
 export function extensionless(x, root = '') {
   x.indexOf('file:') === 0 && (x = x.slice(5))
   root = path.isAbsolute(x) ? process.cwd() : root
-  return path.extname(x) ? x
+  return isScript(x)                          ? x
     : canRead(path.join(root, x, 'index.js')) ? x + '/index.js'
-    : canRead(path.join(root, x + '.js')) ? x + '.js'
+    : canRead(path.join(root, x + '.js'))     ? x + '.js'
     : canRead(path.join(root, x, 'index.ts')) ? x + '/index.ts'
-    : canRead(path.join(root, x + '.ts')) ? x + '.ts'
+    : canRead(path.join(root, x + '.ts'))     ? x + '.ts'
     : x
 }
 
@@ -95,16 +99,18 @@ function canRead(x) {
 
 export function transform(buffer, filePath, type, r) {
   r.headers.accept === '*/*' && r.set('Content-Type', 'text/javascript')
-  return /\.[jt]s$/.test(filePath)
+  return isScript(filePath)
     ? rewrite(Buffer.from(buffer).toString(), filePath)
     : buffer
 }
 
 function pkgLookup(x, abs) {
   const pkg = JSON.parse(fs.readFileSync(path.join(abs || x, 'package.json'), 'utf8'))
-  const entry = pkg.exports?.['.'].browser?.import || (pkg.browser
+  const entry = pkg.exports?.['.']?.browser?.import || (pkg.browser
     ? typeof pkg.browser === 'string'
-      ? pkg.browser
+      ? pkg.browser.includes('umd.')
+        ? pkg.module || pkg.main
+        : pkg.browser
       : pkg.browser[pkg.module || pkg.main]
     : pkg.module || pkg.main
   )

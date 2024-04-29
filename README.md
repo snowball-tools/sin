@@ -1,10 +1,10 @@
-<![Sin](https://sinjs.com/sin.svg)
+![Sin](https://sinjs.com/sin.svg)
 
 - 🔥 Full Stack Web Framework
 - 💍 HTML, CSS & JS in a sinful threesome
 - 🧐 SPA, MPA, SSR, SSG, CLI, ACME, WAT
-- 👩‍💻 Best DX in town (sub eye blink Hot reload)
-- 💨 Lean and Fast (Only 2 dependencies) 12kbish
+- 👩‍💻 Best DX in town (sub eye blink hot reload)
+- 🏎️ Lean and Fast (Only 2 dependencies) 12kbish
 - 🐦 Follow on [Twitter](https://twitter.com/rporsager)
 
 # 🔥 Sìn.js - Your only dependency!
@@ -114,7 +114,7 @@ wonderButton({
 
 ## The Stateless Component `s(() => ...)`
 
-The Stateless component accepts an object for attributes and an array of children  
+The Stateless component accepts an object for attributes and an array of children
 ```js
 // Definition
 const statelessWonderButton = s(({ onclick, ...attrs }, children) =>

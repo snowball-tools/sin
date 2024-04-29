@@ -38,6 +38,7 @@ export function modify(x, file) {
   }
 
   return jail(x)
+}
 
 export function isScript(x) {
   return /\.[jt]sx?$/i.test(x)

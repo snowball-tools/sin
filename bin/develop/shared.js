@@ -57,7 +57,7 @@ export function rewrite(x, file) {
   return replace(
     modify(x, file),
     x => {
-      isScript(x) || (x = extensionless(x, dir))
+      isModule(x) || isScript(x) || (x = extensionless(x, dir))
       return isModule(x)
         ? '/' + resolve(x)
         : x

@@ -44,13 +44,21 @@ export function isScript(x) {
   return /\.[jt]sx?$/i.test(x)
 }
 
+export function isModule(x) {
+  const c = x.charCodeAt(0)
+  return c === 64              // @
+      || (c >= 48 && c <= 57)  // 0-9
+      || (c >= 65 && c <= 90)  // A-Z
+      || (c >= 97 && c <= 122) // a-z
+}
+
 export function rewrite(x, file) {
   const dir = path.dirname(file)
   return replace(
     modify(x, file),
     x => {
       isScript(x) || (x = extensionless(x, dir))
-      return x.match(/^[a-zA-Z0-9@]/)
+      return isModule(x)
         ? '/' + resolve(x)
         : x
     }

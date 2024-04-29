@@ -108,41 +108,27 @@ export default function(s, fn) {
 
 }
 
-function lastIndex(s, imp = s.lastIndexOf('import'), exp = s.lastIndexOf('export ', imp), first = true) {
-  const from = exp > imp
-      , max = s.length
-
-  if (imp === -1 && exp === -1)
+function lastIndex(s, imp = s.lastIndexOf('import'), from = s.lastIndexOf('export ')) {
+  if (imp === -1 && from === -1)
     return -1
 
   let c = -1
     , b = -1
     , i = -1
-    , w = -1
     , l = -1
 
-  for (i = Math.max(imp, exp); i < max; i++) {
+  for (i = Math.max(imp, from); i < s.length; i++) {
     c = s.charCodeAt(i)
     if (b === 34 || b === 39 || b === 96) { // " ' `
-      if (b === c && l !== 92) { // \
-        return first && from && s.slice(w - 4, w) !== 'from'
-          ? lastIndex(s, imp, -1, false)
-          : Math.min(i + 20, max)
-      }
+      if (b === c && l !== 92) // \
+        break
     } else if (b === 123) {                 // {
-      if (first && c === 40)                // (
-        return lastIndex(s, imp, -1, false)
-      else if (c === 125)                   // }
-        b = -1
-    } else if (c === 109) {                 // m
-      w = i + 1
+      b = -1
     } else if (c === 34 || c === 39 || c === 96 || c === 123) { // " ' ` {
       b = c
     }
     l = c
   }
 
-  return from
-    ? lastIndex(s, imp, -1, false)
-    : Math.min(i + 20, max)
+  return Math.min(i + 20, s.length)
 }

@@ -30,10 +30,10 @@ export function modify(x, file) {
             jsx: 'transform',
             loader: file.endsWith('.tsx') ? 'tsx' : 'ts',
             logLevel: config.debug ? 'debug' : undefined,
-            tsconfigRaw: config.tsconfigRaw,
+            tsconfigRaw: config.tsconfigRaw
           }).code
     }
-    catch( err) {
+    catch (err) {
       console.error("[Sin] modify failed:", err)
       throw err
     }

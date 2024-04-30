@@ -56,8 +56,8 @@ async function fromArgs() {
       install   : 1
     },
     parameters: {
-      publicDir    : (x, xs) => xs.cwd + '/+public',
-      buildDir     : (x, xs) => xs.cwd + '/+build',
+      publicDir   : (x, xs) => xs.cwd + '/+public',
+      buildDir    : (x, xs) => xs.cwd + '/+build',
       entry       : getEntry,
       cwd         : getCWD,
       local       : getLocal,
@@ -77,8 +77,8 @@ async function fromArgs() {
       httpPort    : (x, xs) => xs.secure && xs.ssl.mode === 'only' ? null : (xs.secure ? 80 : x ? parseInt(x) : 80),
       address     : x => x || env.ADDRESS || '0.0.0.0',
       workers     : x => x ? x === 'cpus' ? os.cpus().length : parseInt(x) : 1,
-      tsconfig     : (x, xs) => xs.cwd + '/tsconfig.json',
-      tsconfigRaw  : getTsconfigRaw,
+      tsconfig    : (x, xs) => xs.cwd + '/tsconfig.json',
+      tsconfigRaw : getTsconfigRaw
     },
     flags: {
       version   : false,
@@ -87,8 +87,8 @@ async function fromArgs() {
       live      : false,
       nochrome  : false,
       noscript  : false,
-      script    : (x, xs) => xs.$[1] === 'script',
-      static    : (x, xs) => xs.$[1] === 'static'
+      script    : (_, xs) => xs.$[1] === 'script',
+      static    : (_, xs) => xs.$[1] === 'static'
     },
     alias: {
       development: 'develop',
@@ -258,7 +258,7 @@ export async function resolve() {
     const defaultServerPath = path.join(cwd, '+', 'index.js')
     try {
       return await import(defaultServerPath)
-    } catch(error) {
+    } catch (error) {
       if (!error.url || error.code !== 'ERR_MODULE_NOT_FOUND' || url.fileURLToPath(error.url) !== defaultServerPath)
         throw error
     }

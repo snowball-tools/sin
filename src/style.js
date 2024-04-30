@@ -103,7 +103,6 @@ let start = -1
   , id = ''
   , classes = ''
   , x = ''
-  , f = -1
   , value = ''
   , varName = ''
   , rules = null
@@ -398,7 +397,7 @@ function handleValue(i) {
     : afterValue(i)
 
   if (char === 40) // (
-    fn.push(prev === 36 ? (valueStart++, f = i, value += 'calc') : x.slice(Math.max(lastSpace, valueStart), i)) // $
+    fn.push(prev === 36 ? (valueStart++, value += 'calc') : x.slice(Math.max(lastSpace, valueStart), i)) // $
   else if (char === 41) // )
     fn.pop()
   else if (char === 9 || char === 32) // \t ws
@@ -448,7 +447,7 @@ function addUnit(i) {
     value = value + x.slice(valueStart, i) + getUnit(prop, last(fn))
     valueStart = i
   }
-  numberStart = f = -1
+  numberStart = -1
 }
 
 function getUnit(prop, fn = '') {

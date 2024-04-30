@@ -1,6 +1,10 @@
 /* eslint no-console:0 */
 
+import url from 'node:url'
+import path from 'node:path'
+
 import ey from 'ey'
+import esbuild from 'esbuild'
 
 import favicon from '../favicon.js'
 import config, { resolve } from './config.js'
@@ -45,6 +49,7 @@ if (config.static) {
 
   router.get('/node_modules/sin', router.files(config.local, hijack))
   router.get('/node_modules/SIN', router.files(config.local, hijack))
+  router.get('/node_modules/*', build)
   router.get(router.files(hijack))
   router.get('/favicon.ico', r => r.end(favicon))
 
@@ -68,6 +73,24 @@ if (config.static) {
 }
 
 await router.listen(config.port)
+
+async function build(r) {
+  if (r.url.endsWith('.js'))
+    return r.file(path.join(config.cwd, r.url), hijack)
+
+  const result = await esbuild.build({
+    entryPoints: [path.join(config.cwd, r.url)],
+    bundle: true,
+    format: 'esm',
+    write: false,
+    platform: 'browser',
+    outdir: 'out'
+  })
+
+  r.end(result.outputFiles[0].text, {
+    'Content-Type': 'application/javascript'
+  })
+}
 
 function getTools() {
   const dev = true || process.env.SIN_DEBUG

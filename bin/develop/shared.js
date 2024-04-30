@@ -94,6 +94,9 @@ export function transform(buffer, filePath, type, r) {
 }
 
 function pkgLookup(x, abs) {
+  if (x !== 'node_modules/sin' && config.esbuild)
+    return x
+
   const pkg = JSON.parse(fs.readFileSync(path.join(abs || x, 'package.json'), 'utf8'))
   const entry = pkg.exports?.['.']?.browser?.import || (pkg.browser
     ? typeof pkg.browser === 'string'

@@ -27,8 +27,8 @@ if (server) {
 if (config.static) {
   router.get(router.files(config._[0] || process.cwd()))
 } else {
-  router.get(router.files('+build'))
-  router.get(router.files('+public'))
+  router.get(router.files(config.buildDir))
+  router.get(router.files(config.publicDir))
   router.get(render)
 }
 

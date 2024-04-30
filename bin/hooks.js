@@ -21,7 +21,7 @@ export function resolve(specifier, context, nextResolve) {
 
 export function loader(fn) {
   return async function(url, context, nextLoad) {
-    const result = url.endsWith('.ts')
+    const result = /tsx?$/.test(url)
       ? ({ format: 'module', shortCircuit: true, source: fs.readFileSync(url.startsWith('file://') ? URL.fileURLToPath(url) : url) })
       : await nextLoad(url, context)
     if (fn && result.source && (result.format === 'module' || context.format === 'commonjs' || context.format === 'module'))
@@ -46,5 +46,6 @@ function isFile(x) {
 }
 
 function ts(x) {
-  return isFile(x.slice(0, -2) + 'ts') ? x.slice(0, -2) + 'ts' : x
+  return isFile(x.slice(0, -3) + 'tsx') ? x.slice(0, -3) + 'tsx' :
+         isFile(x.slice(0, -2) + 'ts') ? x.slice(0, -2) + 'ts' : x
 }

@@ -74,7 +74,13 @@ async function fromArgs() {
       httpsPort   : (x, xs) => x || (xs.secure ? (x ? parseInt(x) : (xs.port || 443)) : null),
       httpPort    : (x, xs) => xs.secure && xs.ssl.mode === 'only' ? null : (xs.secure ? 80 : x ? parseInt(x) : 80),
       address     : x => x || env.ADDRESS || '0.0.0.0',
-      workers     : x => x ? x === 'cpus' ? os.cpus().length : parseInt(x) : 1
+      workers     : x => x ? x === 'cpus' ? os.cpus().length : parseInt(x) : 1,
+
+      tsconfig     : (x, xs) => xs.cwd + '/tsconfig.json',
+      tsconfigRaw  : getTsconfigRaw,
+
+      publicDir    : (x, xs) => xs.cwd + '/+public',
+      buildDir     : (x, xs) => xs.cwd + '/+build',
     },
     flags: {
       version   : false,
@@ -132,6 +138,8 @@ function getEntry(x, config, read, alt = '', initial) {
         ? path.join(x, x.endsWith('.js') ? '' : 'index.js')
         : fs.existsSync(path.join(x, x.endsWith('.ts') ? '' : 'index.ts'))
         ? path.join(x, x.endsWith('.ts') ? '' : 'index.ts')
+        : fs.existsSync(path.join(x, x.endsWith('.tsx') ? '' : 'index.tsx'))
+        ? path.join(x, x.endsWith('.tsx') ? '' : 'index.tsx')
       : 'index.js'
     )
 
@@ -141,8 +149,15 @@ function getEntry(x, config, read, alt = '', initial) {
   } catch (e) {
     return alt
       ? error('No access ' + (initial || entry) + ' (' + e.code + ')')
-      : getEntry(null, config, read, '+build', entry)
+      : getEntry(null, config, read, config.buildDir, entry)
   }
+}
+
+function getTsconfigRaw(x, config) {
+  if (x === null)
+    return undefined
+
+  return fs.existsSync(config.tsconfig) ? fs.readFileSync(config.tsconfig, 'utf8') : null
 }
 
 export function error(x) {

@@ -1,8 +1,17 @@
 import fs from 'node:fs'
+import net from 'node:net'
 import path from 'node:path'
 
 import config, { resolve } from '../config.js'
-import { reservePort } from './shared.js'
+
+async function reservePort() {
+  return new Promise(resolve => {
+    const server = net.createServer().listen(0, () => {
+      const x = server.address().port
+      server.close(() => resolve(x))
+    })
+  })
+}
 
 const project = path.join(config.home, config.port + '-' + path.basename(config.cwd))
 fs.mkdirSync(project, { recursive: true })

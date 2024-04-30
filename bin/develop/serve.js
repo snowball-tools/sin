@@ -36,7 +36,7 @@ if (config.static) {
   })
 
   router.get(
-    router.files('+public', {
+    router.files(config.publicDir, {
       compressions: false,
       cache: false
     })

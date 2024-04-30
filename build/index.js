@@ -6,17 +6,19 @@ import esbuild from 'esbuild'
 export default async function(x = {}) {
   const cwd = process.cwd()
       , ts = canRead('index.ts')
+      , tsx = ts ? false : canRead('index.tsx')
 
-  let { plugins, ...options } = x
+
+  let { plugins, config, ...options } = x
   return await esbuild.build({
-    entryPoints: [ts ? 'index.ts' : 'index.js'],
+    entryPoints: [ts ? 'index.ts' : tsx ? 'index.tsx' : 'index.js'],
     bundle: true,
     splitting: true,
     sourcemap: 'external',
     minify: true,
-    outdir: '+build',
+    outdir: config.buildDir,
     format: 'esm',
-    loader: ts && 'ts',
+    tsconfigRaw: config.tsconfigRaw,
     ...options,
     plugins: [
       {
@@ -44,6 +46,8 @@ function extensionless(x) {
     : canRead(x + '.js') ? x + '.js'
     : canRead(path.join(x, 'index.ts')) ? x + '/index.ts'
     : canRead(x + '.ts') ? x + '.ts'
+    : canRead(path.join(x, 'index.tsx')) ? x + '/index.tsx'
+    : canRead(x + '.tsx') ? x + '.tsx'
     : x
 }
 

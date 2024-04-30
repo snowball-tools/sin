@@ -1,24 +1,15 @@
 import url from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs'
-import net from 'node:net'
 import fsp from 'node:fs/promises'
 
 import esbuild from 'esbuild'
 
+import config from './config.js'
 import replace from './replace.js'
 
 const sucrase = await import('sucrase').catch(e => null)
 const resolveCache = Object.create(null)
-
-export async function reservePort() {
-  return new Promise(resolve => {
-    const server = net.createServer().listen(0, () => {
-      const x = server.address().port
-      server.close(() => resolve(x))
-    })
-  })
-}
 
 export async function tryRead(x) {
   return fsp.readFile(x, 'utf8')
@@ -31,17 +22,28 @@ export function jail(x) {
 }
 
 export function modify(x, file) {
-  if (file.endsWith('.ts')) {
-    x = sucrase
-      ? sucrase.transform(x, { transforms: ['typescript'] }).code
-      : esbuild.transformSync(x, { loader: 'ts' }).code
+  if (/\.tsx?$/.test(file)) {
+    try {
+      x = sucrase && !file.endsWith('.tsx')
+        ? sucrase.transform(x, { transforms: ['typescript'] }).code
+        : esbuild.transformSync(x, {
+            jsx: 'transform',
+            loader: file.endsWith('.tsx') ? 'tsx' : 'ts',
+            logLevel: config.debug ? 'debug' : undefined,
+            tsconfigRaw: config.tsconfigRaw,
+          }).code
+    }
+    catch( err) {
+      console.error("[Sin] modify failed:", err)
+      throw err
+    }
   }
 
   return jail(x)
 }
 
 export function isScript(x) {
-  return /\.[jt]sx?$/i.test(x)
+  return /\.[mc]?[jt]sx?$/i.test(x)
 }
 
 export function isModule(x) {
@@ -90,11 +92,13 @@ function resolve(n) {
 export function extensionless(x, root = '') {
   x.indexOf('file:') === 0 && (x = x.slice(5))
   root = path.isAbsolute(x) ? process.cwd() : root
-  return isScript(x)                          ? x
-    : canRead(path.join(root, x, 'index.js')) ? x + '/index.js'
-    : canRead(path.join(root, x + '.js'))     ? x + '.js'
-    : canRead(path.join(root, x, 'index.ts')) ? x + '/index.ts'
-    : canRead(path.join(root, x + '.ts'))     ? x + '.ts'
+  return isScript(x)                           ? x
+    : canRead(path.join(root, x, 'index.js'))  ? x + '/index.js'
+    : canRead(path.join(root, x + '.js'))      ? x + '.js'
+    : canRead(path.join(root, x, 'index.tsx')) ? x + '/index.tsx'
+    : canRead(path.join(root, x + '.tsx'))     ? x + '.tsx'
+    : canRead(path.join(root, x, 'index.ts'))  ? x + '/index.ts'
+    : canRead(path.join(root, x + '.ts'))      ? x + '.ts'
     : x
 }
 

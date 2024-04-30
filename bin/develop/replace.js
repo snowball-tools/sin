@@ -52,8 +52,7 @@ export default function(s, fn) {
     : c === 91  ?  push(c)                                   // [
     : c === 123 ?  push(c)                                   // {
     : n === 0   && (c === 10 || c === 59) ? (r = rc = -1)    // \n ;
-    : ws(c)     ?  (v = i, vc = c)
-    : r === -1  && (r = i, rc = c)
+    : ws(c) || (v = i + 1, vc = c, r === -1 && (r = i, rc = c))
 
     u = l
     l = c

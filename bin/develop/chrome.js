@@ -195,7 +195,7 @@ async function connect(tab) {
     if (!sheet.sourceURL)
       return
 
-    const x = path.join(config.cwd, '+public', new URL(sheet.sourceURL).pathname)
+    const x = path.join(config.cwd, config.publicDir, new URL(sheet.sourceURL).pathname)
     if (sheet.sourceURL.indexOf(config.origin) !== 0 || !isFile(x))
       return
 

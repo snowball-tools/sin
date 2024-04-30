@@ -56,8 +56,8 @@ async function fromArgs() {
       install   : 1
     },
     parameters: {
-      publicDir   : (x, xs) => xs.cwd + '/+public',
-      buildDir    : (x, xs) => xs.cwd + '/+build',
+      publicDir   : (x, xs) => '+public',
+      buildDir    : (x, xs) => '+build',
       entry       : getEntry,
       cwd         : getCWD,
       local       : getLocal,
@@ -169,7 +169,7 @@ export function error(x) {
 
 async function getCWD(x, config) {
   x = env.PWD = x || needsEntry(config)
-    ? path.dirname(config.entry).replace('/+build', '')
+    ? path.dirname(config.entry).replace('/' + config.buildDir, '')
     : process.cwd()
   process.cwd() !== x && process.chdir(x)
   await import('./env.js')
@@ -245,7 +245,7 @@ export async function resolve() {
       , main = hasExport && (globalThis.window = (await import('../ssr/window.js')).default, await import(config.entry))
       , http = main && typeof main.default === 'function' && main
       , src = !http && !config.noscript && path.basename(config.entry)
-      , mod = src && (await fsp.stat(path.join(cwd, '+build', src)).catch(() => fsp.stat(path.join(cwd, src)))).mtimeMs.toFixed(0)
+      , mod = src && (await fsp.stat(path.join(cwd, config.buildDir, src)).catch(() => fsp.stat(path.join(cwd, src)))).mtimeMs.toFixed(0)
 
   return {
     server: http ? main : await defaultServer(),

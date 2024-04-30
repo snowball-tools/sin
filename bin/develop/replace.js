@@ -14,7 +14,7 @@ export default function(s, fn) {
     , n = 0
     , v = 0
     , m = 0
-    , r = 0
+    , r = -1
     , b = -1
     , i = -1
     , c = -1
@@ -22,6 +22,7 @@ export default function(s, fn) {
     , u = -1
     , mc = -1
     , vc = -1
+    , rc = -1
     , lend = 0
     , last = 0
     , start = 0
@@ -41,6 +42,7 @@ export default function(s, fn) {
     : b === 91  && c === 93  ? pop()                         // [ ]
     : b === 40  && c === 41  ? pop(1, 0)                     // ( )
     : b === 123 && c === 125 ? pop(0, 1)                     // { }
+    : b === 112 && c === 125 ? pop(0, 1)                     // p }
     : c === 47  && l === 47  ? push(c)                       // / /
     : c === 42  && l === 47  ? push(c)                       // / *
     : c === 34  ?  push(c)                                   // "
@@ -49,8 +51,9 @@ export default function(s, fn) {
     : c === 40  ?  push(c)                                   // (
     : c === 91  ?  push(c)                                   // [
     : c === 123 ?  push(c)                                   // {
-    : n === 0   && (c === 10 || c === 59) ? (r = i + 1)      // \n ;
-    : ws(c) || (v = i + 1, vc = c)
+    : n === 0   && (c === 10 || c === 59) ? (r = rc = -1)    // \n ;
+    : ws(c)     ?  (v = i, vc = c)
+    : r === -1  && (r = i, rc = c)
 
     u = l
     l = c
@@ -66,7 +69,13 @@ export default function(s, fn) {
     }
     b = c
     start = i
-    b === 40 && (m = v, mc = vc) // (
+
+    if (b === 123 && (rc === 101 || rc === 105) && ((t = s.slice(r, r + 6)) === 'import' || t === 'export')) {
+      b = 112
+    } else if (b === 40) {  // (
+      m = v
+      mc = vc
+    }
   }
 
   function pop(ob = 0, oe = 0, string = false) {
@@ -81,7 +90,7 @@ export default function(s, fn) {
         x += s.slice(last, lstart) + fn(t)
         last = lend
       }
-    } else if (string && n === 0 && port(s.slice(r, r + 6))) {
+    } else if (string && n === 0 && (rc === 101 || rc === 105) && port(s.slice(r, r + 6))) {
       x += s.slice(last, start + ob) + fn(s.slice(start + ob, i + oe))
       last = i + oe
     }
@@ -90,6 +99,7 @@ export default function(s, fn) {
     lstart = start + 1
     lb = string
     if (n === 0) {
+      b === 112 || (r = rc = -1)
       b = -1
       start = -1
     } else {

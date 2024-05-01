@@ -654,7 +654,10 @@ function removeChildren(dom, parent) {
 
 function tagChanged(dom, view, context) {
   return (dom[keySymbol] !== view.key && !context.hydrating) // eslint-disable-line
-       || dom.nodeName.toLowerCase() !== (getName(view.tag).toLowerCase() || 'div')
+       || (context.NS
+         ? dom.nodeName !== getName(view.tag)
+         : dom.nodeName.toLowerCase() !== (getName(view.tag).toLowerCase() || 'div')
+       )
 }
 
 function createElement(view, context) {

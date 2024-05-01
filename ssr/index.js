@@ -154,7 +154,9 @@ function update(view, context) {
 }
 
 function updateElement(view, context) {
-  const tag = (getName(view.tag) || 'div').toLowerCase()
+  const tag = context.NS
+    ? getName(view.tag)
+    : (getName(view.tag) || 'div').toLowerCase()
   const internal = !String(view.attrs.href).match(/^[a-z]+:|\/\//)
   if (hasOwn.call(view.attrs, 'id') === false) {
     const id = getId(view.tag)

@@ -621,7 +621,9 @@ function updateElement(
   create = dom === null || tagChanged(dom, view, context)
 ) {
   const previousNS = context.NS
-  view.attrs.xmlns || NS[getName(view.tag)] && (context.NS = view.attrs.xmlns || NS[getName(view.tag)])
+  if (view.attrs.xmlns || NS[getName(view.tag)])
+    context.NS = view.attrs.xmlns || NS[getName(view.tag)]
+
   create && replace(
     dom,
     dom = createElement(view, context),

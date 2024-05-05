@@ -18,7 +18,7 @@ export default async function(x = {}) {
     minify: true,
     outdir: config.buildDir,
     format: 'esm',
-    tsconfigRaw: config.tsconfigRaw,
+    tsconfigRaw: config.tsconfigRaw || {},
     ...options,
     plugins: [
       {

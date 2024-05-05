@@ -8,7 +8,6 @@ export default async function(x = {}) {
       , ts = canRead('index.ts')
       , tsx = ts ? false : canRead('index.tsx')
 
-
   let { plugins, config, ...options } = x
   return await esbuild.build({
     entryPoints: [ts ? 'index.ts' : tsx ? 'index.tsx' : 'index.js'],
@@ -16,7 +15,7 @@ export default async function(x = {}) {
     splitting: true,
     sourcemap: 'external',
     minify: true,
-    outdir: config.buildDir,
+    outdir: config.buildDir || '+build',
     format: 'esm',
     tsconfigRaw: config.tsconfigRaw || {},
     ...options,

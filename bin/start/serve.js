@@ -5,6 +5,7 @@ import fsp from 'node:fs/promises'
 import { isMainThread, parentPort } from 'node:worker_threads'
 
 import ey from 'ey'
+import '../favicon.js'
 
 import ssr, { wrap } from '../../ssr/index.js'
 import { tryPromise } from '../../src/shared.js'
@@ -27,7 +28,7 @@ if (server) {
 if (config.static) {
   router.get(router.files(config._[0] || process.cwd()))
 } else {
-  router.get(router.files(config.buildDir))
+  router.get(router.files(config.outdir))
   router.get(router.files(config.publicDir))
   router.get(render)
 }

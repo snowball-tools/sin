@@ -48,7 +48,7 @@
   ],
   "dependencies": {
     "esbuild": "0.20.1",
-    "ey": "2.3.0"
+    "ey": "2.3.1"
   },
   "engines": {
     "node": ">=20.10"

@@ -34,6 +34,7 @@ function extensionless(x, full) {
   return path.extname(x) ? x
     : isFile(path.join(full, 'index.js')) ? x + '/index.js'
     : isFile(full + '.js') ? x + '.js'
+    : isFile(full + '.ts') ? x + '.ts'
     : x
 }
 

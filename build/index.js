@@ -1,23 +1,25 @@
-import path from 'node:path'
-import fs from 'node:fs'
-
-import esbuild from 'esbuild'
+import ESBuild from 'esbuild'
+import { getEntry } from '../bin/config.js'
+import { extensionless } from '../bin/shared.js'
 
 export default async function(x = {}) {
-  const cwd = process.cwd()
-      , ts = canRead('index.ts')
-      , tsx = ts ? false : canRead('index.tsx')
+  const {
+    entry = getEntry('', { _: [], $: ['build'] }),
+    plugins,
+    cwd = process.cwd(),
+    esbuild = {},
+    ...options
+  } = x
 
-  let { plugins, ...options } = x
-  return await esbuild.build({
-    entryPoints: [ts ? 'index.ts' : tsx ? 'index.tsx' : 'index.js'],
+  return await ESBuild.build({
+    entryPoints: [entry],
     bundle: true,
     splitting: true,
     sourcemap: 'external',
     minify: true,
-    outdir: '+build',
+    outdir: options.outputDir || '+build',
     format: 'esm',
-    ...options,
+    ...esbuild,
     plugins: [
       {
         name: 'sinssr',
@@ -30,29 +32,10 @@ export default async function(x = {}) {
         name: 'sinport',
         setup: x => x.onResolve(
           { filter: /^\// },
-          x => ({ path: extensionless(x.path.indexOf(cwd) === 0 ? x.path : path.join(cwd, x.path)) })
+          x => ({ path: extensionless(x.path, cwd) })
         )
       },
-      ...[].concat(plugins || [])
+      ...[].concat(plugins || []).concat(esbuild.plugins || [])
     ]
   })
-}
-
-function extensionless(x) {
-  return path.extname(x) ? x
-    : canRead(path.join(x, 'index.js')) ? x + '/index.js'
-    : canRead(x + '.js') ? x + '.js'
-    : canRead(path.join(x, 'index.ts')) ? x + '/index.ts'
-    : canRead(x + '.ts') ? x + '.ts'
-    : canRead(path.join(x, 'index.tsx')) ? x + '/index.tsx'
-    : canRead(x + '.tsx') ? x + '.tsx'
-    : x
-}
-
-function canRead(x) {
-  try {
-    return fs.statSync(x).isFile()
-  } catch (_) {
-    return
-  }
 }

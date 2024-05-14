@@ -5,8 +5,8 @@ import { wrap } from '../../ssr/shared.js'
 
 import config, { resolve } from '../config.js'
 
-await fs.rm(config.outdir, { recursive: true, force: true })
-await fs.mkdir(config.outdir, { recursive: true })
+await fs.rm(config.outputDir, { recursive: true, force: true })
+await fs.mkdir(config.outputDir, { recursive: true })
 
 const generated = new Set()
     , { mount } = await resolve()
@@ -14,7 +14,7 @@ const generated = new Set()
 let files = 0
 config.noscript || await import('../build/index.js')
 const start = performance.now()
-await fs.cp(config.publicDir, config.outdir, { recursive: true, force: true })
+await fs.cp(config.publicDir, config.outputDir, { recursive: true, force: true })
 await generate()
 console.log('Finished generating', files, 'files in', (performance.now() - start).toFixed(1) + 'ms') // eslint-disable-line
 process.exit(process.exitCode)
@@ -25,7 +25,7 @@ async function generate(location = '/') {
 
   generated.add(location)
   const x = await ssr(mount, {}, { location })
-      , indexPath = path.join(config.outdir, ...location.split('/'), 'index.html')
+      , indexPath = path.join(config.outputDir, ...location.split('/'), 'index.html')
 
   const html = wrap(x, {
     body: config.noscript ? '' : '<script type=module async defer src="/index.js"></script>'

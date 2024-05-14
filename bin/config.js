@@ -57,7 +57,7 @@ async function fromArgs() {
     },
     parameters: {
       publicDir   : (x, xs) => '+public',
-      outdir      : (x, xs) => '+build',
+      outputDir   : (x, xs) => '+build',
       entry       : getEntry,
       cwd         : getCWD,
       local       : getLocal,
@@ -114,7 +114,7 @@ function needsEntry(config) {
       || 'build generate'.includes(config.$[0])
 }
 
-function getEntry(x, config, read, alt = '', initial) {
+export function getEntry(x, config, read, alt = '', initial) {
   if (x)
     return x
 
@@ -147,15 +147,14 @@ function getEntry(x, config, read, alt = '', initial) {
   } catch (e) {
     return alt
       ? error('No access ' + (initial || entry) + ' (' + e.code + ')')
-      : getEntry(null, config, read, config.outdir, entry)
+      : getEntry(null, config, read, config.outputDir, entry)
   }
 }
 
 function getTsconfigRaw(x, config) {
-  if (x === null)
-    return undefined
-
-  return fs.existsSync(config.tsconfig) ? fs.readFileSync(config.tsconfig, 'utf8') : null
+  return config.tsconfig && fs.existsSync(config.tsconfig)
+    ? fs.readFileSync(config.tsconfig, 'utf8')
+    : {}
 }
 
 export function error(x) {
@@ -169,7 +168,7 @@ export function error(x) {
 
 async function getCWD(x, config) {
   x = env.PWD = x || needsEntry(config)
-    ? path.dirname(config.entry).replace('/' + config.outdir, '')
+    ? path.dirname(config.entry).replace('/' + config.outputDir, '')
     : process.cwd()
   process.cwd() !== x && process.chdir(x)
   await import('./env.js')
@@ -245,7 +244,7 @@ export async function resolve() {
       , main = hasExport && (globalThis.window = (await import('../ssr/window.js')).default, await import(config.entry))
       , http = main && typeof main.default === 'function' && main
       , src = !http && !config.noscript && path.basename(config.entry)
-      , mod = src && (await fsp.stat(path.join(cwd, config.outdir, src)).catch(() => fsp.stat(path.join(cwd, src)))).mtimeMs.toFixed(0)
+      , mod = src && (await fsp.stat(path.join(cwd, config.outputDir, src)).catch(() => fsp.stat(path.join(cwd, src)))).mtimeMs.toFixed(0)
 
   return {
     server: http ? main : await defaultServer(),

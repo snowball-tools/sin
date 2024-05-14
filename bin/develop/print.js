@@ -1,5 +1,4 @@
 import Url from 'node:url'
-import path from 'node:path'
 
 import prexit from '../prexit.js'
 import p from './log.js'
@@ -9,8 +8,6 @@ import c from '../color.js'
 
 let lines = 1
   , indent = 0
-
-p('\n' + padBoth('🔥' + (config.$[1] === 'script' ? ' ' + path.basename(config.entry) : ' at ' + api.url)) + '\n')
 
 api.browser.reload.observe(() => std({ from: 'browser', replace: 'browserhot', type: 'status', value: '🔄' }))
 api.browser.hotload.observe(() => std({ from: 'browser', replace: 'browserhot', type: 'status', value: '🔥' }))
@@ -70,7 +67,7 @@ function std(x) {
   let output = ''
 
   output = x.type === 'status'
-    ? x.value + ' ' + x.from
+    ? x.value + ' ' + (x.from[0].toUpperCase() + x.from.slice(1))
     : x.args
     ? logInfo(x)
     : x.type === 'exception'
@@ -81,7 +78,7 @@ function std(x) {
       , repeat = !changed && output === std.output ? ++std.count : std.count = 0
       , replace = x.replace && std.last && x.replace === std.last.replace
 
-  if (x.type !== 'status' && changed)
+  if (std.heading && x.type !== 'status' && changed)
     p('\n' + heading)
 
   if (replace && !repeat) {

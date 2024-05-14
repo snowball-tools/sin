@@ -94,7 +94,7 @@ export function transform(buffer, filePath, type, r) {
 }
 
 function pkgLookup(x, abs) {
-  if (x !== 'node_modules/sin' && config.esbuild)
+  if (x !== 'node_modules/sin' && config.bundleNodeModules)
     return x
 
   const pkg = JSON.parse(fs.readFileSync(path.join(abs || x, 'package.json'), 'utf8'))

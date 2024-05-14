@@ -87,7 +87,7 @@ async function fromArgs() {
       live      : false,
       nochrome  : false,
       noscript  : false,
-      esbuild   : false,
+      bundleNodeModules : false,
       script    : (_, xs) => xs.$[1] === 'script',
       static    : (_, xs) => xs.$[1] === 'static'
     },

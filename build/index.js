@@ -1,5 +1,5 @@
 import ESBuild from 'esbuild'
-import { getEntry } from '../bin/config.js'
+import config, { getEntry } from '../bin/config.js'
 import { extensionless } from '../bin/shared.js'
 
 export default async function(x = {}) {
@@ -20,6 +20,10 @@ export default async function(x = {}) {
     outdir: options.outputDir || '+build',
     format: 'esm',
     ...esbuild,
+    define: {
+      ...esbuild.define,
+      'import.meta.env': config.unsafe.slice(16, -1)
+    },
     plugins: [
       {
         name: 'sinssr',

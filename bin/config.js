@@ -63,6 +63,7 @@ async function fromArgs() {
       local       : getLocal,
       home        : getHome,
       port        : getPort,
+      unsafe      : getUnsafe,
       domain      : null,
       server      : null,
       ssl         : {
@@ -237,6 +238,11 @@ async function getChallenge(challenge, config, read) {
   }
 
   return challenge
+}
+
+function getUnsafe() {
+  const x = Object.entries(env).reduce((acc, [k, v]) => (k.startsWith('UNSAFE_') && (acc[k.slice(7)] = v), acc), {})
+  return x ? 'import.meta.env=' + JSON.stringify(x) + ';' : ''
 }
 
 export async function resolve() {

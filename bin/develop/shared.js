@@ -53,7 +53,7 @@ export function isModule(x) {
 
 export function rewrite(x, file) {
   const dir = path.dirname(file)
-  return replace(
+  return config.unsafe + replace(
     modify(x, file),
     x => {
       isModule(x) || isScript(x) || (x = extensionless(x, dir))

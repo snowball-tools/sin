@@ -20,7 +20,7 @@ let node
 
 prexit(close)
 
-Watcher(restart).add('.env')
+Watcher(() => api.node.restart('reload')).add('.env')
 api.node.restart.observe(restart)
 api.node.hotload.observe(() =>
   node

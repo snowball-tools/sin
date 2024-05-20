@@ -66,8 +66,7 @@ export default async function(argv, options) {
   }
 
   await read(parameters, result, result)
-
-  argv.forEach(x => {
+  commands === 0 || argv.forEach(x => {
     if (x.startsWith('--'))
       throw new Error(x + ' is not a valid parameter')
   })

@@ -53,7 +53,7 @@ async function fromArgs() {
       run       : 1,
       start     : { $: true, script: 1, static: 1 },
       version   : 1,
-      install   : 1
+      install   : 0
     },
     parameters: {
       publicDir   : (x, xs) => '+public',

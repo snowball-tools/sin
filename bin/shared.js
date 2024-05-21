@@ -16,14 +16,14 @@ export function extensionless(x, root = '') {
   root = path.isAbsolute(x) ? config.cwd : root
   x.indexOf(root) === 0 && (root = '')
   return isScript(x)                           ? x
-    : canRead(path.join(root, x, 'index.js'))  ? x + '/index.js'
     : canRead(path.join(root, x + '.js'))      ? x + '.js'
-    : canRead(path.join(root, x, 'index.jsx')) ? x + '/index.jsx'
+    : canRead(path.join(root, x, 'index.js'))  ? x + '/index.js'
     : canRead(path.join(root, x + '.jsx'))     ? x + '.jsx'
-    : canRead(path.join(root, x, 'index.tsx')) ? x + '/index.tsx'
+    : canRead(path.join(root, x, 'index.jsx')) ? x + '/index.jsx'
     : canRead(path.join(root, x + '.tsx'))     ? x + '.tsx'
-    : canRead(path.join(root, x, 'index.ts'))  ? x + '/index.ts'
+    : canRead(path.join(root, x, 'index.tsx')) ? x + '/index.tsx'
     : canRead(path.join(root, x + '.ts'))      ? x + '.ts'
+    : canRead(path.join(root, x, 'index.ts'))  ? x + '/index.ts'
     : x
 }
 

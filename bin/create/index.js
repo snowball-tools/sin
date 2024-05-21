@@ -73,7 +73,7 @@ if (full) {
 
 mk(target, 'package.json', JSON.stringify(pkg, null, 2))
 
-git && (cp.execSync('git init', { stdio: 'inherit' }), mk(target, '.gitignore', 'node_modules'))
+git && (cp.execSync('git init', { stdio: 'inherit' }), mk(target, '.gitignore', 'node_modules\n.env'))
 install && cp.execSync(npm + ' install porsager/sin', { stdio: 'inherit' })
 
 !global.print && console.log( // eslint-disable-line

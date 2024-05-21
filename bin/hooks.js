@@ -2,14 +2,16 @@ import path from 'node:path'
 import fs from 'node:fs'
 import URL from 'node:url'
 
+import { extensionless } from './shared.js'
+
 export function resolve(specifier, context, nextResolve) {
   if (path.isAbsolute(specifier) && !specifier.startsWith(process.cwd()))
     specifier = URL.pathToFileURL(path.join(process.cwd(), specifier)).href
 
   const x = specifier.startsWith('./') || specifier.startsWith('../')
-    ? path.join(path.dirname(URL.fileURLToPath(context.parentURL)), specifier)
+    ? path.dirname(URL.fileURLToPath(context.parentURL))
     : specifier.startsWith('file://')
-    ? URL.fileURLToPath(specifier)
+    ? path.dirname(URL.fileURLToPath(specifier))
     : null
 
   const result = x
@@ -28,14 +30,6 @@ export function loader(fn) {
       result.source = fn(result.source, url)
     return result
   }
-}
-
-function extensionless(x, full) {
-  return path.extname(x) ? x
-    : isFile(path.join(full, 'index.js')) ? x + '/index.js'
-    : isFile(full + '.js') ? x + '.js'
-    : isFile(full + '.ts') ? x + '.ts'
-    : x
 }
 
 function isFile(x) {

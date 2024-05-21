@@ -1,3 +1,4 @@
+import path from 'path'
 import ESBuild from 'esbuild'
 import config, { getEntry } from '../bin/config.js'
 import { extensionless } from '../bin/shared.js'
@@ -36,10 +37,14 @@ export default async function(x = {}) {
         name: 'sinport',
         setup: x => x.onResolve(
           { filter: /^\// },
-          x => ({ path: extensionless(x.path, cwd) })
+          x => ({ path: abs(extensionless(x.path, cwd), cwd) })
         )
       },
       ...[].concat(plugins || []).concat(esbuild.plugins || [])
     ]
   })
+}
+
+function abs(x, root) {
+  return x.indexOf(root) === 0 ? x : path.join(root, x)
 }

@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import url from 'node:url'
 import path from 'node:path'
+import { isMainThread } from 'node:worker_threads'
 
 import args from './args.js'
 import c from './color.js'
@@ -172,7 +173,7 @@ async function getCWD(x, config) {
   x = env.PWD = x || needsEntry(config)
     ? path.dirname(config.entry).replace('/' + config.outputDir, '')
     : process.cwd()
-  process.cwd() !== x && process.chdir(x)
+  process.cwd() !== x && isMainThread && process.chdir(x)
   await import('./env.js')
   return x
 }

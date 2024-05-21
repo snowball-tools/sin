@@ -81,7 +81,7 @@ async function updateTabs(launch) {
       if (launch && (x.url === 'about:blank' || x.url === 'chrome://newtab/'))
         s.http(root + '/json/close/' + x.id, { responseType: 'text' })
       else if (x.url.indexOf(config.origin) === 0) {
-        launch && tabs.size === 0 && s.http(root + '/json/activate/' + x.id).catch(noop)
+        launch && tabs.size === 0 && s.http(root + '/json/activate/' + x.id, { responseType: 'text' }).catch(noop)
         await connect(x)
       }
     })

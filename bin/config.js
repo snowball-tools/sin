@@ -259,7 +259,7 @@ function getUnsafe() {
 
 export async function resolve() {
   const cwd = process.cwd()
-      , hasExport = config.entry && (await fsp.readFile(config.entry, 'utf8')).match(/export(\s+default\s|\s*{\s*\w*\s+as\s+default)/)
+      , hasExport = config.entry && exportsDefault(await fsp.readFile(config.entry, 'utf8'))
       , main = hasExport && (globalThis.window = (await import('../ssr/window.js')).default, await import(config.entry))
       , http = main && typeof main.default === 'function' && main
       , src = !http && !config.noscript && path.basename(config.entry)
@@ -281,5 +281,84 @@ export async function resolve() {
       if (!error.url || error.code !== 'ERR_MODULE_NOT_FOUND' || url.fileURLToPath(error.url) !== defaultServerPath)
         throw error
     }
+  }
+}
+
+function exportsDefault(x) {
+  if (!/(export|as)\s+default/.test(x))
+    return false
+
+  let i = 0
+    , c = -1
+    , b = -1
+    , n = -1
+    , w = -1
+    , l = -1
+    , t = ''
+    , ws = false
+    , blocks = []
+    , exp = false
+    , fn  = false
+    , found = false
+
+  for (i = 0; i < x.length; i++) {
+    c = x.charCodeAt(i)
+
+      b === 39  ?  c === 39  && l !== 92 && pop()  // ' \
+    : b === 34  ?  c === 34  && l !== 92 && pop()  // " \
+    : b === 96  ?  c === 96  && l !== 92 && pop()  // ` \
+    : b === 42  ?  c === 47  && l === 42 && pop()  // * /
+    : b === 47  ?  c === 10  && pop()              // / \n
+    : b === 91  && c === 93  ? pop()               // [ ]
+    : b === 40  && c === 41  ? pop()               // ( )
+    : b === 123 && c === 125 ? pop()               // { }
+    : b === 112 && c === 125 ? pop()               // p }
+    : c === 47  && l === 47  ? push()              // / /
+    : c === 42  && l === 47  ? push()              // / *
+    : c === 34  ? push()                           // "
+    : c === 39  ? push()                           // '
+    : c === 96  ? push()                           // `
+    : c === 40  ? push()                           // (
+    : c === 91  ? push()                           // [
+    : c === 123 ? push()                           // {
+    : isWS(c)   ? word()                           // \t \n \r space
+    : ws = false
+
+    l = c
+    if (found)
+      return true
+  }
+
+  return false
+
+  function isWS(c) {
+    return c === 9 || c === 10 || c === 13 || c === 32
+  }
+
+  function word() {
+    if (ws === true || b !== -1)
+      return w = i + 1
+
+    ws = true
+    t = x.slice(w, i)
+
+    exp
+      ? t === 'default'
+        ? found = true
+        : exp = false
+      : t === 'export' || t === 'as'
+      ? exp = true
+      : exp = false
+
+    w = i + 1
+  }
+
+  function push() {
+    b !== -1 && blocks.push(b)
+    b = c
+  }
+
+  function pop() {
+    b = blocks.pop() || -1
   }
 }

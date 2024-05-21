@@ -6,6 +6,7 @@ import env from '../env.js'
 import Proxy from './proxy.js'
 
 const cwd = process.cwd()
+const root = path.parse(cwd).root
 
 const locks = {
   yarn: 'yarn.lock',
@@ -30,9 +31,13 @@ const child = cp.spawn(c, args, {
 proxy && child.on('close', proxy.unlisten)
 
 function client() {
-  for (const x in locks) {
-    if (fs.existsSync(path.join(cwd, locks[x])))
-      return x
+  let dir = cwd
+  while (dir !== root) {
+    for (const x in locks) {
+      if (fs.existsSync(path.join(dir, locks[x])))
+        return x
+    }
+    dir = path.dirname(dir)
   }
 
   return 'npm'
@@ -40,7 +45,6 @@ function client() {
 
 function registries() {
   const xs = []
-  const root = path.parse(cwd).root
   let dir = cwd
   while (dir !== root) {
     const p = pkgjson(dir)
@@ -52,7 +56,7 @@ function registries() {
     dir = path.dirname(dir)
 
   }
-  return xs
+  return xs.map(x => new URL(x))
 }
 
 function npmrc(dir) {

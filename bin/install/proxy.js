@@ -5,35 +5,56 @@ import { pipeline } from 'stream/promises'
 import ey from 'ey'
 
 export default async function(registries) {
-  const xs = [...registries, 'https://registry.npmjs.org']
+  let listener
+  const xs = [...registries, new URL('https://registry.npmjs.org')]
   const app = ey()
 
   app.all(async r => {
     for (const x of xs) {
-      const url = x + r.url + (r.rawQuery ? '?' + r.rawQuery : '')
-      const { req, res } = await request(url, r)
+      const { req, res } = await request(x, r)
       if (res.statusCode === 404) {
         req.abort()
         continue
       }
-      r.header(res.statusCode, res.headers)
-      await pipeline(res, r.writable)
-      return
+
+      if (res.headers['content-type'] === 'application/json') {
+        const pkg = await json(res)
+        pkg.versions && Object.values(pkg.versions).forEach(v => {
+          v?.dist?.tarball && (v.dist.tarball = v.dist.tarball
+            .replace('https://', 'http://')
+            .replace(x.host, '127.0.0.1:' + listener.port)
+          )
+        })
+        return r.json(pkg)
+      } else {
+        r.header(res.statusCode, res.headers)
+        return await pipeline(res, r.writable)
+      }
     }
   })
 
-  return app.listen()
+  listener = await app.listen()
+  return listener
+}
+
+async function json(res) {
+  return new Promise((resolve, reject) => {
+    const data = []
+    res.on('data', x => data.push(x))
+    res.on('end', () => resolve(JSON.parse(Buffer.concat(data))))
+    res.on('error', reject)
+  })
 }
 
 async function request(url, r) {
   return new Promise((resolve, reject) => {
-    url = url.startsWith('//') ? 'https:' + url : url
-    const req = (url.startsWith('http:') ? http : https).request(
-      url, {
+    const req = (url.protocol === 'http:' ? http : https).request(
+      url.origin + r.url + (r.rawQuery ? '?' + r.rawQuery : ''), {
+        auth: url.username && (url.username + ':' + url.password),
         method: r.method.toUpperCase(),
         headers: {
           ...r.headers,
-          host: new URL(url).host
+          host: url.host
         }
       },
       res => resolve({ req, res })

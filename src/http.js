@@ -13,7 +13,7 @@ const TypedArray = typeof Uint8Array === 'undefined' ? [] : [Object.getPrototype
     , rich = 'Blob ArrayBuffer DataView FormData URLSearchParams File'.split(' ').map(x => globalThis[x]).filter(x => x).concat(TypedArray)
 
 export default function http(x, {
-  url = new URL(x),
+  url = new URL(x, window.location.origin),
   method = 'GET',
   redraw = true,
   responseType,

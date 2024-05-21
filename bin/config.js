@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import url from 'node:url'
 import path from 'node:path'
+import esbuild from 'esbuild'
 import { isMainThread } from 'node:worker_threads'
 
 import args from './args.js'
@@ -156,7 +157,7 @@ export function getEntry(x, config, read, alt = '', initial) {
 
 function getTsconfigRaw(x, config) {
   const xs = config.tsconfig && fs.existsSync(config.tsconfig)
-    ? JSON.parse(fs.readFileSync(config.tsconfig))
+    ? JSON.parse(esbuild.transformSync('export default ' + fs.readFileSync(config.tsconfig), { minify: true }).code.slice(14, -2).replace(/:/g, '":').replace(/([{,])/g, '$1"'))
     : {}
 
   return {

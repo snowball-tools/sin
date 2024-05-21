@@ -157,7 +157,7 @@ export function getEntry(x, config, read, alt = '', initial) {
 
 function getTsconfigRaw(x, config) {
   const xs = config.tsconfig && fs.existsSync(config.tsconfig)
-    ? JSON.parse(esbuild.transformSync('export default ' + fs.readFileSync(config.tsconfig), { minify: true }).code.slice(14, -2).replace(/:/g, '":').replace(/([{,])/g, '$1"'))
+    ? JSON.parse(esbuild.transformSync('export default ' + fs.readFileSync(config.tsconfig), { minify: true }).code.slice(14, -2).replace(/:/g, '":').replace(/([{,])/g, '$1"').replace(/!0/g, 'true').replace(/!1/g, 'false').replace(/""/g, '"'))
     : {}
 
   return {

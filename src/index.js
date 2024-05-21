@@ -1179,10 +1179,14 @@ function removeArray(dom, parent, root, promises, deferrable) {
 }
 
 function removeChild(parent, dom) {
+  removeCall(dom)
+  parent.removeChild(dom)
+}
+
+function removeCall(dom) {
   const x = hasOwn.call(dom, componentSymbol) && dom[componentSymbol]
   x && x.i <= x.top && (x.i ? x.xs.slice(x.i) : x.xs).forEach(x => x.onremoves && x.onremoves.forEach(x => x()))
   hasOwn.call(dom, observableSymbol) && dom[observableSymbol].forEach(x => x())
-  parent.removeChild(dom)
 }
 
 function remove(dom, parent, root = true, promises = [], deferrable = false) {
@@ -1227,13 +1231,15 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
     child = child.nextSibling
   }
 
-  root && (promises.length === 0
-    ? removeChild(parent, dom)
-    : (
-      removing.add(dom),
-      Promise.allSettled(promises).then(() => removeChild(parent, dom))
+  root
+    ? (promises.length === 0
+      ? removeChild(parent, dom)
+      : (
+        removing.add(dom),
+        Promise.allSettled(promises).then(() => removeChild(parent, dom))
+      )
     )
-  )
+    : removeCall(dom)
 
   return after
 }

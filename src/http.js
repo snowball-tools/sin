@@ -12,15 +12,16 @@ http.redraw = () => { /* noop */ }
 const TypedArray = typeof Uint8Array === 'undefined' ? [] : [Object.getPrototypeOf(Uint8Array)]
     , rich = 'Blob ArrayBuffer DataView FormData URLSearchParams File'.split(' ').map(x => globalThis[x]).filter(x => x).concat(TypedArray)
 
-export default function http(url, {
+export default function http(x, {
+  url = new URL(x),
   method = 'GET',
   redraw = true,
   responseType,
   json = 'application/json',
   query,
   body,
-  user,
-  pass,
+  user = url.username,
+  pass = url.password,
   headers = {},
   config,
   timeout = 0,
@@ -40,6 +41,7 @@ export default function http(url, {
         return
 
       try {
+        xhr.headers = xhr.headers || parse(xhr.getAllResponseHeaders())
         xhr.status && Object.defineProperty(xhr, 'body', {
           value: accept === json
             ? xhr.response === undefined || xhr.response === ''
@@ -56,7 +58,8 @@ export default function http(url, {
     })
     xhr.addEventListener('error', reject)
     xhr.addEventListener('abort', () => reject(new Error('ABORTED')))
-    xhr.open(method, appendQuery(url, query), true, user, pass)
+    query && (query = new URLSearchParams(query)) && query.size && query.forEach((v, k) => url.searchParams.append(k, v))
+    xhr.open(method, '' + url, true, user, pass)
     xhr.timeout = timeout
     responseType && (xhr.responseType = responseType)
 
@@ -77,6 +80,7 @@ export default function http(url, {
       ...error,
       url,
       status: xhr.status,
+      headers: xhr.headers,
       body: xhr.body || xhr.response
     })
     Object.defineProperty(x, 'xhr', { value: xhr })
@@ -100,12 +104,15 @@ function statusError(xhr) {
   )
 }
 
-function appendQuery(x, q) {
-  const u = new URL(x, 'http://x')
-      , qs = new URLSearchParams(q || '').toString()
-
-  return x.split(/\?|#/)[0]
-    + u.search
-    + (qs ? (u.search ? '&' : '?') + qs : '')
-    + (u.hash || '')
+function parse(x) {
+  const xs = {}
+  x.split('\n').forEach(x => {
+    const i = x.indexOf(':')
+    const name = x.substring(0, i).trim().toLowerCase()
+    const value = x.substring(i + 1).trim()
+    name === 'set-cookie'
+      ? xs[name] ? xs[name].push(value) : (xs[name] = [value])
+      : xs[name] = value
+  })
+  return xs
 }

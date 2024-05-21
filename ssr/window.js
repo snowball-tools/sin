@@ -167,6 +167,7 @@ function XMLHttpRequest(options) {
           ...options
         }, r => {
           res = r
+          xhr.headers = res.headers
           xhr.status = res.statusCode
           total = res.headers['content-length']
           state(xhr.HEADERS_RECEIVED)

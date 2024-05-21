@@ -8,9 +8,9 @@ import config from './config.js'
 import api from './api.js'
 
 await import('./tools/server.js')
-await import('./node.js')
+const node = (await import('./node.js'))
 
 config.live && await import('./live.js')
-config.script || config.nochrome || await import('./chrome.js')
+config.script || config.nochrome || node.onlyServer || await import('./chrome.js')
 
 api.log({ value: '🔥 ' + api.url })

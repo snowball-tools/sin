@@ -11,20 +11,22 @@ import config, { resolve } from './config.js'
 import { transform } from './shared.js'
 import ssr, { wrap } from '../../ssr/index.js'
 
-const { server, mount, src } = await resolve()
+const { server, mount, src, onlyServer } = await resolve()
 const head = getTools()
 const router = ey()
 const hijack = {
   compressions: false,
   cache: false,
   transform(buffer, filePath, type, r) {
-    process.send(filePath)
+    process.send('watch:' + filePath)
     return transform(buffer, filePath, type, r)
   }
 }
 
-if (server)
-  typeof server.default === 'function' && await server.default(router)
+if (server && typeof server.default === 'function')
+  await server.default(router)
+
+process.send('started:' + onlyServer)
 
 if (config.static) {
   router.get(

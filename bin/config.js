@@ -255,6 +255,7 @@ export async function resolve() {
       , mod = src && (await fsp.stat(path.join(cwd, config.outputDir, src)).catch(() => fsp.stat(path.join(cwd, src)))).mtimeMs.toFixed(0)
 
   return {
+    onlyServer: !!http,
     server: http ? main : await defaultServer(),
     mount: !http && main && main.default,
     src,

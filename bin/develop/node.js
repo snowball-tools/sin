@@ -59,7 +59,7 @@ api.node.hotload.observe(async x => {
   }
 })
 
-await start()
+export const onlyServer = await start()
 
 async function close() {
   node && (node.kill(), node.connected && await new Promise(r => node.on('close', r)))
@@ -99,7 +99,11 @@ async function start() {
       : null
   })
 
-  node.on('message', x => api.browser.watch(x))
+  node.on('message', x => {
+    x.startsWith('started:')
+      ? resolve(x.slice(8) === 'true')
+      : x.startsWith('watch:') && api.browser.watch(x.slice(6))
+  })
 
   node.on('close', async(code, signal) => {
     ws && ws.close()
@@ -119,9 +123,11 @@ async function start() {
       : resolve()
   })
 
-  await promise
+  const result = await promise
   startPerf = performance.now()
   api.log({ replace, from: 'node', type: 'status', value: '🚀' })
+
+  return result
 
   function lastException(x) {
     if (x.includes(`internalBinding('errors').triggerUncaughtException(`))
@@ -166,7 +172,6 @@ async function start() {
       await request('Runtime.enable')
       await request('Runtime.setAsyncCallStackDepth', { maxDepth: 128 })
       await request('Debugger.enable')
-      resolve()
     }
 
     function onmessage({ data }) {

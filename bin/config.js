@@ -155,9 +155,20 @@ export function getEntry(x, config, read, alt = '', initial) {
 }
 
 function getTsconfigRaw(x, config) {
-  return config.tsconfig && fs.existsSync(config.tsconfig)
+  const xs = config.tsconfig && fs.existsSync(config.tsconfig)
     ? fs.readFileSync(config.tsconfig, 'utf8')
     : {}
+
+  return {
+    ...xs,
+    compilerOptions: {
+      ...xs.compilerOptions,
+      jsx: 'react',
+      jsxFactory: 's',
+      jsxFragmentFactory: 's.jsxFragment'
+    }
+  }
+
 }
 
 export function error(x) {

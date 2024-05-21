@@ -7,7 +7,7 @@ import esbuild from 'esbuild'
 
 import { isScript, extensionless } from '../shared.js'
 import config from './config.js'
-import replace from './replace.js'
+import rewriter from './rewriter.js'
 
 const sucrase = await import('sucrase').catch(e => null)
 const resolveCache = Object.create(null)
@@ -53,7 +53,7 @@ export function isModule(x) {
 
 export function rewrite(x, file) {
   const dir = path.dirname(file)
-  return config.unsafe + replace(
+  return config.unsafe + rewriter(
     modify(x, file),
     x => {
       isModule(x) || isScript(x) || (x = extensionless(x, dir))

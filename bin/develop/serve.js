@@ -90,7 +90,7 @@ async function build(r) {
   })
 
   r.end(result.outputFiles[0].text, {
-    'Content-Type': 'application/javascript'
+    'Content-Type': 'text/javascript'
   })
 }
 

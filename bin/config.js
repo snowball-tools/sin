@@ -156,16 +156,16 @@ export function getEntry(x, config, read, alt = '', initial) {
 
 function getTsconfigRaw(x, config) {
   const xs = config.tsconfig && fs.existsSync(config.tsconfig)
-    ? fs.readFileSync(config.tsconfig, 'utf8')
+    ? JSON.parse(fs.readFileSync(config.tsconfig))
     : {}
 
   return {
     ...xs,
     compilerOptions: {
-      ...xs.compilerOptions,
       jsx: 'react',
       jsxFactory: 's',
-      jsxFragmentFactory: 's.jsxFragment'
+      jsxFragmentFactory: 's.jsxFragment',
+      ...xs.compilerOptions
     }
   }
 

@@ -892,7 +892,7 @@ function attributes(dom, view, context) {
   let tag = view.tag
     , value
 
-  const prev = dom[attrSymbol] || (context.hydrating && getAttributes(dom))
+  const prev = dom[attrSymbol] || (context.hydrating && getAttributes(dom)) || undefined
       , create = !prev
 
   if (hasOwn.call(view.attrs, 'id') === false) {

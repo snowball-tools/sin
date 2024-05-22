@@ -97,7 +97,7 @@ function render(r) {
     x => {
       r.end(
         wrap(x, {
-          body: src ? '<script type=module src="/' + (src + '?v=' + mod) + '"></script>' : ''
+          body: src ? '<script type=module src="/index.js?v=' + mod + '"></script>' : ''
         }),
         x.status || 200,
         {

@@ -6,4 +6,4 @@ import '../../ssr/index.js'
 
 globalThis.console = inspector.console
 
-register('./hooks.js', import.meta.url)
+register('../hooks.js', import.meta.url)

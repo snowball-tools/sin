@@ -8,7 +8,8 @@ import color from '../color.js'
 
 import config from './config.js'
 import api from './api.js'
-import { modify, Watcher } from './shared.js'
+import { Watcher } from './shared.js'
+import { modify } from '../shared.js'
 
 const dirname = path.dirname(URL.fileURLToPath(import.meta.url))
     , replace = Math.random()
@@ -42,7 +43,7 @@ api.node.hotload.observe(async x => {
   try {
     const r = ws && await ws.request('Debugger.setScriptSource', {
       scriptId: scripts.get(x.path),
-      scriptSource: modify(x.next, x.path)
+      scriptSource: modify(x.next, x.path, config)
     })
 
     r && r.status === 'CompileError' && api.log({

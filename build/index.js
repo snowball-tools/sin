@@ -9,6 +9,7 @@ export default async function(x = {}) {
     plugins,
     cwd = process.cwd(),
     esbuild = {},
+    tsconfigRaw,
     ...options
   } = x
 
@@ -20,6 +21,7 @@ export default async function(x = {}) {
     minify: true,
     outdir: options.outputDir || '+build',
     format: 'esm',
+    tsconfigRaw,
     ...esbuild,
     define: {
       ...esbuild.define,

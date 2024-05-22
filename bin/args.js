@@ -100,7 +100,11 @@ export default async function(argv, options) {
   }
 
   function setEnv(x, v) {
-    v = (v || v === 0) && '' + v
-    v && (process.env[toEnv(x)] = v)
+    try {
+      v = (v || v === 0) && '' + v
+      v && (process.env[toEnv(x)] = v)
+    } catch {
+      process.env[toEnv(x)] = !!v
+    }
   }
 }

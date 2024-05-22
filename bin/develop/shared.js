@@ -5,42 +5,16 @@ import fsp from 'node:fs/promises'
 
 import esbuild from 'esbuild'
 
-import { isScript, extensionless } from '../shared.js'
 import config from './config.js'
 import rewriter from './rewriter.js'
+import { isScript, extensionless, modify } from '../shared.js'
 
-const sucrase = await import('sucrase').catch(e => null)
 const resolveCache = Object.create(null)
 
 export async function tryRead(x) {
   return fsp.readFile(x, 'utf8')
     .catch(async() => (await new Promise(r => setTimeout(r, 10)), fsp.readFile(x, 'utf8')))
     .catch(async() => (await new Promise(r => setTimeout(r, 20)), fsp.readFile(x, 'utf8')))
-}
-
-export function jail(x) {
-  return ('' + x).replace(/((function.*?\)|=>)\s*{)/g, '$1eval(0);')
-}
-
-export function modify(x, file) {
-  if (/\.tsx?$/.test(file)) {
-    try {
-      x = sucrase && !file.endsWith('.tsx')
-        ? sucrase.transform(x, { transforms: ['typescript'] }).code
-        : esbuild.transformSync(x, {
-            jsx: 'transform',
-            loader: file.endsWith('.tsx') ? 'tsx' : 'ts',
-            logLevel: config.debug ? 'debug' : undefined,
-            tsconfigRaw: config.tsconfigRaw
-          }).code
-    }
-    catch (err) {
-      console.error("[Sin] modify failed:", err)
-      throw err
-    }
-  }
-
-  return jail(x)
 }
 
 export function isModule(x) {
@@ -54,7 +28,7 @@ export function isModule(x) {
 export function rewrite(x, file) {
   const dir = path.dirname(file)
   return config.unsafe + rewriter(
-    modify(x, file),
+    modify(x, file, config),
     x => {
       isModule(x) || isScript(x) || (x = extensionless(x, dir))
       return isModule(x)

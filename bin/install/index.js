@@ -65,7 +65,7 @@ function npmrc(dir) {
     return x.match(/^\s*registry=(.+)/gm).flatMap(x =>
       x.slice(x.indexOf('=') + 1).trim().split(',').map(x => x.trim())
     )
-  } catch(e) {
+  } catch (e) {
     return []
   }
 }
@@ -74,7 +74,7 @@ function pkgjson(dir) {
   try {
     const x = JSON.parse(fs.readFileSync(path.join(dir, 'package.json')))
     return [].concat(x.registry).flatMap(x => x.split(','))
-  } catch(e) {
+  } catch (e) {
     return []
   }
 }

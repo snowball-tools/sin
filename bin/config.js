@@ -1,11 +1,9 @@
-
 import os from 'node:os'
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import url from 'node:url'
 import path from 'node:path'
-import esbuild from 'esbuild'
-import { isMainThread } from 'node:worker_threads'
+import { getTSConfigRaw, getPkgs, getSucrase } from './shared.js'
 
 import args from './args.js'
 import c from './color.js'
@@ -62,10 +60,13 @@ async function fromArgs() {
       outputDir   : (x, xs) => '+build',
       entry       : getEntry,
       cwd         : getCWD,
+      root        : getRoot,
       local       : getLocal,
       home        : getHome,
       port        : getPort,
       unsafe      : getUnsafe,
+      pkgs        : getPkgs,
+      sucrase     : getSucrase,
       domain      : null,
       server      : null,
       ssl         : {
@@ -81,7 +82,7 @@ async function fromArgs() {
       address     : x => x || env.ADDRESS || '0.0.0.0',
       workers     : x => x ? x === 'cpus' ? os.cpus().length : parseInt(x) : 1,
       tsconfig    : (x, xs) => xs.cwd + '/tsconfig.json',
-      tsconfigRaw : getTsconfigRaw
+      tsconfigRaw : getTSConfigRaw
     },
     flags: {
       version   : false,
@@ -90,6 +91,7 @@ async function fromArgs() {
       live      : false,
       nochrome  : false,
       noscript  : false,
+      nojail    : false,
       bundleNodeModules : false,
       script    : (_, xs) => xs.$[1] === 'script',
       static    : (_, xs) => xs.$[1] === 'static'
@@ -155,23 +157,6 @@ export function getEntry(x, config, read, alt = '', initial) {
   }
 }
 
-function getTsconfigRaw(x, config) {
-  const xs = config.tsconfig && fs.existsSync(config.tsconfig)
-    ? JSON.parse(esbuild.transformSync('export default ' + fs.readFileSync(config.tsconfig), { minify: true }).code.slice(14, -2).replace(/:/g, '":').replace(/([{,])/g, '$1"').replace(/!0/g, 'true').replace(/!1/g, 'false').replace(/""/g, '"'))
-    : {}
-
-  return {
-    ...xs,
-    compilerOptions: {
-      jsx: 'react',
-      jsxFactory: 's',
-      jsxFragmentFactory: 's.jsxFragment',
-      ...xs.compilerOptions
-    }
-  }
-
-}
-
 export function error(x) {
   process.stderr.write(
     '\n ' + c.inverse(' '.repeat(process.stdout.columns - 2)) +
@@ -185,7 +170,7 @@ async function getCWD(x, config) {
   x = env.PWD = x || needsEntry(config)
     ? path.dirname(config.entry).replace('/' + config.outputDir, '')
     : process.cwd()
-  process.cwd() !== x && isMainThread && process.chdir(x)
+  process.chdir(x)
   await import('./env.js')
   return x
 }
@@ -198,6 +183,10 @@ function getLocal(x, xs) {
   return fs.existsSync(local)
     ? local
     : path.join(url.fileURLToPath(new URL('.', import.meta.url)), '..')
+}
+
+function getRoot(x, xs) {
+  return path.parse(xs.cwd).root
 }
 
 function getHome(x) {
@@ -299,7 +288,6 @@ function exportsDefault(x) {
     , ws = false
     , blocks = []
     , exp = false
-    , fn  = false
     , found = false
 
   for (i = 0; i < x.length; i++) {

@@ -258,6 +258,7 @@ function getPath() {
 async function spawn() {
   return new Promise((resolve, reject) => {
     const x = cp.spawn(getPath(), [
+      ...(config.headless ? ['--headless'] : []),
       '--no-first-run',
       '--disable-features=PrivacySandboxSettings4',
       '--no-default-browser-check',

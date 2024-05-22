@@ -89,6 +89,7 @@ async function fromArgs() {
       debug     : false,
       help      : false,
       live      : false,
+      headless  : false,
       nochrome  : false,
       noscript  : false,
       nojail    : false,

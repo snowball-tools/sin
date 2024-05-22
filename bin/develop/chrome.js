@@ -50,7 +50,8 @@ async function hotload(x) {
       try {
         const r = await ws.request('Debugger.setScriptSource', {
           scriptId: ws.scripts.get(x.path),
-          scriptSource: rewrite(x.next, x.path)
+          scriptSource: rewrite(x.next, x.path),
+          allowTopFrameEditing: true
         })
 
         r.status === 'CompileError' && api.log({

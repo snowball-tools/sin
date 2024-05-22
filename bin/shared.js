@@ -91,13 +91,12 @@ export function modify(x, file, {
           jsxFragmentPragma: 's.jsxFragment',
           production: true
         }).code
-        console.log(x)
       } else {
         x = esbuild.transformSync(x, {
           ...(debug ? { logLevel: 'debug' } : {}),
           jsx: 'transform',
           jsxFactory: 's',
-          jsxFragmentFactory: 's.jsxFragment',
+          jsxFragment: 's.jsxFragment',
           loader: file.endsWith('.tsx') ? 'tsx' : 'ts',
           tsconfigRaw: tsconfigRaw
         }).code

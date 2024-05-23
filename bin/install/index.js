@@ -54,8 +54,8 @@ function registries() {
     const e = env(path.join(dir, '.env'))
     e.npm_config_registry && xs.push(...e.npm_config_registry.split(','))
     dir = path.dirname(dir)
-
   }
+
   return xs.map(x => new URL(x))
 }
 

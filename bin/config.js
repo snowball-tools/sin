@@ -154,7 +154,7 @@ export function getEntry(x, config, read, alt = '', initial) {
   } catch (e) {
     return alt
       ? error('No access ' + (initial || entry) + ' (' + e.code + ')')
-      : getEntry(null, config, read, config.outputDir, entry)
+      : getEntry(null, config, read, config.outputDir, entry) // Allows only deploying files built
   }
 }
 
@@ -168,10 +168,14 @@ export function error(x) {
 }
 
 async function getCWD(x, config) {
-  x = env.PWD = x || needsEntry(config)
-    ? path.dirname(config.entry).replace('/' + config.outputDir, '')
+  x = x || needsEntry(config)
+    ? path.dirname(config.entry).replace('/' + config.outputDir, '') // If using output for ssr
     : process.cwd()
+
+  path.isAbsolute(x) || (x = path.join(process.cwd(), x))
+  env.PWD = x
   process.chdir(x)
+  path.isAbsolute(config.entry) || (config.entry = path.join(x, config.entry))
   await import('./env.js')
   return x
 }

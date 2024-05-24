@@ -44,5 +44,5 @@ export function resolve(x, context, nextResolve) {
             : isAbsolute ? pathToFileURL(x)
             : null // is bare import
 
-  return nextResolve(url ? extensionless('' + url) : x, context)
+  return nextResolve(url ? '' + pathToFileURL(extensionless('' + url)) : x, context)
 }

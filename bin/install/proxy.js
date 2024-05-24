@@ -10,8 +10,15 @@ export default async function(xs) {
 
   app.all(async r => {
     for (const x of xs) {
-      const { req, res } = await request(x, r)
+      const { req, res, error } = await request(x, r).catch(error => ({ error }))
+
+      if (error) {
+        console.log('Error installing from ' + x.origin)
+        throw error
+      }
+
       if (res.statusCode === 404) {
+        req.aborted = true
         req.abort()
         continue
       }
@@ -59,7 +66,7 @@ async function request(url, r) {
       res => resolve({ req, res })
     )
 
-    req.on('error', reject)
+    req.on('error', (err) => req.aborted || reject(err))
 
     r.method[0] === 'p'
       ? pipeline(r.readable, req)

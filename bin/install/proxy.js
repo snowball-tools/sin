@@ -4,9 +4,8 @@ import { pipeline } from 'stream/promises'
 
 import ey from 'ey'
 
-export default async function(registries) {
+export default async function(xs) {
   let listener
-  const xs = [...registries, new URL('https://registry.npmjs.org')]
   const app = ey()
 
   app.all(async r => {

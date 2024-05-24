@@ -18,9 +18,10 @@ const locks = {
 const c = client()
 const r = registries()
 
-const proxy = r.length && await Proxy(r)
+const proxy = r.length > 1 && await Proxy(r)
 const args = process.argv.slice(2)
 
+console.log('Using ' + c + ' to install' + (r.length > 1 ? ' from ' + r.map(x => x.host).join(' then ') : ''))
 const child = cp.spawn(c, args, {
   stdio: ['pipe', 'inherit', 'inherit'],
   shell: process.platform === 'win32',
@@ -57,7 +58,7 @@ function registries() {
     dir = path.dirname(dir)
   }
 
-  return xs.map(x => new URL(x))
+  return xs.map(x => new URL(x)).concat(new URL('https://registry.npmjs.org'))
 }
 
 function npmrc(dir) {

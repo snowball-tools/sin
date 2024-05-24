@@ -47,10 +47,21 @@ api.log({ replace, from: 'browser', type: 'status', value: '🚀' })
 async function hotload(x) {
   await Promise.all([...tabs].map(async([_, { ws }]) => {
     if (ws && ws.scripts.has(x.path)) {
+      let scriptSource = ''
+      try {
+        scriptSource = rewrite(x.next, x.path)
+      } catch (e) {
+        return api.log({
+          from: 'browser transform',
+          type: 'error',
+          args: [e.message]
+        })
+      }
+
       try {
         const r = await ws.request('Debugger.setScriptSource', {
           scriptId: ws.scripts.get(x.path),
-          scriptSource: rewrite(x.next, x.path),
+          scriptSource,
           allowTopFrameEditing: true
         })
 

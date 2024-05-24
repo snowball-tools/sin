@@ -23,6 +23,7 @@ const args = process.argv.slice(2)
 
 const child = cp.spawn(c, args, {
   stdio: ['pipe', 'inherit', 'inherit'],
+  shell: process.platform === 'win32',
   env: proxy
     ? { ...process.env, npm_config_registry: 'http://127.0.0.1:' + proxy.port }
     : process.env

@@ -190,6 +190,7 @@
       2,
       "always"
     ],
+    "quotes": [2, "single"],
     "quote-props": [
       2,
       "as-needed"

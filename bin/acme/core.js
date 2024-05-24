@@ -260,7 +260,7 @@ async function Acme({
       await crypto.subtle.importKey(
         'raw',
         Buffer.from(eab.split(':')[1], 'base64'),
-        { name: "HMAC", hash: "SHA-256" },
+        { name: 'HMAC', hash: 'SHA-256' },
         false,
         ['sign']
       ),

@@ -196,7 +196,7 @@ function getRoot(x, xs) {
 
 function getHome(x) {
   x = x || path.join(
-    process.platform === 'win32' && env.USER_PROFILE || env.HOME,
+    process.platform === 'win32' && env.USERPROFILE || env.HOME,
     '.sin'
   )
   fs.mkdirSync(x, { recursive: true })
@@ -286,7 +286,6 @@ function exportsDefault(x) {
   let i = 0
     , c = -1
     , b = -1
-    , n = -1
     , w = -1
     , l = -1
     , t = ''

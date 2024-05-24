@@ -13,4 +13,4 @@ const node = (await import('./node.js'))
 config.live && await import('./live.js')
 config.script || config.nochrome || node.onlyServer || await import('./chrome.js')
 
-api.log({ value: '🔥 ' + api.url })
+api.log('🔥 ' + api.url)

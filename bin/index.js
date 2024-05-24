@@ -1,13 +1,14 @@
 #! /usr/bin/env node
 
 import path from 'node:path'
+import URL from 'node:url'
 
 import config, { error } from './config.js'
 import cp from 'child_process'
 
 try {
   process.execArgv.includes('--experimental-websocket')
-    ? import(path.join(config.local, 'bin', config.$[0], 'index.js'))
+    ? import(URL.pathToFileURL(path.join(config.local, 'bin', config.$[0], 'index.js')))
     : cp.execFileSync(process.argv[0], ['--experimental-websocket', '--no-warnings', ...process.argv.slice(1)], { stdio: 'inherit' })
 } catch (e) {
   const [major, minor] = process.versions.node.split('.').map(Number)

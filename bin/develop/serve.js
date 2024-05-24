@@ -1,6 +1,5 @@
 /* eslint no-console:0 */
 
-import url from 'node:url'
 import path from 'node:path'
 
 import ey from 'ey'

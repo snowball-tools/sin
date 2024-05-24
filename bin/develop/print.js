@@ -63,7 +63,7 @@ async function more({ ws, from, type, stackTrace, timestamp, args, replace }) {
 
 function std(x) {
   indent = 0
-  const heading = head(x.from + ' ' + x.type, x.type === 'error')
+  const heading = x.from && head(x.from + ' ' + x.type, x.type === 'error' || x.type === 'exception' || x.type === 'stderr')
   let output = ''
 
   output = x.type === 'status'
@@ -74,7 +74,7 @@ function std(x) {
     ? logInfo(exception(x))
     : logArg(x, x.max)
 
-  const changed = heading !== std.heading
+  const changed = heading && heading !== std.heading
       , repeat = !changed && output === std.output ? ++std.count : std.count = 0
       , replace = x.replace && std.last && x.replace === std.last.replace
 
@@ -179,7 +179,7 @@ function padBetween(a, b, prefix = 0) {
 }
 
 function logArg(x, max) {
-  return x.type === 'string' ? (x.value ? c.cyan(x.value) : c.gray(`''`))
+  return x.type === 'string' ? (x.value ? c.cyan(x.value) : c.gray('\'\''))
     : x.type === 'number' ? c.blue(x.value)
     : x.type === 'undefined' ? c.gray('undefined')
     : x.type === 'function' ? c.gray(x.className || 'Function')
@@ -193,7 +193,7 @@ function logArg(x, max) {
       )
       : '{…}'
     )
-    : x.value
+    : x.value || x
 }
 
 function logError(e) {

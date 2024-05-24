@@ -1,6 +1,6 @@
 import path from 'node:path'
 import fs from 'node:fs'
-import URL from 'node:url'
+import { fileURLToPath } from 'node:url'
 import esbuild from 'esbuild'
 
 export function isScript(x) {
@@ -8,7 +8,7 @@ export function isScript(x) {
 }
 
 export function extensionless(x, root = '') {
-  x.indexOf('file:') === 0 && (x = x.slice(7))
+  x.indexOf('file://') === 0 && (x = fileURLToPath(x))
   root = path.isAbsolute(x) ? process.cwd() : root
   x.indexOf(root) === 0 && (root = '')
   return isScript(x)                           ? x
@@ -82,72 +82,37 @@ export function modify(x, file, {
   sucrase,
   tsconfigRaw
 }) {
-  if (/\.tsx?$/.test(file)) {
-    try {
-      if (sucrase) {
-        x = sucrase.transform('' + x, {
-          transforms: ['typescript', 'jsx'],
-          jsxPragma: 's',
-          jsxFragmentPragma: 's.jsxFragment',
-          production: true
-        }).code
-      } else {
-        x = esbuild.transformSync(x, {
-          ...(debug ? { logLevel: 'debug' } : {}),
-          jsx: 'transform',
-          jsxFactory: 's',
-          jsxFragment: 's.jsxFragment',
-          loader: file.endsWith('.tsx') ? 'tsx' : 'ts',
-          tsconfigRaw: tsconfigRaw
-        }).code
-      }
-    }
-    catch (err) {
-      console.error("[Sin] modify failed:", err)
-      throw err
-    }
+  const tsx = file.endsWith('.tsx')
+  if (tsx || file.endsWith('.ts')) {
+    x = sucrase
+      ? sucraseTS(sucrase, x, debug, tsx, tsconfigRaw, file)
+      : esbuildTS(x, debug, tsx, tsconfigRaw, file)
   }
 
   return nojail ? x : jail(x)
 }
 
-export function resolve(specifier, context, nextResolve) {
-  if (path.isAbsolute(specifier) && !specifier.startsWith(process.cwd()))
-    specifier = URL.pathToFileURL(path.join(process.cwd(), specifier)).href
-
-  const x = specifier.startsWith('./') || specifier.startsWith('../')
-    ? path.dirname(URL.fileURLToPath(context.parentURL))
-    : specifier.startsWith('file://')
-    ? path.dirname(URL.fileURLToPath(specifier))
-    : null
-
-  const result = x
-    ? extensionless(specifier, x)
-    : specifier
-
-  return nextResolve(ts(result), context)
-}
-
-export async function loader(fn) {
-  const cwd = process.cwd()
-  const root = path.parse(cwd).root
-
-  const config = {
-    sucrase: await getSucrase(null, { pkgs: getPkgs(null, { root, cwd }) }),
-    tsconfigRaw: getTSConfigRaw(null, { tsconfig: path.join(cwd, 'tsconfig.json') })
-  }
-
-  return async function(url, context, nextLoad) {
-    const result = /tsx?$/.test(url)
-      ? ({ format: 'module', shortCircuit: true, source: fs.readFileSync(url.startsWith('file://') ? URL.fileURLToPath(url) : url) })
-      : await nextLoad(url, context)
-    if (fn && result.source && (result.format === 'module' || context.format === 'commonjs' || context.format === 'module'))
-      result.source = fn(result.source, url, config)
-    return result
+function sucraseTS(sucrase, x, debug, tsx, tsconfigRaw, file) {
+  try {
+    return sucrase.transform('' + x, {
+      transforms: ['typescript', 'jsx'],
+      jsxPragma: 's',
+      jsxFragmentPragma: 's.jsxFragment',
+      production: true
+    }).code
+  } catch (e) {
+    return esbuildTS(x, debug, tsx, tsconfigRaw, file)
   }
 }
 
-function ts(x) {
-  return canRead(x.slice(0, -3) + 'tsx') ? x.slice(0, -3) + 'tsx' :
-         canRead(x.slice(0, -2) + 'ts') ? x.slice(0, -2) + 'ts' : x
+function esbuildTS(x, debug, tsx, tsconfigRaw, file) {
+  return esbuild.transformSync(x, {
+    ...(debug ? { logLevel: 'debug' } : {}),
+    jsx: 'transform',
+    jsxFactory: 's',
+    jsxFragment: 's.jsxFragment',
+    loader: tsx ? 'tsx' : 'ts',
+    tsconfigRaw: tsconfigRaw,
+    sourcefile: path.relative(process.cwd(), file.indexOf('file://') === 0 ? fileURLToPath(file) : file)
+  }).code
 }

@@ -40,24 +40,30 @@ api.node.hotload.observe(async x => {
   if (!scripts.has(x.path))
     return
 
+  let scriptSource = ''
   try {
-    const r = ws && await ws.request('Debugger.setScriptSource', {
-      scriptId: scripts.get(x.path),
-      scriptSource: modify(x.next, x.path, config)
-    })
-
-    r && r.status === 'CompileError' && api.log({
-      from: 'browser',
-      type: 'hotload error',
-      args: [{ type: 'string', value: r.exceptionDetails?.text }],
-      stackTrace: {
-        callFrames: [{ url: x.path, ...r.exceptionDetails }]
-      }
-    })
+    scriptSource = modify(x.next, x.path, config)
   } catch (e) {
-    config.debug && console.log(e, x) // eslint-disable-line
-    restart()
+    return api.log({
+      from: 'node transform',
+      type: 'error',
+      args: [e.message]
+    })
   }
+
+  const r = ws && await ws.request('Debugger.setScriptSource', {
+    scriptId: scripts.get(x.path),
+    scriptSource
+  })
+
+  r && r.status === 'CompileError' && api.log({
+    from: 'node',
+    type: 'error',
+    args: [{ type: 'string', value: r.exceptionDetails?.text }],
+    stackTrace: {
+      callFrames: [{ url: x.path, ...r.exceptionDetails }]
+    }
+  })
 })
 
 export const onlyServer = await start()
@@ -131,7 +137,7 @@ async function start() {
   return result
 
   function lastException(x) {
-    if (x.includes(`internalBinding('errors').triggerUncaughtException(`))
+    if (x.includes('internalBinding(\'errors\').triggerUncaughtException('))
       return true
 
     const l = api.log().exception

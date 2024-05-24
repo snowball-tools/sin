@@ -36,7 +36,7 @@ export function resolve(x, context, nextResolve) {
   const cwd = process.cwd()
   const isRelative = c === 46 // .
   const isAbsolute = !isRelative && path.isAbsolute(x)
-  const isRoot = isAbsolute && !x.startsWith(cwd)
+  const isRoot = isAbsolute && x.startsWith(cwd)
   const isURL = !isRelative && !isAbsolute && c === 102 && x.indexOf('file://') === 0 // f
   const url = isURL      ? x
             : isRelative ? pathToFileURL(path.join(path.dirname(fileURLToPath(context.parentURL)), x))

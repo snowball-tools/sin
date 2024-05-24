@@ -205,8 +205,8 @@ function getHome(x) {
 }
 
 function getPort(x, config) {
-  if (x || process.env.PORT)
-    return parseInt(x || process.env.PORT)
+  if (x || env.PORT)
+    return parseInt(x || env.PORT)
 
   if (config.$[0] !== 'develop')
     return
@@ -254,8 +254,8 @@ function getUnsafe() {
 }
 
 function getChromePath(x, xs) {
-  if (x)
-    return x.trim()
+  if (x || env.CHROME_PATH)
+    return (x || env.CHROME_PATH).trim()
 
   if (process.platform === 'darwin') {
     return [
@@ -267,11 +267,11 @@ function getChromePath(x, xs) {
       || '/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe'
   } else if (process.platform === 'win32') {
     return [
-      process.env['LOCALAPPDATA'] + '\\Google\\Chrome\\Application\\chrome.exe',      // eslint-disable-line
-      process.env['PROGRAMFILES'] + '\\Google\\Chrome\\Application\\chrome.exe',      // eslint-disable-line
-      process.env['PROGRAMFILES(X86)'] + '\\Google\\Chrome\\Application\\chrome.exe', // eslint-disable-line
-      process.env['PROGRAMFILES'] + '\\Microsoft\\Edge\\Application\\msedge.exe',     // eslint-disable-line
-      process.env['PROGRAMFILES(X86)'] + '\\Microsoft\\Edge\\Application\\msedge.exe' // eslint-disable-line
+      env['LOCALAPPDATA'] + '\\Google\\Chrome\\Application\\chrome.exe',      // eslint-disable-line
+      env['PROGRAMFILES'] + '\\Google\\Chrome\\Application\\chrome.exe',      // eslint-disable-line
+      env['PROGRAMFILES(X86)'] + '\\Google\\Chrome\\Application\\chrome.exe', // eslint-disable-line
+      env['PROGRAMFILES'] + '\\Microsoft\\Edge\\Application\\msedge.exe',     // eslint-disable-line
+      env['PROGRAMFILES(X86)'] + '\\Microsoft\\Edge\\Application\\msedge.exe' // eslint-disable-line
     ].find(fs.existsSync)
   }
 }

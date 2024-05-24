@@ -17,7 +17,7 @@ const unquoteFilename = navigator.platform.toLowerCase().includes('win')
   : /"([^\0/]+)":/ig
 
 s.error = s((error) => {
-  console.error(error) // eslint-disable-line
+  setTimeout(() => { throw error }) // eslint-disable-line
   const stack = api.parseStackTrace(error.stack || '')
       , attrs = typeof error === 'object' && JSON.stringify(error, null, 2).replace(unquoteFilename, '$1:')
 

@@ -13,7 +13,8 @@ export default async function(xs) {
       const { req, res, error } = await request(x, r).catch(error => ({ error }))
 
       if (error) {
-        console.log('Error installing from ' + x.origin)
+        console.error('Error installing from ' + x.origin + r.url + (r.rawQuery ? '?' + r.rawQuery : ''))
+        req.url
         throw error
       }
 

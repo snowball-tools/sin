@@ -14,6 +14,9 @@ import { rewrite } from './shared.js'
 
 import s from '../../src/index.js'
 
+if (!config.chromePath || !fs.existsSync(config.chromePath))
+  throw new Error('Could not find a Chrome installation. Install Chrome or set a valid path using CHROME_PATH=')
+
 const root = 'http://127.0.0.1:' + config.chromePort
     , hmr = 'if(window.self === window.top)window.hmr=1;'
     , replace = Math.random()
@@ -244,31 +247,9 @@ async function getTabs(url, retries = 0) {
   }
 }
 
-function getPath() {
-  if (process.env.CHROME_PATH) // eslint-disable-line
-    return process.env.CHROME_PATH.trim() // eslint-disable-line
-
-  if (process.platform === 'darwin') {
-    return [
-      '/Applications/Chromium.app/Contents/MacOS/Chromium',
-      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-
-    ].find(fs.existsSync)
-  } else if (process.platform === 'linux') {
-    return cp.execSync('which google-chrome || which chromium || echo', { encoding: 'utf8' }).trim()
-      || '/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe'
-  } else if (process.platform === 'win32') {
-    return [
-      process.env['LOCALAPPDATA'] + '\\Google\\Chrome\\Application\\chrome.exe',      // eslint-disable-line
-      process.env['PROGRAMFILES'] + '\\Google\\Chrome\\Application\\chrome.exe',      // eslint-disable-line
-      process.env['PROGRAMFILES(X86)'] + '\\Google\\Chrome\\Application\\chrome.exe'  // eslint-disable-line
-    ].find(fs.existsSync)
-  }
-}
-
 async function spawn() {
   return new Promise((resolve, reject) => {
-    const x = cp.spawn(getPath(), [
+    const x = cp.spawn(config.chromePath, [
       ...(config.headless ? ['--headless'] : []),
       '--no-first-run',
       '--disable-features=PrivacySandboxSettings4',

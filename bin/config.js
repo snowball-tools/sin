@@ -67,6 +67,7 @@ async function fromArgs() {
       unsafe      : getUnsafe,
       pkgs        : getPkgs,
       sucrase     : getSucrase,
+      chromePath  : getChromePath,
       domain      : null,
       server      : null,
       ssl         : {
@@ -250,6 +251,29 @@ async function getChallenge(challenge, config, read) {
 function getUnsafe() {
   const x = Object.entries(env).reduce((acc, [k, v]) => (k.startsWith('UNSAFE_') && (acc[k.slice(7)] = v), acc), {})
   return x ? 'import.meta.env=' + JSON.stringify(x) + ';' : ''
+}
+
+function getChromePath(x, xs) {
+  if (x)
+    return x.trim()
+
+  if (process.platform === 'darwin') {
+    return [
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+    ].find(fs.existsSync)
+  } else if (process.platform === 'linux') {
+    return cp.execSync('which google-chrome || which chromium || echo', { encoding: 'utf8' }).trim()
+      || '/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe'
+  } else if (process.platform === 'win32') {
+    return [
+      process.env['LOCALAPPDATA'] + '\\Google\\Chrome\\Application\\chrome.exe',      // eslint-disable-line
+      process.env['PROGRAMFILES'] + '\\Google\\Chrome\\Application\\chrome.exe',      // eslint-disable-line
+      process.env['PROGRAMFILES(X86)'] + '\\Google\\Chrome\\Application\\chrome.exe', // eslint-disable-line
+      process.env['PROGRAMFILES'] + '\\Microsoft\\Edge\\Application\\msedge.exe',     // eslint-disable-line
+      process.env['PROGRAMFILES(X86)'] + '\\Microsoft\\Edge\\Application\\msedge.exe' // eslint-disable-line
+    ].find(fs.existsSync)
+  }
 }
 
 export async function resolve() {

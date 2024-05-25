@@ -14,7 +14,6 @@ export default async function(xs) {
 
       if (error) {
         console.error('Error installing from ' + x.origin + r.url + (r.rawQuery ? '?' + r.rawQuery : ''))
-        req.url
         throw error
       }
 
@@ -61,6 +60,7 @@ async function request(url, r) {
         method: r.method.toUpperCase(),
         headers: {
           ...r.headers,
+          'accept-encoding': 'identity',
           host: url.host
         }
       },

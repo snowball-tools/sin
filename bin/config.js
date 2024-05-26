@@ -141,10 +141,9 @@ export function getEntry(x, config) {
     file || (file = pkg.json.main)
   }
 
-  if (!file)
-    file = extensionless(dir) || extensionless(path.join(dir, config.outputDir)) || 'index.js'
-
-  const entry = path.join(dir, file)
+  const entry = file
+    ? path.join(dir, file)
+    : extensionless(dir) || extensionless(path.join(dir, config.outputDir)) || path.join(dir, 'index.js')
   return canRead(entry)
     ? entry
     : error('Entry ' + (config._[0] || entry) + ' could not be accessed')

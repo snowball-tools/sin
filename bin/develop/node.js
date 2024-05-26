@@ -67,6 +67,7 @@ api.node.hotload.observe(async x => {
 })
 
 export const onlyServer = await start()
+config.script || api.log('🔥 ' + api.url)
 
 async function close() {
   node && (node.kill(), node.connected && await new Promise(r => node.on('close', r)))

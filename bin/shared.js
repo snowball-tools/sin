@@ -20,7 +20,7 @@ export function extensionless(x, root = '') {
     : canRead(path.join(root, x, 'index.tsx')) ? x + '/index.tsx'
     : canRead(path.join(root, x + '.jsx'))     ? x + '.jsx'
     : canRead(path.join(root, x, 'index.jsx')) ? x + '/index.jsx'
-    : x
+    : null
 }
 
 export function canRead(x) {

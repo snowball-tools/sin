@@ -1,6 +1,7 @@
 import http from 'node:http'
 import https from 'node:https'
-import { pipeline } from 'stream/promises'
+import zlib from 'node:zlib'
+import { pipeline } from 'node:stream/promises'
 
 import ey from 'ey'
 
@@ -18,12 +19,12 @@ export default async function(xs) {
       }
 
       if (res.statusCode === 404) {
-        req.aborted = true
+        req.isAborted = true
         req.abort()
         continue
       }
 
-      if (res.headers['content-type'] === 'application/json') {
+      if (r.method === 'get' && res.headers['content-type'] === 'application/json') {
         const pkg = await json(res)
         pkg.versions && Object.values(pkg.versions).forEach(v => {
           v?.dist?.tarball && (v.dist.tarball = v.dist.tarball
@@ -31,6 +32,7 @@ export default async function(xs) {
             .replace(x.host, '127.0.0.1:' + listener.port)
           )
         })
+        r.header(res.statusCode, { ...res.headers, 'content-encoding': 'identity' })
         return r.json(pkg)
       } else {
         r.header(res.statusCode, res.headers)
@@ -44,15 +46,24 @@ export default async function(xs) {
 }
 
 async function json(res) {
-  return new Promise((resolve, reject) => {
-    const data = []
-    res.on('data', x => data.push(x))
-    res.on('end', () => resolve(JSON.parse(Buffer.concat(data))))
+  const data = await new Promise((resolve, reject) => {
+    const xs = []
+    res.on('xs', x => xs.push(x))
+    res.on('end', () => resolve(Buffer.concat(xs)))
     res.on('error', reject)
   })
+
+  return JSON.parse(
+    res.headers['content-encoding'] === 'gzip'
+      ? await new Promise(r => zlib.gunzip(data, r))
+      : res.headers['content-encoding'] === 'deflate'
+      ? await new Promise(r => zlib.deflate(data, r))
+      : data
+  )
 }
 
 async function request(url, r) {
+  const body = r.method[0] === 'p' && await r.body()
   return new Promise((resolve, reject) => {
     const req = (url.protocol === 'http:' ? http : https).request(
       url.origin + r.url + (r.rawQuery ? '?' + r.rawQuery : ''), {
@@ -60,17 +71,14 @@ async function request(url, r) {
         method: r.method.toUpperCase(),
         headers: {
           ...r.headers,
-          'accept-encoding': 'identity',
+          ...(r.method === 'get' ? { 'accept-encoding': 'identity' } : {}),
           host: url.host
         }
       },
       res => resolve({ req, res })
     )
 
-    req.on('error', (err) => req.aborted || reject(err))
-
-    r.method[0] === 'p'
-      ? pipeline(r.readable, req)
-      : req.end()
+    req.on('error', (err) => req.isAborted || reject(err))
+    body ? req.end(body) : req.end()
   })
 }

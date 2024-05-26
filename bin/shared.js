@@ -1,6 +1,6 @@
 import path from 'node:path'
 import fs from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import esbuild from 'esbuild'
 
 export function isScript(x) {
@@ -70,7 +70,7 @@ export function getPkgs(cwd) {
 export async function getSucrase(x, { pkgs }) {
   for (const { dir, json } of pkgs) {
     if (json.dependencies?.sucrase || json.devDependencies?.sucrase)
-      return import(path.join(dir, 'node_modules', 'sucrase', 'dist', 'index.js'))
+      return import(pathToFileURL(path.join(dir, 'node_modules', 'sucrase', 'dist', 'index.js')))
   }
 }
 

@@ -79,18 +79,28 @@ async function build(r) {
   if (r.url.endsWith('.js'))
     return r.file(path.join(config.cwd, r.url), hijack)
 
-  const result = await esbuild.build({
+  let source = await esbuild.build({
     entryPoints: [path.join(config.cwd, r.url)],
     bundle: true,
     format: 'esm',
     write: false,
     platform: 'browser',
-    outdir: 'out'
-  })
+    minify: true,
+    legalComments: 'none'
+  }).then(x => x.outputFiles[0].text)
 
-  r.end(result.outputFiles[0].text, {
-    'Content-Type': 'text/javascript'
-  })
+  const exportsDefault = source.lastIndexOf('export default ')
+  if (exportsDefault > -1 && source.indexOf("__esModule") > -1) {
+    const before = source.slice(0, exportsDefault)
+    const after = source.slice(exportsDefault)
+    try {
+      const names = Function(before + after.replace(/^export default ([^;]+);/g, 'return Object.keys($1);'))()
+      if (names.length)
+        source = before + after.replace(/^export default ([^;]+);/g, 'const $_$ = $1;export default $_$;export const {' + names + '} = $_$;')
+    } finally {}
+  }
+
+  r.end(source, { 'Content-Type': 'text/javascript' })
 }
 
 function getTools() {

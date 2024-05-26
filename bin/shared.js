@@ -23,7 +23,7 @@ export function extensionless(x, root = '') {
     : x
 }
 
-function canRead(x) {
+export function canRead(x) {
   try {
     return fs.statSync(x).isFile()
   } catch (_) {
@@ -51,10 +51,8 @@ export function jail(x) {
   return ('' + x).replace(/((function.*?\)|=>)\s*{)/g, '$1eval(0);')
 }
 
-export function getPkgs(x, {
-  cwd,
-  root
-}) {
+export function getPkgs(cwd) {
+  const root = path.parse(cwd).root
   let pkgs = []
   let dir = cwd
   while (dir !== root) {

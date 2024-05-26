@@ -39,7 +39,7 @@ export default async function(x = {}) {
         name: 'sinport',
         setup: x => x.onResolve(
           { filter: /^\// },
-          x => ({ path: abs(extensionless(x.path, cwd), cwd) })
+          x => ({ path: abs(extensionless(x.path, cwd) || x.path, cwd) })
         )
       },
       ...[].concat(plugins || []).concat(esbuild.plugins || [])

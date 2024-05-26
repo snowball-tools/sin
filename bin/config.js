@@ -4,7 +4,7 @@ import cp from 'node:child_process'
 import fsp from 'node:fs/promises'
 import url from 'node:url'
 import path from 'node:path'
-import { getTSConfigRaw, getPkgs, getSucrase } from './shared.js'
+import { getTSConfigRaw, getPkgs, getSucrase, isScript, extensionless, canRead } from './shared.js'
 
 import args from './args.js'
 import c from './color.js'
@@ -66,7 +66,6 @@ async function fromArgs() {
       home        : getHome,
       port        : getPort,
       unsafe      : getUnsafe,
-      pkgs        : getPkgs,
       sucrase     : getSucrase,
       chromePath  : getChromePath,
       domain      : null,
@@ -123,41 +122,32 @@ function needsEntry(config) {
       || 'build generate'.includes(config.$[0])
 }
 
-export function getEntry(x, config, read, alt = '', initial) {
-  if (x)
-    return x
+export function getEntry(x, config) {
+  x = x || config._[0] || ''
+  x = path.isAbsolute(x) ? x : path.join(process.cwd(), x)
+  let file = isScript(x) && path.basename(x)
+  const dir = file ? path.dirname(x) : x
 
-  if (!needsEntry(config))
+  if (!needsEntry(config)) {
+    process.chdir(env.PWD = dir)
     return ''
-
-  x = config._[0] || ''
-
-  const entry = path.isAbsolute(x)
-    ? x
-    : path.join(
-      process.cwd(),
-      alt,
-      fs.existsSync(x + '.js')
-        ? x + '.js'
-        : fs.existsSync(x + '.ts')
-        ? x + '.ts'
-        : fs.existsSync(path.join(x, x.endsWith('.js') ? '' : 'index.js'))
-        ? path.join(x, x.endsWith('.js') ? '' : 'index.js')
-        : fs.existsSync(path.join(x, x.endsWith('.ts') ? '' : 'index.ts'))
-        ? path.join(x, x.endsWith('.ts') ? '' : 'index.ts')
-        : fs.existsSync(path.join(x, x.endsWith('.tsx') ? '' : 'index.tsx'))
-        ? path.join(x, x.endsWith('.tsx') ? '' : 'index.tsx')
-      : 'index.js'
-    )
-
-  try {
-    fs.readFileSync(entry, { length: 1 })
-    return entry
-  } catch (e) {
-    return alt
-      ? error('No access ' + (initial || entry) + ' (' + e.code + ')')
-      : getEntry(null, config, read, config.outputDir, entry) // Allows only deploying files built
   }
+
+  config.pkgs = getPkgs(dir)
+  const pkg = config.pkgs[0]
+
+  if (pkg) {
+    process.chdir(env.PWD = pkg.dir) // node doesn't update env.PWD
+    file || (file = pkg.json.main)
+  }
+
+  if (!file)
+    file = extensionless(dir) || extensionless(path.join(dir, config.outputDir)) || 'index.js'
+
+  const entry = path.join(dir, file)
+  return canRead(entry)
+    ? entry
+    : error('Entry ' + (config._[0] || entry) + ' could not be accessed')
 }
 
 export function error(x) {
@@ -169,17 +159,9 @@ export function error(x) {
   process.exit(1)
 }
 
-async function getCWD(x, config) {
-  x = x || needsEntry(config)
-    ? path.dirname(config.entry).replace('/' + config.outputDir, '') // If using output for ssr
-    : process.cwd()
-
-  path.isAbsolute(x) || (x = path.join(process.cwd(), x))
-  env.PWD = x
-  process.chdir(x)
-  path.isAbsolute(config.entry) || (config.entry = path.join(x, config.entry))
+async function getCWD() {
   await import('./env.js')
-  return x
+  return process.cwd()
 }
 
 function getLocal(x, xs) {
@@ -282,7 +264,7 @@ export async function resolve() {
       , hasExport = config.entry && exportsDefault(await fsp.readFile(config.entry, 'utf8'))
       , main = hasExport && (globalThis.window = (await import('../ssr/window.js')).default, await import(config.entry))
       , http = main && typeof main.default === 'function' && main
-      , src = !http && !config.noscript && path.basename(config.entry)
+      , src = !http && !config.noscript && path.relative(config.cwd, config.entry)
       , mod = src && (await fsp.stat(path.join(cwd, config.outputDir, src)).catch(() => fsp.stat(path.join(cwd, src)))).mtimeMs.toFixed(0)
 
   return {

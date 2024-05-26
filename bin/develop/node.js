@@ -82,7 +82,7 @@ async function start() {
 
   api.log({ replace, from: 'node', type: 'status', value: '⏳' })
   node = cp.fork(
-    config.$[1] === 'script' ? config.entry : path.join(dirname, 'serve.js'),
+    config.script ? config.entry : path.join(dirname, 'serve.js'),
     process.argv.slice(2),
     {
       stdio: ['inherit', 'pipe', 'pipe', 'ipc'],

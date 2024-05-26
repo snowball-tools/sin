@@ -3,8 +3,6 @@ import path from 'node:path'
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 
-import esbuild from 'esbuild'
-
 import config from './config.js'
 import rewriter from './rewriter.js'
 import { isScript, extensionless, modify } from '../shared.js'
@@ -30,7 +28,7 @@ export function rewrite(x, file) {
   return config.unsafe + rewriter(
     modify(x, file, config),
     x => {
-      isModule(x) || isScript(x) || (x = extensionless(x, dir))
+      isModule(x) || isScript(x) || (x = extensionless(x, dir) || x)
       return isModule(x)
         ? '/' + resolve(x)
         : x

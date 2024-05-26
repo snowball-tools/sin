@@ -5,10 +5,9 @@ import { URL, fileURLToPath, pathToFileURL } from 'node:url'
 import { modify, extensionless, getSucrase, getTSConfigRaw, getPkgs } from './shared.js'
 
 const cwd = process.cwd()
-const root = path.parse(cwd).root
 
 const config = {
-  sucrase: await getSucrase(null, { pkgs: getPkgs(null, { root, cwd }) }),
+  sucrase: await getSucrase(null, { pkgs: getPkgs(cwd) }),
   tsconfigRaw: getTSConfigRaw(null, { tsconfig: path.join(cwd, 'tsconfig.json') })
 }
 
@@ -21,7 +20,7 @@ export async function load(url, context, nextLoad) {
   if (result.source && (result.format === 'module' || context.format === 'commonjs' || context.format === 'module')) {
     try {
       result.source = modify(result.source, url, config)
-    } catch(e) {
+    } catch (e) {
       ts && (result.source = '')
       console.error(e.message)
       return result
@@ -40,9 +39,9 @@ export function resolve(x, context, nextResolve) {
   const isURL = !isRelative && !isAbsolute && c === 102 && x.indexOf('file://') === 0 // f
   const url = isURL      ? x
             : isRelative ? pathToFileURL(path.join(path.dirname(fileURLToPath(context.parentURL)), x))
-            : isRoot     ? pathToFileURL(path.join(cwd, x))
-            : isAbsolute ? pathToFileURL(x)
+            : isRoot     ? pathToFileURL(x)
+            : isAbsolute ? pathToFileURL(path.join(cwd, x))
             : null // is bare import
 
-  return nextResolve(url ? '' + pathToFileURL(extensionless('' + url)) : x, context)
+  return nextResolve(url ? '' + pathToFileURL(extensionless('' + url) || fileURLToPath(url)) : x, context)
 }

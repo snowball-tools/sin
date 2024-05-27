@@ -85,11 +85,10 @@ async function build(r) {
     format: 'esm',
     write: false,
     platform: 'browser',
-    minify: true,
     legalComments: 'none'
   }).then(x => x.outputFiles[0].text)
 
-  const exportsDefault = source.lastIndexOf('export default ')
+  const exportsDefault = source.lastIndexOf('export default require_')
   if (exportsDefault > -1 && source.indexOf("__esModule") > -1) {
     const before = source.slice(0, exportsDefault)
     const after = source.slice(exportsDefault)

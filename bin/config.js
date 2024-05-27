@@ -137,12 +137,13 @@ export function getEntry(x, config) {
 
   if (pkg) {
     process.chdir(env.PWD = pkg.dir) // node doesn't update env.PWD
-    file || (file = pkg.json.main)
+    file || (canRead(pkg.json.main) && (file = pkg.json.main))
   }
 
   const entry = file
     ? path.join(dir, file)
     : extensionless(dir) || extensionless(path.join(dir, config.outputDir)) || path.join(dir, 'index.js')
+
   return canRead(entry)
     ? entry
     : error('Entry ' + (config._[0] || entry) + ' could not be accessed')

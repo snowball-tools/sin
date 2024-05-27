@@ -1,11 +1,13 @@
 import path from 'path'
 import ESBuild from 'esbuild'
-import config, { getEntry } from '../bin/config.js'
+import '../bin/env.js'
 import { extensionless } from '../bin/shared.js'
 
 export default async function(x = {}) {
+  process.env.SIN_BUILD = true
+  const config = (await import('../bin/config.js')).default
   const {
-    entry = getEntry('', { _: [], $: ['build'] }),
+    entry = config.entry,
     plugins,
     cwd = process.cwd(),
     esbuild = {},

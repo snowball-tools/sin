@@ -20,6 +20,7 @@ export default async function(argv, options) {
       if (x.startsWith(argv[0])) {
         command = x
         result.$.push(x)
+        result[x] = true
         commands = commands[x] === 1 ? null : commands[x]
         argv = argv.slice(1)
         break

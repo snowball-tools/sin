@@ -118,7 +118,7 @@ async function fromArgs() {
 }
 
 function needsEntry(config) {
-  return process.env.SIN_BUILD || !config.static || config.build || config.generate
+  return !config.static && (process.env.SIN_BUILD || config.build || config.generate || config.develop || config.start)
 }
 
 export function getEntry(x, config) {

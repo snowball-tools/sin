@@ -67,7 +67,7 @@ export function getPkgs(cwd) {
   return pkgs
 }
 
-export async function getSucrase(x, { pkgs }) {
+export async function getSucrase(x, { pkgs = [] }) {
   for (const { dir, json } of pkgs) {
     if (json.dependencies?.sucrase || json.devDependencies?.sucrase)
       return import(pathToFileURL(path.join(dir, 'node_modules', 'sucrase', 'dist', 'index.js')))

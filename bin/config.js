@@ -128,7 +128,7 @@ export function getEntry(x, config) {
   const dir = file ? path.dirname(x) : x
 
   if (!needsEntry(config)) {
-    process.chdir(env.PWD = dir)
+    config.create || process.chdir(env.PWD = dir)
     return ''
   }
 

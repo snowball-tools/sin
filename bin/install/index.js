@@ -9,10 +9,17 @@ const cwd = process.cwd()
 const root = path.parse(cwd).root
 
 const locks = {
-  yarn: 'yarn.lock',
-  bun: 'bun.lockb',
-  npm: 'package-lock.json',
-  pnpm: 'pnpm-lock.yaml'
+  'yarn.lock': 'yarn',
+  'bun.lockb': 'bun',
+  'package-lock.json': 'npm',
+  'pnpm-lock.yaml': 'pnpm'
+}
+
+const exact = {
+  yarn: '--exact',
+  bun: '--exact',
+  npm: '--save-exact',
+  pnpm: '--save-exact'
 }
 
 const c = client()
@@ -22,7 +29,10 @@ const proxy = r.length > 1 && await Proxy(r)
 const args = process.argv.slice(2)
 
 console.log('Using ' + c + ' to install' + (r.length > 1 ? ' from ' + r.map(x => x.host).join(' then ') : ''))
-const child = cp.spawn(c, args, {
+const child = cp.spawn(c, [
+  exact[c],
+  ...args
+], {
   stdio: ['pipe', 'inherit', 'inherit'],
   shell: process.platform === 'win32',
   env: proxy
@@ -36,8 +46,8 @@ function client() {
   let dir = cwd
   while (dir !== root) {
     for (const x in locks) {
-      if (fs.existsSync(path.join(dir, locks[x])))
-        return x
+      if (fs.existsSync(path.join(dir, x)))
+        return locks[x]
     }
     dir = path.dirname(dir)
   }

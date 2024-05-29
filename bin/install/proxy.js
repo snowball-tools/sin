@@ -48,7 +48,7 @@ export default async function(xs) {
 async function json(res) {
   const data = await new Promise((resolve, reject) => {
     const xs = []
-    res.on('xs', x => xs.push(x))
+    res.on('data', x => xs.push(x))
     res.on('end', () => resolve(Buffer.concat(xs)))
     res.on('error', reject)
   })

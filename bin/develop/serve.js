@@ -10,7 +10,6 @@ import config, { resolve } from './config.js'
 import { transform } from './shared.js'
 import ssr, { wrap } from '../../ssr/index.js'
 
-const { server, mount, src, onlyServer } = await resolve()
 const head = getTools()
 const router = ey()
 const hijack = {
@@ -22,19 +21,29 @@ const hijack = {
   }
 }
 
-if (server && typeof server.default === 'function')
-  await server.default(router)
+const onlyServer = config.static
+  ? staticOnly()
+  : await serve()
 
+await router.listen(config.port)
 process.send('started:' + onlyServer)
 
-if (config.static) {
+function staticOnly() {
   router.get(
     router.files(config._[0] || process.cwd(), {
       cache: false
     })
   )
   router.get('/favicon.ico', r => r.end(favicon))
-} else {
+
+  return true
+}
+
+async function serve() {
+  const { server, mount, src, onlyServer } = await resolve()
+  if (server && typeof server.default === 'function')
+    await server.default(router)
+
   router.get(r => {
     r.header('Cache-Control', 'no-store')
     if (r.url.indexOf('/.') !== -1) // Don't serve hidden paths or dir up hacks
@@ -71,9 +80,9 @@ if (config.static) {
 
     r.end(html, x.status || 200, x.headers)
   })
-}
 
-await router.listen(config.port)
+  return onlyServer
+}
 
 async function build(r) {
   if (r.url.endsWith('.js'))

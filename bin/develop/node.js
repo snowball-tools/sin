@@ -21,22 +21,17 @@ let node
 
 prexit(close)
 
+export const onlyServer = await tryStart()
+config.script || api.log('🔥 ' + api.url)
+
 Watcher(() => api.node.restart('reload')).add('.env')
 api.node.restart.observe(restart)
-api.node.hotload.observe(() =>
-  node
-    ? api.log({ replace, from: 'node', type: 'status', value: '🔥' })
-    : restart()
-)
+api.node.hotload.observe(hotload)
 
-async function restart(x) {
-  api.log({ replace: 'nodeend', from: 'node', type: 'status', value: '🔄' })
-  await close()
-  await start()
-  x === 'reload' && setTimeout(() => api.browser.reload(), 200)
-}
+async function hotload(x) {
+  if (!node)
+    return restart()
 
-api.node.hotload.observe(async x => {
   if (!scripts.has(x.path))
     return
 
@@ -56,7 +51,8 @@ api.node.hotload.observe(async x => {
     scriptSource
   })
 
-  r && r.status === 'CompileError' && api.log({
+  r && r.status === 'CompileError'
+  ? api.log({
     from: 'node',
     type: 'error',
     args: [{ type: 'string', value: r.exceptionDetails?.text }],
@@ -64,10 +60,30 @@ api.node.hotload.observe(async x => {
       callFrames: [{ url: x.path, ...r.exceptionDetails }]
     }
   })
-})
+  : api.log({ replace, from: 'node', type: 'status', value: '🔥' })
+}
 
-export const onlyServer = await start()
-config.script || api.log('🔥 ' + api.url)
+async function restart(x) {
+  api.log({ replace: 'nodeend', from: 'node', type: 'status', value: '🔄' })
+  await close()
+  await tryStart()
+  x === 'reload' && setTimeout(() => api.browser.reload(), 200)
+}
+
+async function tryStart() {
+  let onlyServer = null
+  let tries = 0
+  while (onlyServer === null) {
+    onlyServer = await start().catch(err => {
+      if (tries++ > 10)
+        throw err
+      return null
+    })
+    if (onlyServer === null)
+      await   new Promise(r => api.node.hotload.observe(r, true))
+  }
+  return onlyServer
+}
 
 async function close() {
   node && (node.kill(), node.connected && await new Promise(r => node.on('close', r)))
@@ -102,7 +118,7 @@ async function start() {
       ? ws = connect(data.slice(22).split('\n')[0].trim())
       : data.includes('Waiting for the debugger to disconnect...')
       ? ws && setTimeout(() => ws.close(), 200)
-      : data !== 'Debugger attached.\n' && !lastException(data)
+      : data.trim() !== 'Debugger attached.'
       ? api.log({ from: 'node', type: 'stderr', args: data })
       : null
   })
@@ -136,15 +152,6 @@ async function start() {
   api.log({ replace, from: 'node', type: 'status', value: '🚀' })
 
   return result
-
-  function lastException(x) {
-    if (x.includes('internalBinding(\'errors\').triggerUncaughtException('))
-      return true
-
-    const l = api.log().exception
-    const message = l?.preview?.properties?.find(x => x.name === 'message')?.value || l?.description
-    return l && x.includes(message)
-  }
 
   function duration() {
     return (performance.now() - startPerf).toFixed(2) + 'ms'
@@ -187,13 +194,8 @@ async function start() {
       if (method === 'Debugger.scriptParsed' && params.url)
         return parsed(params)
 
-      if (method === 'Runtime.consoleAPICalled') {
-        api.recent = params.args
+      if (method === 'Runtime.consoleAPICalled')
         return api.log({ from: 'node', ...params })
-      }
-
-      if (method === 'Runtime.exceptionThrown')
-        return api.log({ ws, from: 'node', type: 'exception', ...params.exceptionDetails })
 
       if (!requests.has(id))
         return

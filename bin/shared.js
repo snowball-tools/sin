@@ -80,7 +80,7 @@ export function modify(x, file, {
   sucrase,
   tsconfigRaw
 }) {
-  const tsx = file.endsWith('.tsx')
+  const tsx = /\.[jt]sx$/.test(file)
   if (tsx || file.endsWith('.ts')) {
     x = sucrase
       ? sucraseTS(sucrase, x, debug, tsx, tsconfigRaw, file)

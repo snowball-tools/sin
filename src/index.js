@@ -493,7 +493,7 @@ function insertBefore(parent, { first, last }, before) {
   } while (parent.insertBefore(dom, before) !== last)
 }
 
-function update(dom, view, context, parent, stack, create) {
+function update(dom, view, context, parent, stack, create, component) {
   return isObservable(view)
     ? updateLive(dom, view, context, parent, stack, create)
     : isFunction(view)
@@ -503,10 +503,10 @@ function update(dom, view, context, parent, stack, create) {
         : view instanceof Promise
           ? updateView(dom, s(() => view)(), context, parent, stack, create)
           : Array.isArray(view)
-            ? updateArray(dom, view, context, parent, create)
+            ? updateArray(dom, view, context, parent, create, component)
             : view instanceof Node
               ? updateNode(dom, view, context)
-              : updateValue(dom, view, parent, create)
+              : updateValue(dom, view, parent, create, undefined, component)
 }
 
 function updateNode(dom, view, context) {
@@ -576,10 +576,10 @@ function getArray(dom) {
   return dom && hasOwn.call(dom, arrayEnd) ? dom[arrayEnd] : fromComment(dom)
 }
 
-function updateArray(dom, view, context, parent, create) {
+function updateArray(dom, view, context, parent, create, component) {
   create && dom && parent && (dom = updateArray(dom, [], context, parent).first)
   let last = getArray(dom) || dom
-  const comment = updateValue(dom, '[' + view.length, parent, false, 8)
+  const comment = updateValue(dom, '[' + view.length, parent, false, 8, component)
   if (dom !== comment.dom)
     last = comment.last
   if (parent) {
@@ -603,9 +603,12 @@ function updateValue(
   view,
   parent,
   create,
-  nodeType = typeof view === 'boolean' || view == null ? 8 : 3
+  nodeType = typeof view === 'boolean' || view == null ? 8 : 3,
+  component = false
 ) {
   const nodeChange = create || !dom || dom.nodeType !== nodeType
+  if (dom && hasOwn.call(dom, componentSymbol) && hasOwn.call(dom, componentSymbol) !== component)
+    removeCall(dom)
 
   nodeChange && replace(
     dom,
@@ -842,7 +845,8 @@ function updateComponent(
       instance.context,
       parent,
       stack,
-      (create || instance.recreate) && !instance.hydrating ? true : undefined
+      (create || instance.recreate) && !instance.hydrating ? true : undefined,
+      stack
     )
     instance.hydrating && (instance.hydrating = instance.context.hydrating = false)
     instance.recreate && (instance.recreate = false)
@@ -1214,7 +1218,9 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
   }
 
   if (dom.nodeType !== 1) {
-    root && removeChild(parent, dom)
+    root
+      ? removeChild(parent, dom)
+      : removeCall(dom)
     return after
   }
 

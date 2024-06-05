@@ -253,6 +253,7 @@ async function spawn() {
       ...(config.headless ? ['--headless'] : []),
       '--no-first-run',
       '--disable-features=PrivacySandboxSettings4',
+      '--disable-search-engine-choice-screen',
       '--no-default-browser-check',
       '--disable-web-security',
       '--disable-translate',

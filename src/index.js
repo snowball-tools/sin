@@ -137,11 +137,17 @@ const trusted = s(({ strings, values = [] }) => {
 
 function event(fn) {
   const observers = new Set(fn ? [fn] : [])
-  event.observe = fn => (observers.add(fn), () => observers.delete(fn))
+  event.observe = observe
   return event
 
   function event(...xs) {
     [...observers].forEach(fn => fn(...xs))
+  }
+
+  function observe(x, once) {
+    const fn = once ? ((...xs) => (observers.delete(fn), fn(...xs))) : x
+    observers.add(fn)
+    return () => observers.delete(fn)
   }
 }
 

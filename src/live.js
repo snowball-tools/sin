@@ -4,7 +4,7 @@ export default function Live(value, ...fns) {
   const observers = new Set()
   fns.forEach(fn => isFunction(fn) && observers.add(fn))
   live.value = value
-  live.observe = fn => (observers.add(fn), () => observers.delete(fn))
+  live.observe = observe
   live.valueOf = live.toString = live.toJSON = () => value
   live.detach = noop
   live.reduce = reduce
@@ -13,6 +13,12 @@ export default function Live(value, ...fns) {
   live.if = (...xs) => Object.assign(ternary.bind(null, ...xs), { observe: fn => live.observe(x => fn(ternary(...xs))) })
 
   return live
+
+  function observe(x, once) {
+    const fn = once ? ((...xs) => (observers.delete(fn), fn(...xs))) : x
+    observers.add(fn)
+    return () => observers.delete(fn)
+  }
 
   function getter(x) {
     return isFunction(x) ? x(live.value) : live.value[x]

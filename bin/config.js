@@ -79,7 +79,7 @@ async function fromArgs() {
       acme,
       secure      : (x, xs) => !!(xs.ssl.cert || xs.acme.domains.length),
       httpsPort   : (x, xs) => x || (xs.secure ? (x ? parseInt(x) : (xs.port || 443)) : null),
-      httpPort    : (x, xs) => xs.secure && xs.ssl.mode === 'only' ? null : (xs.secure ? 80 : x ? parseInt(x) : 80),
+      httpPort    : (x, xs) => xs.secure && xs.ssl.mode === 'only' ? null : (xs.secure ? 80 : x ? parseInt(x) : (xs.port || 80)),
       address     : x => x || env.ADDRESS || '0.0.0.0',
       workers     : x => x ? x === 'cpus' ? os.cpus().length : parseInt(x) : 1,
       tsconfig    : (x, xs) => xs.cwd + '/tsconfig.json',

@@ -275,7 +275,7 @@ export async function resolve() {
   }
 
   async function defaultServer() {
-    const defaultServerPath = path.join(cwd, '+', 'index.js')
+    const defaultServerPath = path.join(cwd, '+')
     try {
       return await import(defaultServerPath)
     } catch (error) {

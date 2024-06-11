@@ -24,7 +24,7 @@ export default async function(xs) {
         continue
       }
 
-      if (r.method === 'get' && res.headers['content-type'] === 'application/json') {
+      if (r.method === 'get' && (res.headers['content-type'] || '').startsWith('application/json')) {
         const pkg = await json(res)
         pkg.versions && Object.values(pkg.versions).forEach(v => {
           v?.dist?.tarball && (v.dist.tarball = v.dist.tarball

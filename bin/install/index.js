@@ -1,6 +1,9 @@
 import fs from 'node:fs'
 import cp from 'node:child_process'
 import path from 'node:path'
+
+import prexit from '../prexit.js'
+
 import '../favicon.js'
 import env from '../env.js'
 import Proxy from './proxy.js'
@@ -39,6 +42,8 @@ const child = cp.spawn(c, [
     ? { ...process.env, npm_config_registry: 'http://127.0.0.1:' + proxy.port }
     : process.env
 })
+
+prexit.last(() => child.killed || child.kill('SIGINT'))
 
 proxy && child.on('close', proxy.unlisten)
 

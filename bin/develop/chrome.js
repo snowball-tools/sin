@@ -251,6 +251,7 @@ async function spawn() {
   return new Promise((resolve, reject) => {
     const x = cp.spawn(config.chromePath, [
       ...(config.headless ? ['--headless'] : []),
+      ...(config.devtools ? ['--auto-open-devtools-for-tabs'] : []),
       '--no-first-run',
       '--disable-features=PrivacySandboxSettings4',
       '--disable-search-engine-choice-screen',

@@ -128,7 +128,7 @@ export function getEntry(x, config) {
   const dir = file ? path.dirname(x) : x
 
   if (!needsEntry(config)) {
-    config.static || process.chdir(env.PWD = dir)
+    config.static || config.install || process.chdir(env.PWD = dir)
     return ''
   }
 

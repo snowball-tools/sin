@@ -15,7 +15,7 @@ export default function Live(value, ...fns) {
   return live
 
   function observe(x, once) {
-    const fn = once ? ((...xs) => (observers.delete(fn), fn(...xs))) : x
+    const fn = once ? ((...xs) => (observers.delete(fn), x(...xs))) : x
     observers.add(fn)
     return () => observers.delete(fn)
   }

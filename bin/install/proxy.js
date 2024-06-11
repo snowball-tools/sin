@@ -25,7 +25,7 @@ export default async function(xs) {
       }
 
       if (r.method === 'get' && (res.headers['content-type'] || '').startsWith('application/json')) {
-        const pkg = await json(res)
+        const pkg = JSON.parse(await body(res))
         pkg.versions && Object.values(pkg.versions).forEach(v => {
           v?.dist?.tarball && (v.dist.tarball = v.dist.tarball
             .replace('https://', 'http://')
@@ -35,8 +35,7 @@ export default async function(xs) {
         r.header(res.statusCode, { ...res.headers, 'content-encoding': 'identity' })
         return r.json(pkg)
       } else {
-        r.header(res.statusCode, res.headers)
-        return await pipeline(res, r.writable)
+        return r.end(await body(res), res.statusCode, res.headers)
       }
     }
   })
@@ -45,7 +44,7 @@ export default async function(xs) {
   return listener
 }
 
-async function json(res) {
+async function body(res) {
   const data = await new Promise((resolve, reject) => {
     const xs = []
     res.on('data', x => xs.push(x))
@@ -53,13 +52,11 @@ async function json(res) {
     res.on('error', reject)
   })
 
-  return JSON.parse(
-    res.headers['content-encoding'] === 'gzip'
-      ? await new Promise(r => zlib.gunzip(data, r))
-      : res.headers['content-encoding'] === 'deflate'
-      ? await new Promise(r => zlib.deflate(data, r))
-      : data
-  )
+  return res.headers['content-encoding'] === 'gzip'
+       ? await new Promise(r => zlib.gunzip(data, r))
+       : res.headers['content-encoding'] === 'deflate'
+       ? await new Promise(r => zlib.deflate(data, r))
+       : data
 }
 
 async function request(url, r) {

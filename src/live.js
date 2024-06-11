@@ -10,7 +10,7 @@ export default function Live(value, ...fns) {
   live.reduce = reduce
   live.set = x => (...args) => (live(isFunction(x) ? x(...args) : x), live)
   live.get = x => Object.assign(getter.bind(null, x), { observe: fn => live.observe(() => fn(getter(x))) })
-  live.if = (...xs) => Object.assign(ternary.bind(null, ...xs), { observe: fn => live.observe(x => fn(ternary(...xs))) })
+  live.if = (...xs) => Object.assign(ternary.bind(null, ...xs), { observe: fn => live.observe(() => fn(ternary(...xs))) })
 
   return live
 

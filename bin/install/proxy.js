@@ -40,7 +40,7 @@ export default async function(xs) {
     }
   })
 
-  listener = await app.listen(5171)
+  listener = await app.listen(5171, '127.0.0.1')
   return listener
 }
 

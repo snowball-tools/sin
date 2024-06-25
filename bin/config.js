@@ -265,7 +265,7 @@ export async function resolve() {
       , main = hasExport && (globalThis.window = (await import('../ssr/window.js')).default, await import(config.entry))
       , http = main && typeof main.default === 'function' && main
       , src = !http && !config.noscript && path.relative(config.cwd, config.entry)
-      , mod = src && (await fsp.stat(path.join(cwd, config.outputDir, src)).catch(() => fsp.stat(path.join(cwd, src)))).mtimeMs.toFixed(0)
+      , mod = src && (await fsp.stat(path.join(cwd, config.outputDir, src.replace(/\.tsx?$/, '.js'))).catch(() => fsp.stat(path.join(cwd, src)))).mtimeMs.toFixed(0)
 
   return {
     onlyServer: !!http,

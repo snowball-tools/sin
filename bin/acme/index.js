@@ -7,7 +7,6 @@ import Acme from './core.js'
 import config from '../config.js'
 import c from '../color.js'
 
-
 const log = console.log // eslint-disable-line
 ;({ create, list, renew, delete: del })[config.$[1] || 'create']()
 
@@ -34,7 +33,7 @@ async function create() {
 
   const x = await acme.create({
     ...config.acme,
-    key: config.ssl.key && fs.readFileSync(keyPath, 'utf8'),
+    key: config.ssl.key && (fs.existsSync(keyPath) ? fs.readFileSync(keyPath, 'utf8') : null),
     passphrase: config.ssl.passphrase
   })
 

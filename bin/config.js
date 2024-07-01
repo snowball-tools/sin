@@ -44,7 +44,7 @@ async function fromArgs() {
     env: 'SIN',
     commands: {
       $         : 'help',
-      acme      : { $: true, list: 1, renew: 1, delete: 1 },
+      acme      : { $: 'create', create: 1, list: 1, renew: 1, delete: 1 },
       build     : 1,
       create    : 1,
       develop   : { $: true, script: 1, static: 1 },
@@ -129,7 +129,7 @@ export function getEntry(x, config) {
   const dir = file ? path.dirname(x) : x
 
   if (!needsEntry(config)) {
-    config.static || config.install || process.chdir(env.PWD = dir)
+    config.acme || config.static || config.install || process.chdir(env.PWD = dir)
     return ''
   }
 

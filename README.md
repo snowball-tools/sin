@@ -202,6 +202,47 @@ s.mount(({ route }) => [
 ])
 ```
 
+## Nested Routing
+
+The following example supports these routes:
+
+- `/` for home page
+- `/login` for login page
+- `/dashboard` for dashboard home page
+- `/dashboard/settings` for dashboard settings page
+
+```js
+const MyComponent = s(({}, [], { route }) =>
+  route({
+    '/': () => s`h1`('Home'),
+    '/login': () => s`h1`('Login'),
+    '/dashboard/*': () => MyDashboard,
+  })
+)
+
+const MyDashboard = s(({}, [], { route }) =>
+  route({
+    '/', () => s`h1`('Dashboard Home'),
+    '/settings', () => s`h1`('Dashboard Settings')
+  })
+)
+```
+
+# Events
+
+Say you have a togglable parent with several children that have animations:
+
+```js
+show && s`ul`({
+  // Wait until all children to resolve their exits before getting removed
+  deferrable: true
+},
+  s`li`({
+    dom: s.animate
+  })
+)
+```
+
 ## Simplifying and improving common tasks
 
 ### Lean CSS

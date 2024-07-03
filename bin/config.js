@@ -168,7 +168,7 @@ function getLocal(x, xs) {
   if (x)
     return x
 
-  const local = path.join(process.cwd(), 'node_modules', 'sin')
+  const local = env.SIN_LOCAL || path.join(process.cwd(), 'node_modules', 'sin')
   return fs.existsSync(local)
     ? local
     : path.join(url.fileURLToPath(new URL('.', import.meta.url)), '..')

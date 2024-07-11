@@ -92,7 +92,7 @@ function render(r) {
     ssr(
       mount,
       {},
-      { location: r.protocol + '://' + (r.headers.host || ('localhost' + config.port)) + r.url }
+      { mod, location: r.protocol + '://' + (r.headers.host || ('localhost' + config.port)) + r.url }
     ),
     x => {
       r.end(

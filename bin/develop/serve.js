@@ -7,7 +7,7 @@ import esbuild from 'esbuild'
 
 import favicon from '../favicon.js'
 import config, { resolve } from './config.js'
-import { transform } from './shared.js'
+import { transform, resolveEntry } from './shared.js'
 import ssr, { wrap } from '../../ssr/index.js'
 
 const head = getTools()
@@ -59,7 +59,7 @@ async function serve() {
 
   router.get('/node_modules/sin', router.files(config.local, hijack))
   router.get('/node_modules/SIN', router.files(config.local, hijack))
-  router.get('/node_modules/*', build)
+  config.bundleNodeModules && router.get('/node_modules/*', build)
   router.get(router.files(hijack))
   router.get('/favicon.ico', r => r.end(favicon))
 
@@ -88,8 +88,9 @@ async function build(r) {
   if (r.url.endsWith('.js'))
     return r.file(path.join(config.cwd, r.url), hijack)
 
+  const entry = resolveEntry(r.url.slice(14), true)
   let source = await esbuild.build({
-    entryPoints: [path.join(config.cwd, r.url)],
+    entryPoints: [entry],
     bundle: true,
     format: 'esm',
     write: false,

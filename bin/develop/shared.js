@@ -5,9 +5,10 @@ import fsp from 'node:fs/promises'
 
 import config from './config.js'
 import rewriter from './rewriter.js'
-import { isScript, extensionless, modify } from '../shared.js'
+import { isScript, extensionless, modify, canRead } from '../shared.js'
 
 const resolveCache = Object.create(null)
+const pkgJsonCache = Object.create(null)
 
 export async function tryRead(x) {
   return fsp.readFile(x, 'utf8')
@@ -18,6 +19,7 @@ export async function tryRead(x) {
 export function isModule(x) {
   const c = x.charCodeAt(0)
   return c === 64              // @
+      || c === 35              // #
       || (c >= 48 && c <= 57)  // 0-9
       || (c >= 65 && c <= 90)  // A-Z
       || (c >= 97 && c <= 122) // a-z
@@ -28,34 +30,96 @@ export function rewrite(x, file) {
   return config.unsafe + rewriter(
     modify(x, file, config),
     x => {
+      x = tryImportMap(x, file) || x
       isModule(x) || isScript(x) || (x = extensionless(x, dir) || x)
       return isModule(x)
-        ? '/' + resolve(x)
+        ? '/' + resolveEntry(x)
         : x
     }
   )
 }
 
-function resolve(n) {
-  if (n in resolveCache)
-    return resolveCache[n]
+function tryImportMap(x, file) {
+  const xs = file.split(path.sep)
+  const nmi = xs.lastIndexOf('node_modules')
+  const modulePath = nmi !== -1 && xs.slice(0, nmi + (xs[nmi + 1][0] === '@' ? 3 : 2))
+  const pkg = modulePath && readPkgJson(path.join(modulePath.join(path.sep), 'package.json'))
+  const importPath = pkg && pkg.imports && firstString(pkg.imports, x, 'default')
+  return importPath && ('/' + modulePath.slice(nmi).join('/') + '/' + removeRelativePrefix(importPath))
+}
 
-  const parts = n.split('/')
-      , scoped = n[0] === '@'
-      , install = parts.slice(0, scoped ? 2 : 1).join('/')
-      , name = install.replace(/(.+)@.*/, '$1')
-      , root = 'node_modules/' + name
-      , full = [root, ...parts.slice(scoped ? 2 : 1)].join('/')
-      , fullPath = url.pathToFileURL(path.join(process.cwd(), full))
+function readPkgJson(x) {
+  try {
+    return pkgJsonCache[x] || (pkgJsonCache[x] = JSON.parse(fs.readFileSync(x)))
+  } catch(error) {
+    config.debug && console.error('Could not read pkg.json', error)
+    return null
+  }
+}
 
-  return resolveCache[n] = (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()
-    ? full
-    : fs.existsSync(path.join(process.cwd(), full, 'package.json'))
-    ? pkgLookup(full)
-    : name.toLowerCase() === 'sin'
-    ? pkgLookup(full, process.env.SIN_LOCAL)
-    : n
+export function resolveEntry(n, force = false) {
+  if (force + n in resolveCache)
+    return resolveCache[force + n]
+
+  let [x, scope = '', name, version, rest = ''] = n.match(/(?:(@[^/@]+)\/)?([^/]+)(?:@([0-9]+\.[0-9]+\.[0-9]+[^/]*))?(\/.+)?/)
+
+  if (!scope && name === 'SIN') // special case for sin dev tools loading
+    name = name.toLowerCase()
+
+  const urlPath = 'node_modules/' + (scope ? scope + '/' : '') + name
+  const modulePath = path.join(config.cwd, 'node_modules', scope, name)
+  const fullPath = path.join(modulePath, ...rest.split('/'))
+  const pkgPath = path.join(modulePath, 'package.json')
+  return resolveCache[force + n] = (
+    canRead(fullPath)
+      ? urlPath
+      : pkgLookup(scope, name, version, rest, pkgPath, urlPath, force)
   )
+}
+
+function removeRelativePrefix(x) {
+  return x.replace(/^\.\//, '')
+}
+
+function pkgLookup(scope, name, version, rest, pkgPath, urlPath, force) {
+  if (!force && config.bundleNodeModules && name !== 'sin')
+    return urlPath
+
+  const pkg = readPkgJson(pkgPath)
+  if (!pkg)
+    return urlPath
+
+  const entry = resolveExports(pkg, rest ? rest.split('/') : ['.']) || resolveLegacy(pkg)
+
+  if (!entry)
+    return urlPath
+
+  return urlPath + '/' + removeRelativePrefix(entry)
+}
+
+function resolveExports(x, subPath) {
+  return firstString(x, 'exports', ...subPath, 'browser', 'import')
+      || firstString(x, 'exports', ...subPath, 'import')
+}
+
+function resolveLegacy(pkg) {
+  return pkg.browser
+    ? typeof pkg.browser === 'string'
+      ? pkg.browser.includes('umd.')
+        ? pkg.module || pkg.main
+        : pkg.browser
+      : pkg.browser[pkg.module || pkg.main]
+    : pkg.module || pkg.main
+}
+
+function firstString(x, ...props) {
+  for (const prop of props) {
+    const type = typeof x[prop]
+    if (type === 'object')
+      x = x[prop]
+    else if (type === 'string')
+      return x[prop]
+  }
 }
 
 export function transform(buffer, filePath, type, r) {
@@ -63,22 +127,6 @@ export function transform(buffer, filePath, type, r) {
   return isScript(filePath)
     ? rewrite(Buffer.from(buffer).toString(), filePath)
     : buffer
-}
-
-function pkgLookup(x, abs) {
-  if (x !== 'node_modules/sin' && config.bundleNodeModules)
-    return x
-
-  const pkg = JSON.parse(fs.readFileSync(path.join(abs || x, 'package.json'), 'utf8'))
-  const entry = pkg.exports?.['.']?.browser?.import || (pkg.browser
-    ? typeof pkg.browser === 'string'
-      ? pkg.browser.includes('umd.')
-        ? pkg.module || pkg.main
-        : pkg.browser
-      : pkg.browser[pkg.module || pkg.main]
-    : pkg.module || pkg.main
-  )
-  return x + '/' + entry.replace(/^\.\//, '')
 }
 
 export function Watcher(fn) {

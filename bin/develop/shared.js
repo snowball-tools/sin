@@ -63,7 +63,7 @@ export function resolveEntry(n, force = false) {
 
   let [x, scope = '', name, version, rest = ''] = n.match(/(?:(@[^/@]+)\/)?([^/]+)(?:@([0-9]+\.[0-9]+\.[0-9]+[^/]*))?(\/.+)?/)
 
-  if (!scope && name === 'SIN') // special case for sin dev tools loading
+  if (!scope && config.bundleNodeModules && name === 'SIN') // special case for sin dev tools loading
     name = name.toLowerCase()
 
   const urlPath = 'node_modules/' + (scope ? scope + '/' : '') + name

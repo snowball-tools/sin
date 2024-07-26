@@ -82,8 +82,9 @@ export default async function(argv, options) {
         const idx = argv.indexOf(toKebab(pre + x))
         if (idx === -1) {
           result[x] = typeof xs[x] === 'function'
-            ? await xs[x](process.env[toEnv(pre + x)], root, x => read(x, root, root))
+            ? xs[x](process.env[toEnv(pre + x)], root, x => read(x, root, root))
             : process.env[toEnv(pre + x)] || xs[x]
+          result[x] && typeof result[x].then === 'function' && (result[x] = await result[x])
           setEnv(pre + x, result[x])
         } else {
           const value = argv[idx + 1]

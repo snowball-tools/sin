@@ -72,7 +72,7 @@ export function resolveEntry(n, force = false) {
   const pkgPath = path.join(modulePath, 'package.json')
   return resolveCache[force + n] = (
     canRead(fullPath)
-      ? urlPath
+      ? urlPath + rest
       : pkgLookup(scope, name, version, rest, pkgPath, urlPath, force)
   )
 }

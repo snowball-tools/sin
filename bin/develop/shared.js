@@ -63,9 +63,6 @@ export function resolveEntry(n, force = false) {
 
   let [x, scope = '', name, version, rest = ''] = n.match(/(?:(@[^/@]+)\/)?([^/]+)(?:@([0-9]+\.[0-9]+\.[0-9]+[^/]*))?(\/.+)?/)
 
-  if (!scope && config.bundleNodeModules && name === 'SIN') // special case for sin dev tools loading
-    name = name.toLowerCase()
-
   const urlPath = 'node_modules/' + (scope ? scope + '/' : '') + name
   const modulePath = path.join(config.cwd, 'node_modules', scope, name)
   const fullPath = path.join(modulePath, ...rest.split('/'))
@@ -82,7 +79,7 @@ function removeRelativePrefix(x) {
 }
 
 function pkgLookup(scope, name, version, rest, pkgPath, urlPath, force) {
-  if (!force && config.bundleNodeModules && name !== 'sin')
+  if (!force && config.bundleNodeModules && name !== 'sin' && name !== 'SIN') // never bundle sin
     return urlPath
 
   const pkg = readPkgJson(pkgPath)

@@ -265,14 +265,14 @@ export async function resolve() {
       , main = hasExport && (globalThis.window = (await import('../ssr/window.js')).default, await import(config.entry))
       , http = main && typeof main.default === 'function' && main
       , src = !http && !config.noscript && path.relative(config.cwd, config.entry)
-      , mod = src && (await fsp.stat(path.join(cwd, config.outputDir, src)).catch(() => fsp.stat(path.join(cwd, src)))).mtimeMs.toFixed(0)
+      , modified = src && (await fsp.stat(path.join(cwd, config.outputDir, src)).catch(() => fsp.stat(path.join(cwd, src)))).mtimeMs.toFixed(0)
 
   return {
     onlyServer: !!http,
     server: http ? main : await defaultServer(),
     mount: !http && main && main.default,
-    src,
-    mod
+    modified,
+    src
   }
 
   async function defaultServer() {

@@ -15,7 +15,7 @@ import Acme from '../acme/core.js'
 
 
 let sslListener
-const { server, mount, src, mod } = await resolve(config.entry)
+const { server, mount, src, modified } = await resolve(config.entry)
 const router = ey()
 
 config.acme.domains.length && router.route(Acme.route(isMainThread ? {} : { get: getFromParent }))
@@ -92,12 +92,12 @@ function render(r) {
     ssr(
       mount,
       {},
-      { location: r.protocol + '://' + (r.headers.host || ('localhost' + config.port)) + r.url }
+      { modified, location: r.protocol + '://' + (r.headers.host || ('localhost' + config.port)) + r.url }
     ),
     x => {
       r.end(
         wrap(x, {
-          body: src ? '<script type=module src="/index.js?v=' + mod + '"></script>' : ''
+          body: src ? '<script type=module src="/index.js?v=' + modified + '"></script>' : ''
         }),
         x.status || 200,
         {

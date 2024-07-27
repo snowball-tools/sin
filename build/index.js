@@ -1,7 +1,7 @@
 import path from 'path'
 import ESBuild from 'esbuild'
 import '../bin/env.js'
-import { extensionless } from '../bin/shared.js'
+import { extensionless, getLocal } from '../bin/shared.js'
 
 export default async function(x = {}) {
   process.env.SIN_BUILD = true
@@ -30,6 +30,13 @@ export default async function(x = {}) {
       'import.meta.env': config.unsafe.slice(16, -1)
     },
     plugins: [
+      {
+        name: 'sin',
+        setup: x => x.onResolve(
+          { filter: /^sin$/ },
+          () => ({ path: path.join(getLocal(), 'src', 'index.js') })
+        )
+      },
       {
         name: 'sinssr',
         setup: x => x.onResolve(

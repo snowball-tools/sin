@@ -4,7 +4,7 @@ import cp from 'node:child_process'
 import fsp from 'node:fs/promises'
 import url from 'node:url'
 import path from 'node:path'
-import { getTSConfigRaw, getPkgs, getSucrase, isScript, extensionless, canRead } from './shared.js'
+import { getLocal, getTSConfigRaw, getPkgs, getSucrase, isScript, extensionless, canRead } from './shared.js'
 
 import args from './args.js'
 import c from './color.js'
@@ -163,16 +163,6 @@ export function error(x) {
 async function getCWD() {
   await import('./env.js')
   return process.cwd()
-}
-
-function getLocal(x, xs) {
-  if (x)
-    return x
-
-  const local = path.join(process.cwd(), 'node_modules', 'sin')
-  return fs.existsSync(local)
-    ? local
-    : path.join(url.fileURLToPath(new URL('.', import.meta.url)), '..')
 }
 
 function getRoot(x, xs) {

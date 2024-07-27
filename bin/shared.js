@@ -1,3 +1,4 @@
+import url from 'url'
 import path from 'node:path'
 import fs from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -113,4 +114,14 @@ function esbuildTS(x, debug, tsx, tsconfigRaw, file) {
     tsconfigRaw: tsconfigRaw,
     sourcefile: path.relative(process.cwd(), file.indexOf('file://') === 0 ? fileURLToPath(file) : file)
   }).code
+}
+
+export function getLocal(x, xs) {
+  if (x)
+    return x
+
+  const local = path.join(process.cwd(), 'node_modules', 'sin')
+  return fs.existsSync(local)
+    ? local
+    : path.join(url.fileURLToPath(new URL('.', import.meta.url)), '..')
 }

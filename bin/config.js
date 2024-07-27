@@ -77,6 +77,7 @@ async function fromArgs() {
         passphrase  : x => x || env.SSL_PASSPHRASE
       },
       acme,
+      title       : (x, xs) => x || path.basename(xs.cwd),
       secure      : (x, xs) => !!(xs.ssl.cert || xs.acme.domains.length),
       httpsPort   : (x, xs) => x || (xs.secure ? (x ? parseInt(x) : (xs.port || 443)) : null),
       httpPort    : (x, xs) => xs.secure && xs.ssl.mode === 'only' ? null : (xs.secure ? 80 : x ? parseInt(x) : (xs.port || 80)),

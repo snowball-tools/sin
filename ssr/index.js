@@ -26,6 +26,7 @@ export { wrap }
 class TimeoutError extends Error {}
 
 s.isServer = window.isServer = true
+s.title = process.env.SIN_TITLE
 s.mimes = mimes
 s.trust = trust
 
@@ -78,7 +79,7 @@ export default function(mount, serverAttrs = {}, serverContext = {}) {
 
   const doc = {
     lang: s.live(),
-    title: s.live(''),
+    title: s.live(s.title),
     status: s.live(200),
     doctype: s.live('html'),
     links: s.live('', x => links.add(x)),
@@ -122,7 +123,7 @@ export default function(mount, serverAttrs = {}, serverContext = {}) {
       headers,
       links,
       status: context.doc.status(),
-      title: context.doc.title(),
+      title: context.doc.title() || s.title,
       lang: context.doc.lang(),
       css, // perhaps remove classes according to names in html
       html: (context.noscript || !mount ? '' : '<!--h-->') + x,

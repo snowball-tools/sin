@@ -260,7 +260,7 @@ function mount(dom, view, attrs = {}, context = {}) {
 
 function scrollRestoration(context) {
   let depth = 0
-  context[asyncSymbol] = x => depth !== -1 && (depth += x) || (depth = -1, scrollSize(0, 0))
+  context[asyncSymbol] = x => depth !== -1 && (depth += x) || (depth = 0, scrollSize(0, 0))
   window.history.scrollRestoration = 'manual'
   scrollRestore(...(history.state?.scroll || []))
   let scrollTimer

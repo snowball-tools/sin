@@ -12,6 +12,6 @@ const xs = all
 
 for (const x of xs) {
   process.stdout.write('Clear ' + x + ' ' + c.gray('(' + path.join(config.home, x) + ')') + ' ...\n')
-  fs.rmSync(path.join(config.home, x), { recursive: true, force: true }).catch(() => {})
+  fs.rmSync(path.join(config.home, x), { recursive: true, force: true })
   process.stdout.write('Done\n')
 }

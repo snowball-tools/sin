@@ -182,7 +182,7 @@ function getPort(x, config) {
   if (x || env.PORT)
     return parseInt(x || env.PORT)
 
-  if (config.$[0] !== 'develop')
+  if (config.$[0] !== 'develop' && config.$[0] !== 'purge')
     return
 
   const file = path.join(config.home, '.ports')

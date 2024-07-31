@@ -8,9 +8,11 @@ import cp from 'child_process'
 
 try {
   process.execArgv.includes('--experimental-websocket')
-    ? import(URL.pathToFileURL(path.join(config.local, 'bin', config.$[0], 'index.js')))
+    ? await import(URL.pathToFileURL(path.join(config.local, 'bin', config.$[0], 'index.js')))
     : cp.execFileSync(process.argv[0], ['--experimental-websocket', '--no-warnings', ...process.argv.slice(1)], { stdio: 'inherit' })
+  config.debug && console.log(config)
 } catch (e) {
+  config.debug && console.log(config)
   const [major, minor] = process.versions.node.split('.').map(Number)
 
   if (major < 20 || major === 20 && minor < 10) {

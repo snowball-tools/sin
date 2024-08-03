@@ -1,98 +1,182 @@
-import fs from 'node:fs'
-import cp from 'node:child_process'
-import path from 'node:path'
+import fs from 'fs'
+import tls from 'tls'
+import Path from 'path'
+import zlib from 'zlib'
+import https from 'https'
+import config from '../config.js'
 
-import prexit from '../prexit.js'
+const buffer = Buffer.allocUnsafe(1024 * 1024)
 
-import '../favicon.js'
-import env from '../env.js'
-import Proxy from './proxy.js'
+const add = config._.length
+  ? await getVersions(config._)
+  : []
 
-const cwd = process.cwd()
-const root = path.parse(cwd).root
+async function getVersions(xs) {
+  return Promise.all(
+    xs.map(async x => {
+      let [name, version] = x.charCodeAt(0) === 64
+        ? '@' + x.slice(1).split('@')
+        : x.split('@')
 
-const locks = {
-  'yarn.lock': 'yarn',
-  'bun.lockb': 'bun',
-  'package-lock.json': 'npm',
-  'pnpm-lock.yaml': 'pnpm'
+      if (!version || (version.charCodeAt(0) - 48) >>> 0 < 10) // Do we start with a number
+        version = await getVersion(name, version)
+
+      const pkg = await getPackage(name, version)
+      console.log(pkg)
+    })
+  )
 }
 
-const exact = {
-  yarn: '--exact',
-  bun: '--exact',
-  npm: '--save-exact',
-  pnpm: '--save-exact'
+async function getVersion2(name, tag) {
+  return new Promise(resolve => {
+    const xs = []
+    https.get('https://registry.npmjs.org/' + name, res => {
+      res.on('data', x => xs.push(x))
+      res.on('end', () => {
+        resolve(JSON.parse(Buffer.concat(xs))['dist-tags'][tag || 'latest'])
+      })
+    })
+  })
 }
 
-const c = client()
-const r = registries()
+async function getPackage(name, version) {
+  return new Promise((resolve, reject) => {
+    let stream
+    let l = -2
+    let n = -1
+    let h = -1
+    let t = ''
+    let be = 0
+    let size = 0
+    let path = ''
+    let prev = null
+    let file = null
+    const pkg = []
 
-const proxy = r.length > 1 && await Proxy(r)
-const args = process.argv.slice(2)
+    const client = tls.connect({
+      port: 443,
+      host: 'registry.npmjs.org',
+      onread: {
+        buffer,
+        callback: end => {
+          if (l === -2) {
+            if (!(buffer[9] === 50 && buffer[10] === 48 && buffer[10] === 48))
+              throw new Error('Buffer not 200: ' + buffer.subarray(0, 200).toString())
 
-console.log('Using ' + c + ' to install' + (r.length > 1 ? ' from ' + r.map(x => x.host).join(' then ') : ''))
-const child = cp.spawn(c, [
-  exact[c],
-  ...args
-], {
-  stdio: ['pipe', 'inherit', 'inherit'],
-  shell: process.platform === 'win32',
-  env: proxy
-    ? { ...process.env, npm_config_registry: 'http://127.0.0.1:' + proxy.port }
-    : process.env
-})
+            t = buffer.subarray(0, end).toString().toLowerCase()
+            h = t.indexOf('content-length:')
+            n = t.indexOf('\n', h)
+            l = +t.slice(h + 15, n)
 
-prexit.last(() => child.killed || child.kill('SIGINT'))
+            while (buffer[n + 1] !== 10 && buffer[n + 2] !== 10)
+              n = buffer.indexOf(10, n + 1)
 
-await new Promise((r, e) => child.on('close', (code) => code ? e(code) : r()))
-proxy && proxy.unlisten()
+            n = buffer.indexOf(10, n + 1) + 1
+            l += n
+          }
 
-function client() {
-  let dir = cwd
-  while (dir !== root) {
-    for (const x in locks) {
-      if (fs.existsSync(path.join(dir, x)))
-        return locks[x]
-    }
-    dir = path.dirname(dir)
-  }
+          if (!stream) {
+            stream = zlib.createGunzip()
+            stream.on('data', x => {
+              if (be) {
+                if (x.byteLength <= be) {
+                  be -= x.byteLength
+                  size -= size < x.byteLength
+                    ? size
+                    : x.byteLength
+                  return size < x.byteLength
+                    ? write(x.subarray(0, size))
+                    : write(x)
+                }
 
-  return 'npm'
+                write(x.subarray(0, size))
+                close(x = x.subarray(be))
+              }
+
+              prev && (x = Buffer.concat([prev, x]))
+              prev = null
+
+              while (x.byteLength >= 512) {
+                if (x[0] === 0)
+                  return
+
+                path = x.toString('utf8', 0, 100)
+                path = path.slice(0, path.indexOf('\0'))
+                size = parseInt(x.toString('utf8', 124, 136).trim(), 8)
+                be = 512 + Math.ceil(size / 512) * 512
+
+                fs.mkdirSync(Path.dirname(path), { recursive: true })
+                file = fs.createWriteStream(path)
+                if (be > x.byteLength) {
+                  write(x.subarray(512, Math.min(x.byteLength, 512 + size)))
+                  size -= Math.min(size, x.byteLength - 512)
+                  be -= x.byteLength
+                  x = x.subarray(be)
+                  return
+                } else {
+                  write(x.subarray(512, 512 + size))
+                  close(x = x.subarray(be))
+                }
+              }
+              x.byteLength && (prev = x)
+            })
+          }
+          stream.write(Buffer.from(buffer.subarray(n, end)))
+          n = 0
+          l -= end - n
+
+          if (l <= 0) {
+            stream.end()
+            client.destroy()
+          }
+        }
+      }
+    })
+    client.write('GET /'+ name + '/-/' + name + '-' + version + '.tgz HTTP/1.1\nHost: registry.npmjs.org\n\n')
+
+    function write(x) {
+        file.write(x)
+        path === 'package/package.json' && pkg.push(x)
+      }
+
+      function close() {
+        file.close()
+        path === 'package/package.json' && resolve(JSON.parse(Buffer.concat(pkg)))
+        be = size = 0
+        file = prev = null
+      }
+  })
 }
 
-function registries() {
-  const xs = []
-  let dir = cwd
-  while (dir !== root) {
-    const p = pkgjson(dir)
-    p.length && xs.push(...p)
-    const n = npmrc(dir)
-    n.length && xs.push(...n)
-    const e = env(path.join(dir, '.env'))
-    e.npm_config_registry && xs.push(...e.npm_config_registry.split(','))
-    dir = path.dirname(dir)
-  }
+async function getVersion(name, tag) {
+  let x = -2
+  return new Promise((resolve, reject) => {
+    const client = tls.connect({
+      port: 443,
+      host: 'registry.npmjs.org',
+      onread: {
+        buffer,
+        callback: end => {
+          if (x === -2 && !(buffer[9] === 50 && buffer[10] === 48 && buffer[10] === 48))
+            throw new Error('Buffer not 200: ' + buffer.subarray(0, end).toString())
 
-  return xs.map(x => new URL(x)).concat(new URL('https://registry.npmjs.org'))
-}
+          x = buffer.indexOf(123)
+          while (x !== -1) {
+            if (buffer[x - 5] === 97) {
+              resolve(
+                JSON.parse(
+                  buffer.subarray(x, buffer.indexOf(125, x + 1) + 1)
+                )[tag || 'latest']
+              )
+              client.destroy()
+            }
+            x = buffer.indexOf(123, x + 1)
+          }
 
-function npmrc(dir) {
-  try {
-    const x = fs.readFileSync(path.join(dir, '.npmrc'), 'utf8')
-    return x.match(/^\s*registry=(.+)/gm).flatMap(x =>
-      x.slice(x.indexOf('=') + 1).trim().split(',').map(x => x.trim())
-    )
-  } catch (e) {
-    return []
-  }
-}
 
-function pkgjson(dir) {
-  try {
-    const x = JSON.parse(fs.readFileSync(path.join(dir, 'package.json')))
-    return [].concat(x.registry).flatMap(x => x.split(','))
-  } catch (e) {
-    return []
-  }
+        }
+      }
+    })
+    client.write('GET /'+ name + ' HTTP/1.1\nHost: registry.npmjs.org\n\n')
+  })
 }

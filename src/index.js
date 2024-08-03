@@ -75,12 +75,12 @@ function S(...x) {
 }
 
 function tagged(x, parent) {
-  const level = parent ? parent.level + 1 : 0
+  const nesting = parent ? parent.nesting + 1 : 0
   return new View(
     parent && parent.inline,
     parent && parent.component,
-    parse(x, parent && parent.tag, level),
-    level
+    parse(x, parent && parent.tag, nesting),
+    nesting
   )
 }
 
@@ -202,7 +202,7 @@ function execute(x, parent) {
     parent.inline,
     parent.component,
     parent.tag,
-    parent ? parent.level + 1 : 0,
+    parent ? parent.nesting + 1 : 0,
     hasAttrs ? x.shift() : {},
     x.length === 1 && Array.isArray(x[0])
       ? x[0]

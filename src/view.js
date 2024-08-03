@@ -2,7 +2,7 @@ import window from './window.js'
 import { hasOwn, stackTrace } from './shared.js'
 
 export default class View {
-  constructor(inline, component, tag = null, level = 0, attrs = null, children = null) {
+  constructor(inline, component, tag = null, nesting = 0, attrs = null, children = null) {
     if (
       tag && tag.name === 'input' && attrs && !attrs.disabled && (
         ('value' in attrs && !('oninput' in attrs)) ||
@@ -11,7 +11,7 @@ export default class View {
     )
       throw new Error('oninput handler required when value is set on input - Bypass check by setting oninput: false')
 
-    this.level = level
+    this.nesting = nesting
     this.component = component
     this.inline = inline
     this.tag = tag

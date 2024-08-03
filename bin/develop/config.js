@@ -44,7 +44,7 @@ function getUrl() {
 async function getDevPort() {
   const portPath = path.join(project, '.sin-dev-port')
   try {
-    await fs.accessSync(path.join(project, 'SingletonSocket'))
+    fs.accessSync(path.join(project, 'SingletonSocket'))
     return parseInt(fs.readFileSync(portPath, 'utf8'))
   } catch (error) {
     const port = await reservePort()

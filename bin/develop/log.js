@@ -1,6 +1,14 @@
 globalThis.p = globalThis.l = globalThis.log = log
 
+let only = false
+
 export default function log(...xs) {
+  only || console.log(...xs) // eslint-disable-line
+  return xs.pop()
+}
+
+log.only = function(...xs) {
+  only = true
   console.log(...xs) // eslint-disable-line
   return xs.pop()
 }

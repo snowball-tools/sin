@@ -18,7 +18,7 @@ id.length !== 21 && (id = empty)
 connect(id, config.port, true).then(
   data => {
     fs.writeFile(idPath, data).catch(console.error) // eslint-disable-line
-    console.log('Live at https://' + data.readBigInt64BE(5).toString(36) + '.live.sinjs.com') // eslint-disable-line
+    console.log('\n\nLive at https://' + data.readBigInt64BE(5).toString(36) + '.live.sinjs.com\n\n') // eslint-disable-line
     for (let i = 0; i < 10; i++) connect(id, config.port).catch(() => {})
   },
   error => {

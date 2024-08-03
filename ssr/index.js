@@ -307,9 +307,9 @@ function escapeAttrValue(x = '') {
   for (let i = 0; i < x.length; i++) {
     c = x.charCodeAt(i)
     c === 34 ? s += x.slice(l + 1, l = i) + '&quot;' : // "
-      c === 60 ? s += x.slice(l + 1, l = i) + '&lt;' : // <
-      c === 62 ? s += x.slice(l + 1, l = i) + '&gt;' : // >
-      c === 38 && (s += x.slice(l + 1, l = i) + '&amp;') // &
+    c === 60 ? s += x.slice(l + 1, l = i) + '&lt;' :   // <
+    c === 62 ? s += x.slice(l + 1, l = i) + '&gt;' :   // >
+    c === 38 && (s += x.slice(l + 1, l = i) + '&amp;') // &
   }
   return s || x
 }

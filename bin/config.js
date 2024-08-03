@@ -130,7 +130,7 @@ export function getEntry(x, config) {
   const dir = file ? path.dirname(x) : x
 
   if (!needsEntry(config)) {
-    config.acme || config.static || config.install || process.chdir(env.PWD = dir)
+    config.acme || config.static || config.install || process.chdir(env.PWD = dir)
     return ''
   }
 

@@ -98,14 +98,16 @@ async function build(r) {
   }).then(x => x.outputFiles[0].text)
 
   const exportsDefault = source.lastIndexOf('export default require_')
-  if (exportsDefault > -1 && source.indexOf("__esModule") > -1) {
+  if (exportsDefault > -1 && source.indexOf('__esModule') > -1) {
     const before = source.slice(0, exportsDefault)
     const after = source.slice(exportsDefault)
     try {
-      const names = Function(before + after.replace(/^export default ([^;]+);/g, 'return Object.keys($1);'))()
+      const names = Function(before + after.replace(/^export default ([^;]+);/g, 'return Object.keys($1);'))() // eslint-disable-line
       if (names.length)
         source = before + after.replace(/^export default ([^;]+);/g, 'const $_$ = $1;export default $_$;export const {' + names + '} = $_$;')
-    } finally {}
+    } catch (error) {
+      // noop
+    }
   }
 
   r.end(source, { 'Content-Type': 'text/javascript' })

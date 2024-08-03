@@ -1,7 +1,6 @@
 import http from 'node:http'
 import https from 'node:https'
 import zlib from 'node:zlib'
-import { pipeline } from 'node:stream/promises'
 
 import ey from 'ey'
 
@@ -14,7 +13,7 @@ export default async function(xs) {
       const { req, res, error } = await request(x, r).catch(error => ({ error }))
 
       if (error) {
-        console.error('Error installing from ' + x.origin + r.url + (r.rawQuery ? '?' + r.rawQuery : ''))
+        console.error('Error installing from ' + x.origin + r.url + (r.rawQuery ? '?' + r.rawQuery : '')) // eslint-disable-line
         throw error
       }
 

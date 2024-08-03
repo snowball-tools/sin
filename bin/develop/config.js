@@ -25,15 +25,14 @@ const env        = process.env
 
 export { resolve }
 
-export default {
-  ...config,
+export default Object.assign(config, {
   project,
   url,
   origin,
   devPort,
   nodePort,
   chromePort
-}
+})
 
 function getUrl() {
   const x = path.join(project, '.sin-url')

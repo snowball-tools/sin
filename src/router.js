@@ -78,7 +78,7 @@ export default function router(s, root, rootContext, parent) {
     path.indexOf(location.search) > -1 && rootContext.query(location.search)
 
     return s.redraw().then(() => {
-      scroll === false || s.route.scroll === false
+      s.isServer || scroll === false || s.route.scroll === false
         ? s.route.scroll = undefined
         : scrollRestore()
     })

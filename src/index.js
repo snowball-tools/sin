@@ -731,10 +731,14 @@ class Stack {
     const update = (e, recreate, optimistic) => {
       e instanceof Event && (e.redraw = false)
       const keys = this.dom.first[keysSymbol]
+      const keyIndex = this.dom.first[keyIndexSymbol]
       this.i = this.bottom = index
       updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, recreate, optimistic, true)
-      hasOwn.call(this.dom.first, keysSymbol) || (this.dom.first[keysSymbol] = keys)
-      keys && keys.rev.has(view.key) && (keys[keys.rev.get(view.key)].dom = this.dom.first)
+      hasOwn.call(this.dom.first, keysSymbol) || (
+        this.dom.first[keysSymbol] = keys,
+        this.dom.first[keyIndexSymbol] = keyIndex
+      )
+      keys && (keys[keyIndex].dom = this.dom.first)
       afterRedraw()
       this.i = this.bottom = 0
     }
@@ -848,7 +852,7 @@ function updateComponent(
       instance.context,
       parent,
       stack,
-      (create || instance.recreate) && !instance.hydrating ? true : undefined,
+      (create || instance.recreate) && !instance.hydrating && !optimistic ? true : undefined,
       stack
     )
     instance.hydrating && (instance.hydrating = instance.context.hydrating = false)
@@ -869,7 +873,7 @@ function updateComponent(
         context.hydrating = false,
         instance.recreate = true,
         instance.promise = false,
-        (instance.ignore ? instance.context.redraw() : redraw()).then(() => context[asyncSymbol](-1))
+        instance.context.redraw().then(() => context[asyncSymbol](-1))
       ))
   }
 

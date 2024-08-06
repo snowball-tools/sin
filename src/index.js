@@ -703,6 +703,7 @@ class Stack {
     this.xs = []
     this.i = 0
     this.top = 0
+    this.bottom = 0
     this.dom = null
   }
 
@@ -717,6 +718,7 @@ class Stack {
   }
 
   add(view, context, optimistic) {
+    const index = this.i
     const [init, options] = view.component
     const instance = new Instance(
       view.inline ? false : init,
@@ -729,10 +731,12 @@ class Stack {
     const update = (e, recreate, optimistic) => {
       e instanceof Event && (e.redraw = false)
       const keys = this.dom.first[keysSymbol]
+      this.i = this.bottom = index
       updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, recreate, optimistic, true)
       hasOwn.call(this.dom.first, keysSymbol) || (this.dom.first[keysSymbol] = keys)
       keys && keys.rev.has(view.key) && (keys[keys.rev.get(view.key)].dom = this.dom.first)
       afterRedraw()
+      this.i = this.bottom = 0
     }
 
     const redraw = async e => {
@@ -771,7 +775,7 @@ class Stack {
     return this.i < this.xs.length && this.xs[this.top = this.i++]
   }
   pop() {
-    return --this.i === 0 && !(this.xs.length = this.top + 1, this.top = 0)
+    return --this.i === this.bottom && !(this.xs.length = this.top + 1, this.top = 0)
   }
 }
 

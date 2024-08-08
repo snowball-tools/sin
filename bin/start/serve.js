@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import { isMainThread, parentPort } from 'node:worker_threads'
 
-import ey from 'ey'
+import Server from '#server'
 import '../favicon.js'
 
 import ssr, { wrap } from '../../ssr/index.js'
@@ -16,7 +16,7 @@ import Acme from '../acme/core.js'
 
 let sslListener
 const { server, mount, src, modified } = await resolve(config.entry)
-const router = ey()
+const router = Server()
 
 config.acme.domains.length && router.route(Acme.route(isMainThread ? {} : { get: getFromParent }))
 
@@ -53,7 +53,7 @@ if (config.secure) {
 
 async function listenHttp() {
   if (config.secure && config.ssl.mode === 'redirect') {
-    const redirect = ey()
+    const redirect = Server()
 
     config.acme.domains.length && redirect.route(Acme.route(isMainThread ? {} : { get: getFromParent }))
     redirect.all(r => {

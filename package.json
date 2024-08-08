@@ -5,6 +5,7 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
+    "postinstall": "node shared/server/uws.js",
     "start": "sin start",
     "lint": "eslint . --ignore-pattern dist.js",
     "build": "npm run build:eyedropper && npm run build:dev",
@@ -13,6 +14,15 @@
     "build:gzip": "gzip -c sin.min.js > sin.min.js.gz && ls -l sin.min.js.gz && rm sin.min.js.gz",
     "build:dev": "esbuild bin/develop/tools/index.js --external:fsevents --external:/node_modules/sin/* --alias:SIN=./src/index.js --minify --format=esm --bundle --outfile=bin/develop/tools/dist.js",
     "build:eyedropper": "pushd bin/develop/tools/eyedropper && node-gyp configure && node-gyp build && cp build/Release/eyedropper.node eyedropper.node && node-gyp clean;popd"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./build": "./shared/build/index.js",
+    "./server": "./shared/server/index.js",
+    "./mimes": "./shared/server/mimes.js"
+  },
+  "imports": {
+    "#server": "./shared/server/index.js"
   },
   "bin": {
     "sin": "./bin/index.js"
@@ -47,10 +57,9 @@
     "not-vue"
   ],
   "dependencies": {
-    "esbuild": "0.23.0",
-    "ey": "2.3.3"
+    "esbuild": "0.23.0"
   },
   "engines": {
-    "node": ">=20.10"
+    "node": ">=20.11"
   }
 }

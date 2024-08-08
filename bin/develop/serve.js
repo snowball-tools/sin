@@ -2,7 +2,7 @@
 
 import path from 'node:path'
 
-import ey from 'ey'
+import Server from '#server'
 import esbuild from 'esbuild'
 
 import favicon from '../favicon.js'
@@ -11,7 +11,7 @@ import { transform, resolveEntry } from './shared.js'
 import ssr, { wrap } from '../../ssr/index.js'
 
 const head = getTools()
-const router = ey()
+const router = Server()
 const hijack = {
   compressions: false,
   cache: false,

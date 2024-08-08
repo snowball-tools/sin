@@ -1,4 +1,4 @@
-import ey from 'ey'
+import Server from '#server'
 
 import api from '../api.js'
 import editor from './editor.js'
@@ -13,7 +13,7 @@ const events = {
 }
 
 const wss = new Set()
-const app = ey()
+const app = Server()
 
 app.ws({
   upgrade: r => ({ name: r.ip }),

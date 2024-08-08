@@ -2,11 +2,11 @@ import http from 'node:http'
 import https from 'node:https'
 import zlib from 'node:zlib'
 
-import ey from 'ey'
+import Server from '#server'
 
 export default async function(xs) {
   let listener
-  const app = ey()
+  const app = Server()
 
   app.all(async r => {
     for (const x of xs) {

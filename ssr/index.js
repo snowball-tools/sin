@@ -18,7 +18,7 @@ import { asLocation, wrap } from './shared.js'
 import { formatValue, cssRules } from '../src/style.js'
 import router from '../src/router.js'
 import s from '../src/index.js'
-import mimes from 'ey/src/mimes.js'
+import mimes from '../shared/server/mimes.js'
 import query from '../src/query.js'
 
 export { wrap }

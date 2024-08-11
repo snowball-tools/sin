@@ -12,7 +12,8 @@ import {
   asArray,
   notValue,
   hasOwn,
-  mergeTag
+  mergeTag,
+  noop
 } from '../src/shared.js'
 import { asLocation, wrap } from './shared.js'
 import { formatValue, cssRules } from '../src/style.js'
@@ -93,7 +94,12 @@ export default function(mount, serverAttrs = {}, serverContext = {}) {
     ...serverContext,
     noscript,
     doc,
-    [uidSymbol]: 1
+    [uidSymbol]: 1,
+    onremove: noop,
+    ignore: noop,
+    redraw: noop,
+    refresh: noop,
+    reload: noop
   }
 
   context.route = router(s, '', context)

@@ -805,7 +805,9 @@ function hydrate(dom) {
   hasOwn.call(dom, componentSymbol) && (x.first[componentSymbol] = dom[componentSymbol])
   if (hasOwn.call(dom, keysSymbol)) {
     const keys = dom[keysSymbol]
+    const keyIndex = dom[keyIndexSymbol]
     x.first[keysSymbol] = keys
+    x.first[keyIndexSymbol] = keyIndex
     keys[dom[keyIndexSymbol]].dom = x.first
   }
   dom.remove()

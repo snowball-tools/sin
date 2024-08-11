@@ -771,7 +771,7 @@ class Stack {
 
     instance.promise = next && isFunction(next.then) && next
     instance.stateful = instance.promise || (isFunction(next) && !next[sSymbol])
-    instance.view = optimistic ? this.xs[this.i].view : instance.promise ? instance.loading : next
+    instance.view = instance.promise ? optimistic ? this.xs[this.i].view : instance.loading : next
     this.xs.length = this.top = this.i
     return this.xs[this.i++] = instance
   }

@@ -733,6 +733,8 @@ class Stack {
       const keys = this.dom.first[keysSymbol]
       const keyIndex = this.dom.first[keyIndexSymbol]
       this.i = this.bottom = index
+      view.attrs = instance.attrs
+      view.children = instance.children
       updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, recreate, optimistic, true)
       hasOwn.call(this.dom.first, keysSymbol) || (
         this.dom.first[keysSymbol] = keys,
@@ -775,8 +777,11 @@ class Stack {
     this.xs.length = this.top = this.i
     return this.xs[this.i++] = instance
   }
-  next() {
-    return this.i < this.xs.length && this.xs[this.top = this.i++]
+  next(component) {
+    const instance = this.i < this.xs.length && this.xs[this.top = this.i++]
+    instance.attrs = component.attrs
+    instance.children = component.children
+    return instance
   }
   pop() {
     return --this.i === this.bottom && !(this.xs.length = this.top + 1, this.top = 0)
@@ -828,7 +833,7 @@ function updateComponent(
 ) {
   const instance = create
     ? stack.add(component, context, optimistic)
-    : stack.next()
+    : stack.next(component)
 
   if (!create && instance.ignore && !local) {
     stack.pop()

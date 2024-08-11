@@ -363,7 +363,7 @@ function updates(parent, next, context, before, last = parent.lastChild) {
     : nonKeyed(parent, context, next, keys, ref, after)
 
   const first = getNext(before, parent)
-  keys && (first[keysSymbol] = keys)
+  keys && (first[keysSymbol] = keys) // could be unnecessary since set in keyed and nonKeyed (do tests)
 
   return Ret(first, after && after.previousSibling || parent.lastChild)
 }

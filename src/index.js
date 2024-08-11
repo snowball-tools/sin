@@ -745,9 +745,7 @@ class Stack {
       this.i = this.bottom = 0
     }
 
-    const redraw = async e => {
-      update(e, false, true, true)
-    }
+    const redraw = e => update(e, false, true, true)
     const reload = e => {
       instance.onremoves && (instance.onremoves.forEach(x => x()), instance.onremoves = undefined)
       update(e, true)
@@ -880,7 +878,8 @@ function updateComponent(
         context.hydrating = false,
         instance.recreate = true,
         instance.promise = false,
-        instance.context.redraw().then(() => context[asyncSymbol](-1))
+        instance.context.redraw(),
+        context[asyncSymbol](-1)
       ))
   }
 

@@ -695,6 +695,8 @@ class Instance {
     this.ignore = false
     this.context = undefined
     this.recreate = false
+    this.attrs = null
+    this.children = null
   }
 }
 

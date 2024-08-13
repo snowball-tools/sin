@@ -120,7 +120,7 @@ s.error = s((error) => {
     'Unexpected Error: ' + (error.message || error)
   ))
 })
-s.jsxFragment = s((_, xs) => xs.slice(1))
+s.jsx = s((_, xs) => xs.slice(1))
 
 const trusted = s(({ strings, values = [] }) => {
   const div = document.createElement('div')

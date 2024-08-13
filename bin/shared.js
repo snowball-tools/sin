@@ -42,7 +42,7 @@ export function getTSConfigRaw(x, config) {
     compilerOptions: {
       jsx: 'react',
       jsxFactory: 's',
-      jsxFragmentFactory: 's.jsxFragment',
+      jsxFragmentFactory: 's.jsx',
       ...xs.compilerOptions
     }
   }
@@ -96,7 +96,7 @@ function sucraseTS(sucrase, x, debug, tsx, tsconfigRaw, file) {
     return sucrase.transform('' + x, {
       transforms: ['typescript', 'jsx'],
       jsxPragma: 's',
-      jsxFragmentPragma: 's.jsxFragment',
+      jsxFragmentPragma: 's.jsx',
       production: true
     }).code
   } catch (e) {
@@ -109,7 +109,7 @@ function esbuildTS(x, debug, tsx, tsconfigRaw, file) {
     ...(debug ? { logLevel: 'debug' } : {}),
     jsx: 'transform',
     jsxFactory: 's',
-    jsxFragment: 's.jsxFragment',
+    jsxFragment: 's.jsx',
     loader: tsx ? 'tsx' : 'ts',
     tsconfigRaw: tsconfigRaw,
     sourcefile: path.relative(process.cwd(), file.indexOf('file://') === 0 ? fileURLToPath(file) : file)

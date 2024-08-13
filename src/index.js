@@ -737,7 +737,9 @@ class Stack {
       this.i = this.bottom = index
       view.attrs = instance.attrs
       view.children = instance.children
+      s.redrawing = true
       updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, recreate, optimistic, true)
+      s.redrawing = false
       hasOwn.call(this.dom.first, keysSymbol) || (
         this.dom.first[keysSymbol] = keys,
         this.dom.first[keyIndexSymbol] = keyIndex

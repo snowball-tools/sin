@@ -186,7 +186,7 @@ export function parse([xs, ...args], parent, nesting = 0, root = false) {
     if (j < args.length) {
       const before = xs[j].slice(valueStart)
       let arg = args[j]
-      window.isServer && isFunction(arg) && !isObservable(arg) && (arg = '6invalidate')
+      window.isServerSin && isFunction(arg) && !isObservable(arg) && (arg = '6invalidate')
       if (cssVars && valueStart >= 0 && arg !== '6invalidate') {
         temp = prefix + Math.abs(hash).toString(31)
         vars[varName = '--' + temp + j] = { property: prop, fns: fn.slice(-1), unit: getUnit(prop, last(fn)), index: j, transform: cssVarAlpha !== -1 && getOpacityArg }

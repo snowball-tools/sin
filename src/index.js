@@ -94,7 +94,7 @@ s.redrawing = false
 s.sleep = (x, ...xs) => new Promise(r => setTimeout(r, x, ...xs))
 s.with = (x, fn) => x === undefined ? x : fn(x)
 s.isAttrs = isAttrs
-s.isServer = window.isServerSin || false
+s.is = { server: s.isServer = window.isServerSin || false }
 s.redraw = redraw
 s.redraw.force = force
 s.mount = mount
@@ -237,7 +237,7 @@ function mount(dom, view, attrs = {}, context = {}) {
   hasOwn.call(context, 'location') || (context.location = window.location)
   hasOwn.call(context, 'error') || (context.error = s.error)
 
-  if (s.isServer)
+  if (s.is.server)
     return { view, attrs, context, View }
 
   dom[stackTrace] = new Error().stack
@@ -315,7 +315,7 @@ function shouldHydrate(dom) {
 function redraw() {
   if (!redrawer) {
     window.requestAnimationFrame(globalRedraw)
-    redrawer = s.isServer
+    redrawer = s.is.server
       ? resolved
       : new Promise(r => redrawed = r)
   }

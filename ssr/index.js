@@ -26,7 +26,7 @@ export { wrap }
 
 class TimeoutError extends Error {}
 
-s.isServer = window.isServer = true
+s.is = { server: s.isServer = window.isServerSin = true }
 s.title = process.env.SIN_TITLE
 s.mimes = mimes
 s.trust = trust

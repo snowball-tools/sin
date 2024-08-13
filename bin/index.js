@@ -16,8 +16,8 @@ try {
   console.error(e) // eslint-disable-line
   const [major, minor] = process.versions.node.split('.').map(Number)
 
-  if (major < 20 || major === 20 && minor < 10) {
-    error('The minimum Node.js runtime for Sin is 20.10, please upgrade your environment')
+  if (major < 20 || major === 20 && minor <= 10) {
+    error('The minimum Node.js runtime for Sin is 20.11, please upgrade your environment')
   } else {
     error('Unable to start sin, check error messages above')
   }

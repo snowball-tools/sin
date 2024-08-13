@@ -336,20 +336,25 @@ function globalRedraw() {
 }
 
 function draw(m, dom) {
-  s.redrawing = true
+  beforeUpdates()
   try {
     m.doms = updates(dom, asArray(m.view(m.attrs)), m.context, m.doms && m.doms.dom.previousSibling, m.doms && m.doms.last)
   } catch (error) {
     m.attrs.error = error
     m.doms = updates(dom, asArray(m.context.error(error, m.attrs, [], m.context)), m.context, m.doms && m.doms.dom.previousSibling, m.doms && m.doms.last)
+  } finally {
+    afterUpdates()
   }
-  s.redrawing = false
-  afterRedraw()
 }
 
-function afterRedraw() {
+function beforeUpdates() {
+  s.redrawing = true
+}
+
+function afterUpdates() {
   afterUpdate.forEach(fn => fn())
   afterUpdate = []
+  s.redrawing = false
 }
 
 function updates(parent, next, context, before, last = parent.lastChild) {
@@ -530,8 +535,9 @@ function updateLive(dom, view, context, parent) {
   return result
 
   function run(x) {
+    beforeUpdates()
     const doms = update(dom, x, context, parent || dom && dom.parentNode)
-    afterRedraw()
+    afterUpdates()
     if (dom !== doms.first)
       observe(doms.first, view, run)
     dom = doms.first
@@ -731,22 +737,21 @@ class Stack {
     )
 
     const update = (e, recreate, optimistic) => {
+      beforeUpdates()
       e instanceof Event && (e.redraw = false)
       const keys = this.dom.first[keysSymbol]
       const keyIndex = this.dom.first[keyIndexSymbol]
       this.i = this.bottom = index
-      view.attrs = instance.attrs
-      view.children = instance.children
-      s.redrawing = true
+      instance.attrs !== null && (view.attrs = instance.attrs)
+      instance.children !== null && (view.children = instance.children)
       updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, recreate, optimistic, true)
-      s.redrawing = false
       hasOwn.call(this.dom.first, keysSymbol) || (
         this.dom.first[keysSymbol] = keys,
         this.dom.first[keyIndexSymbol] = keyIndex
       )
       keys && (keys[keyIndex].dom = this.dom.first)
-      afterRedraw()
       this.i = this.bottom = 0
+      afterUpdates()
     }
 
     const redraw = e => update(e, false, true, true)

@@ -203,7 +203,7 @@ function execute(xs, parent) {
     parent.component,
     parent.tag,
     parent ? parent.nesting + 1 : 0,
-    hasAttrs ? xs.shift() : {},
+    hasAttrs ? xs.shift() : undefined,
     xs.length === 1 && Array.isArray(xs[0])
       ? xs[0]
       : xs
@@ -927,9 +927,9 @@ function attributes(dom, view, context) {
   const prev = dom[attrSymbol] || (context.hydrating && getAttributes(dom)) || undefined
       , create = !prev
 
-  if (hasOwn.call(view.attrs, 'id') === false) {
+  if (create && hasOwn.call(view.attrs, 'id') === false) {
     const id = getId(view.tag)
-    id && (view.attrs.id = id)
+    id && (dom.id = id)
   }
 
   setClass(dom, view)

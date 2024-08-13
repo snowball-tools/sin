@@ -1,8 +1,11 @@
 import window from './window.js'
 import { hasOwn, stackTrace } from './shared.js'
 
+const emptyObject = Object.freeze({})
+const emptyArray = Object.freeze([])
+
 export default class View {
-  constructor(inline, component, tag = null, nesting = 0, attrs = null, children = null) {
+  constructor(inline, component, tag = null, nesting = 0, attrs = emptyObject, children = emptyArray) {
     if (
       tag && tag.name === 'input' && attrs && !attrs.disabled && (
         ('value' in attrs && !('oninput' in attrs)) ||

@@ -196,17 +196,17 @@ function link(dom, route) {
   })
 }
 
-function execute(x, parent) {
-  const hasAttrs = isAttrs(x && x[0])
+function execute(xs, parent) {
+  const hasAttrs = isAttrs(xs[0])
   return new View(
     parent.inline,
     parent.component,
     parent.tag,
     parent ? parent.nesting + 1 : 0,
-    hasAttrs ? x.shift() : {},
-    x.length === 1 && Array.isArray(x[0])
-      ? x[0]
-      : x
+    hasAttrs ? xs.shift() : {},
+    xs.length === 1 && Array.isArray(xs[0])
+      ? xs[0]
+      : xs
   )
 }
 

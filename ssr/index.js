@@ -306,7 +306,7 @@ function escapeAttr(x = '') {
 }
 
 function escapeAttrValue(x = '') {
-  // typeof x !== 'string' && (x = '' + x) // TODO would we want to stringify like html attributes? (setAttribute)
+  typeof x === 'string' || (x = '' + x)
   let s = ''
   let c = -1
   let l = -1

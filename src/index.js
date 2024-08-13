@@ -936,25 +936,31 @@ function attributes(dom, view, context) {
   create && observe(dom, view.attrs.class, () => setClass(dom, view))
   create && observe(dom, view.attrs.className, () => setClass(dom, view))
 
-  view.attrs.type != null && setAttribute(dom, 'type', view.attrs.type)
+  hasOwn.call(view.attrs, 'type') && setAttribute(dom, 'type', view.attrs.type)
 
   for (const attr in view.attrs) {
     if (ignoredAttr(attr)) {
       if (attr === 'deferrable') {
         dom[deferrableSymbol] = view.attrs[attr]
       }
-    } else if (attr === 'value' && getName(tag) === 'input' && dom.value !== '' + view.attrs[attr]) {
+    } else if (!prev || prev[attr] !== view.attrs[attr]) {
+      updateAttribute(dom, view.attrs, attr, prev && prev[attr], view.attrs[attr], create)
+    }
+  }
+
+  if (hasOwn.call(view.attrs, 'value')) {
+    if (getName(tag) === 'input' && dom.value !== '' + view.attrs.value) {
       let start
         , end
       if (dom === document.activeElement) {
         start = dom.selectionStart
         end = dom.selectionEnd
       }
-      updateAttribute(dom, view.attrs, attr, dom.value, view.attrs[attr], create)
+      updateAttribute(dom, view.attrs, 'value', dom.value, view.attrs.value, create)
       if (dom === document.activeElement && (dom.selectionStart !== start || dom.selectionEnd !== end))
         dom.setSelectionRange(start, end)
-    } else if (!prev || prev[attr] !== view.attrs[attr]) {
-      updateAttribute(dom, view.attrs, attr, prev && prev[attr], view.attrs[attr], create)
+    } else if (!prev || prev.value !== view.attrs.value) {
+      updateAttribute(dom, view.attrs, 'value', prev && prev.value, view.attrs.value, create)
     }
   }
 

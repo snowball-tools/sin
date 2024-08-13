@@ -232,7 +232,7 @@ function mount(dom, view, attrs = {}, context = {}) {
     throw new Error('The dom element you tried to mount to does not exist.')
   }
 
-  view instanceof View === false && (view = s(view))
+  view instanceof View === false && !hasOwn.call(view, sSymbol) && (view = s(view))
 
   hasOwn.call(context, 'location') || (context.location = window.location)
   hasOwn.call(context, 'error') || (context.error = s.error)

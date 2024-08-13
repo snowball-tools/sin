@@ -936,7 +936,7 @@ function attributes(dom, view, context) {
   create && observe(dom, view.attrs.class, () => setClass(dom, view))
   create && observe(dom, view.attrs.className, () => setClass(dom, view))
 
-  hasOwn.call(view.attrs, 'type') && setAttribute(dom, 'type', view.attrs.type)
+  view.attrs.type != null && setAttribute(dom, 'type', view.attrs.type)
 
   for (const attr in view.attrs) {
     if (ignoredAttr(attr)) {

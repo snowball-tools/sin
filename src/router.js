@@ -57,11 +57,11 @@ export default function router(s, root, rootContext, parent) {
   }
 
   function getPath(location, x = 0) {
-    return (s.pathmode[0] === '#'
-      ? location.hash.slice(s.pathmode.length + x)
-      : s.pathmode[0] === '?'
-        ? location.search.slice(s.pathmode.length + x)
-        : location.pathname.slice(s.pathmode + x)
+    return (s.route.prefix[0] === '#'
+      ? location.hash.slice(s.route.prefix.length + x)
+      : s.route.prefix[0] === '?'
+        ? location.search.slice(s.route.prefix.length + x)
+        : location.pathname.slice(s.route.prefix + x)
     ).replace(/(.)\/$/, '$1')
   }
 
@@ -69,11 +69,11 @@ export default function router(s, root, rootContext, parent) {
     if (path === getPath(location) + location.search)
       return
 
-    s.pathmode[0] === '#'
-      ? window.location.hash = s.pathmode + path
-      : s.pathmode[0] === '?'
-        ? window.location.search = s.pathmode + path
-        : window.history[replace ? 'replaceState' : 'pushState'](state, null, s.pathmode + path)
+    s.route.prefix[0] === '#'
+      ? window.location.hash = s.route.prefix + path
+      : s.route.prefix[0] === '?'
+      ? window.location.search = s.route.prefix + path
+      : window.history[replace ? 'replaceState' : 'pushState'](state, null, s.route.prefix + path)
     routeState[path] = state
     path.indexOf(location.search) > -1 && rootContext.query(location.search)
 
@@ -97,7 +97,7 @@ export default function router(s, root, rootContext, parent) {
 
     if (!routing) {
       routing = true
-      s.pathmode[0] === '#'
+      s.route.prefix[0] === '#'
         ? window.addEventListener('hashchange', popstate, { passive: true })
         : isFunction(window.history.pushState) && window.addEventListener('popstate', popstate, { passive: true })
     }

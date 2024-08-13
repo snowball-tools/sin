@@ -95,7 +95,6 @@ s.sleep = (x, ...xs) => new Promise(r => setTimeout(r, x, ...xs))
 s.with = (x, fn) => x === undefined ? x : fn(x)
 s.isAttrs = isAttrs
 s.isServer = window.isServerSin || false
-s.pathmode = ''
 s.redraw = redraw
 s.redraw.force = force
 s.mount = mount
@@ -111,6 +110,7 @@ s.event = event
 s.on = on
 s.trust = trust
 s.route = router(s, '', { location: window.location, query: query(s, window.location) })
+s.route.prefix = ''
 s.window = window
 s.scroll = true
 s.View = View
@@ -970,7 +970,7 @@ function attributes(dom, view, context) {
     internal && (value = cleanSlash(view.attrs.href))
     updateAttribute(dom, view.attrs, 'href', prev && prev.href, value, create)
     if (value && internal) {
-      view.attrs.href = s.pathmode + value
+      view.attrs.href = s.route.prefix + value
       link(dom, context.route)
     }
   }

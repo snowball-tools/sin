@@ -6,14 +6,6 @@ const emptyArray = Object.freeze([])
 
 export default class View {
   constructor(inline, component, tag = null, nesting = 0, attrs = emptyObject, children = emptyArray) {
-    if (
-      tag && tag.name === 'input' && attrs && !attrs.disabled && (
-        ('value' in attrs && !('oninput' in attrs)) ||
-        ('checked' in attrs && !('oninput' in attrs) && !('onchange' in attrs))
-      )
-    )
-      throw new Error('oninput handler required when value is set on input - Bypass check by setting oninput: false')
-
     this.nesting = nesting
     this.component = component
     this.inline = inline

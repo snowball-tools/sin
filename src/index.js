@@ -949,7 +949,7 @@ function attributes(dom, view, context) {
   }
 
   if (hasOwn.call(view.attrs, 'value')) {
-    if (getName(tag) === 'input' && dom.value !== '' + view.attrs.value) {
+    if (!prev && getName(tag) === 'input' && dom.value !== '' + view.attrs.value) {
       let start
         , end
       if (dom === document.activeElement) {

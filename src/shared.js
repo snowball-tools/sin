@@ -5,7 +5,7 @@ export const resolved = Promise.resolve()
 export const hasOwn = {}.hasOwnProperty
 
 export function cleanSlash(x) {
-  return x && String(x).replace(/\/+/g, '/').replace(/(.)\/$/, '$1')
+  return x && String(x).replace(/\/+/g, '/').replace(/(.)\/\*?$/, '$1')
 }
 
 export function cleanHref(x) {

@@ -57,12 +57,12 @@ export default function router(s, root, rootContext, parent) {
   }
 
   function getPath(location, x = 0) {
-    return (s.route.prefix[0] === '#'
+    return cleanSlash(s.route.prefix[0] === '#'
       ? location.hash.slice(s.route.prefix.length + x)
       : s.route.prefix[0] === '?'
         ? location.search.slice(s.route.prefix.length + x)
         : location.pathname.slice(s.route.prefix + x)
-    ).replace(/(.)\/\*?$/, '$1')
+    )
   }
 
   function reroute(path, { state, replace = false, scroll = true } = {}) {

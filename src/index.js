@@ -11,7 +11,7 @@ import {
   ignoredAttr,
   scrollSize,
   stackTrace,
-  cleanSlash,
+  cleanHref,
   isFunction,
   className,
   styleProp,
@@ -967,7 +967,7 @@ function attributes(dom, view, context) {
   if (hasOwn.call(view.attrs, 'href') && (context.hydrating || !prev || prev.href !== view.attrs.href)) {
     value = view.attrs.href
     const internal = !String(value).match(/^[a-z]+:|\/\//) && !view.attrs.target && !view.attrs.download
-    internal && (value = cleanSlash(view.attrs.href))
+    internal && (value = cleanHref(view.attrs.href))
     updateAttribute(dom, view.attrs, 'href', prev && prev.href, value, create)
     if (value && internal) {
       view.attrs.href = s.route.prefix + value

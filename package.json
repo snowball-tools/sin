@@ -21,8 +21,9 @@
     "./env": "./bin/env.js",
     "./build": "./shared/build/index.js",
     "./server": "./shared/server/index.js",
-    "./mimes": "./shared/server/mimes.js",
-    "./test": "./bin/test/test.js"
+    "./server/window": "./ssr/window.js",
+    "./test": "./bin/test/test.js",
+    "./mimes": "./shared/server/mimes.js"
   },
   "imports": {
     "#server": "./shared/server/index.js"

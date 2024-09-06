@@ -140,7 +140,7 @@ function event(fn) {
   return event
 
   function event(...xs) {
-    [...observers].forEach(fn => fn(...xs))
+    return [...observers].map(fn => fn(...xs))
   }
 
   function observe(x, once) {

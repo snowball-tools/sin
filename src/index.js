@@ -34,21 +34,21 @@ const document = window.document
 
 const removing = new WeakSet()
     , mounts = new Map()
-    , deferrableSymbol = Symbol('deferrable')
-    , observableSymbol = Symbol('observable')
-    , componentSymbol = Symbol('component')
-    , asyncSymbol = Symbol('cycle')
-    , eventSymbol = Symbol('event')
-    , arrayEnd = Symbol('arrayEnd')
-    , arrayStart = Symbol('arrayStart')
-    , liveSymbol = Symbol('live')
-    , sizeSymbol = Symbol('size')
-    , lifeSymbol = Symbol('life')
-    , attrSymbol = Symbol('attr')
-    , keyIndexSymbol = Symbol('keyIndex')
-    , keysSymbol = Symbol('keys')
-    , keySymbol = Symbol('key')
-    , sSymbol = Symbol('s')
+    , $deferrable = Symbol('deferrable')
+    , $observable = Symbol('observable')
+    , $component = Symbol('component')
+    , $async = Symbol('cycle')
+    , $event = Symbol('event')
+    , $arrayEnd = Symbol('$arrayEnd')
+    , $arrayStart = Symbol('$arrayStart')
+    , $live = Symbol('live')
+    , $size = Symbol('size')
+    , $life = Symbol('life')
+    , $attr = Symbol('attr')
+    , $keyIndex = Symbol('keyIndex')
+    , $keys = Symbol('keys')
+    , $key = Symbol('key')
+    , $s = Symbol('s')
 
 let afterUpdate = []
   , redrawer
@@ -58,7 +58,7 @@ export default function s(...x) {
   const type = typeof x[0]
   return type === 'string'
     ? S(Object.assign([x[0]], { raw: [] }))(...x.slice(1))
-    : hasOwn.call(x[0], sSymbol)
+    : hasOwn.call(x[0], $s)
       ? x[0](...x.slice(1))
       : bind(S, isTagged(x[0])
         ? tagged(x)
@@ -86,7 +86,7 @@ function tagged(x, parent) {
 
 function bind(x, that) {
   const fn = x.bind(that)
-  fn[sSymbol] = true
+  fn[$s] = true
   return fn
 }
 
@@ -190,7 +190,7 @@ function link(dom, route) {
       !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey
     ) {
       e.preventDefault()
-      const state = dom[attrSymbol].state
+      const state = dom[$attr].state
       route(dom.getAttribute('href'), { state })
     }
   })
@@ -232,7 +232,7 @@ function mount(dom, view, attrs = {}, context = {}) {
     throw new Error('The dom element you tried to mount to does not exist.')
   }
 
-  view instanceof View === false && !hasOwn.call(view, sSymbol) && (view = s(view))
+  view instanceof View === false && !hasOwn.call(view, $s) && (view = s(view))
 
   hasOwn.call(context, 'location') || (context.location = window.location)
   hasOwn.call(context, 'error') || (context.error = s.error)
@@ -260,7 +260,7 @@ function mount(dom, view, attrs = {}, context = {}) {
 
 function scrollRestoration(context) {
   let depth = 0
-  context[asyncSymbol] = x => depth !== -1 && (depth += x) || (depth = 0, scrollSize(0, 0))
+  context[$async] = x => depth !== -1 && (depth += x) || (depth = 0, scrollSize(0, 0))
   window.history.scrollRestoration = 'manual'
   scrollRestore(...(history.state?.scroll || []))
   let scrollTimer
@@ -360,15 +360,15 @@ function afterUpdates() {
 function updates(parent, next, context, before, last = parent.lastChild) {
   const keys = next[0] && next[0].key !== undefined && new Array(next.length)
       , ref = getNext(before, parent)
-      , tracked = ref && hasOwn.call(ref, keysSymbol)
+      , tracked = ref && hasOwn.call(ref, $keys)
       , after = last ? last.nextSibling : null
 
   keys && (keys.rev = new Map()) && tracked
-    ? keyed(parent, context, ref[keysSymbol], next, keys, after, ref)
+    ? keyed(parent, context, ref[$keys], next, keys, after, ref)
     : nonKeyed(parent, context, next, keys, ref, after)
 
   const first = getNext(before, parent)
-  keys && (first[keysSymbol] = keys) // could be unnecessary since set in keyed and nonKeyed (do tests)
+  keys && (first[$keys] = keys) // could be unnecessary since set in keyed and nonKeyed (do tests)
 
   return Ret(first, after && after.previousSibling || parent.lastChild)
 }
@@ -383,8 +383,8 @@ function getNext(before, parent) {
 
 function Ref(keys, dom, key, i) {
   keys[i] = { dom, key }
-  dom[keysSymbol] = keys
-  dom[keyIndexSymbol] = i
+  dom[$keys] = keys
+  dom[$keyIndex] = i
   keys.rev.set(key, i)
 }
 
@@ -526,7 +526,7 @@ function updateView(dom, view, context, parent, stack, create) {
 }
 
 function updateLive(dom, view, context, parent) {
-  if (dom && hasOwn.call(dom, liveSymbol) && dom[liveSymbol].view === view)
+  if (dom && hasOwn.call(dom, $live) && dom[$live].view === view)
     return run(view())
 
   const result = run(view())
@@ -541,7 +541,7 @@ function updateLive(dom, view, context, parent) {
     if (dom !== doms.first)
       observe(doms.first, view, run)
     dom = doms.first
-    doms.first[liveSymbol] = { view, doms }
+    doms.first[$live] = { view, doms }
     return doms
   }
 }
@@ -573,12 +573,12 @@ function fromComment(dom) {
 }
 
 function markArray(first, last) {
-  (last || first)[arrayStart] = first
-  first[arrayEnd] = last
+  (last || first)[$arrayStart] = first
+  first[$arrayEnd] = last
 }
 
 function getArray(dom) {
-  return dom && hasOwn.call(dom, arrayEnd) ? dom[arrayEnd] : fromComment(dom)
+  return dom && hasOwn.call(dom, $arrayEnd) ? dom[$arrayEnd] : fromComment(dom)
 }
 
 function updateArray(dom, view, context, parent, create, component) {
@@ -612,7 +612,7 @@ function updateValue(
   component = false
 ) {
   const nodeChange = create || !dom || dom.nodeType !== nodeType
-  if (dom && hasOwn.call(dom, componentSymbol) && hasOwn.call(dom, componentSymbol) !== component)
+  if (dom && hasOwn.call(dom, $component) && hasOwn.call(dom, $component) !== component)
     removeCall(dom)
 
   nodeChange && replace(
@@ -651,12 +651,12 @@ function updateElement(
 
   size
     ? updates(dom, view.children, context)
-    : dom[sizeSymbol] && removeChildren(dom.firstChild, dom)
+    : dom[$size] && removeChildren(dom.firstChild, dom)
 
-  dom[sizeSymbol] = size
+  dom[$size] = size
 
   context.NS = previousNS
-  hasOwn.call(view, 'key') && (dom[keySymbol] = view.key)
+  hasOwn.call(view, 'key') && (dom[$key] = view.key)
 
   return Ret(dom)
 }
@@ -667,7 +667,7 @@ function removeChildren(dom, parent) {
 }
 
 function tagChanged(dom, view, context) {
-  return (dom[keySymbol] !== view.key && !context.hydrating) // eslint-disable-line
+  return (dom[$key] !== view.key && !context.hydrating) // eslint-disable-line
        || (context.NS
          ? dom.nodeName !== getName(view.tag)
          : dom.nodeName.toLowerCase() !== (getName(view.tag).toLowerCase() || 'div')
@@ -739,15 +739,15 @@ class Stack {
     const update = (e, recreate, optimistic) => {
       beforeUpdates()
       e instanceof Event && (e.redraw = false)
-      const keys = this.dom.first[keysSymbol]
-      const keyIndex = this.dom.first[keyIndexSymbol]
+      const keys = this.dom.first[$keys]
+      const keyIndex = this.dom.first[$keyIndex]
       this.i = this.bottom = index
       instance.attrs !== null && (view.attrs = instance.attrs)
       instance.children !== null && (view.children = instance.children)
       updateComponent(this.dom.first, view, context, this.dom.first.parentNode, this, recreate, optimistic, true)
-      hasOwn.call(this.dom.first, keysSymbol) || (
-        this.dom.first[keysSymbol] = keys,
-        this.dom.first[keyIndexSymbol] = keyIndex
+      hasOwn.call(this.dom.first, $keys) || (
+        this.dom.first[$keys] = keys,
+        this.dom.first[$keyIndex] = keyIndex
       )
       keys && (keys[keyIndex].dom = this.dom.first)
       this.i = this.bottom = 0
@@ -779,7 +779,7 @@ class Stack {
     isObservable(view.attrs.refresh) && onremoves(instance, view.attrs.refresh.observe(refresh))
 
     instance.promise = next && isFunction(next.then) && next
-    instance.stateful = instance.promise || (isFunction(next) && !next[sSymbol])
+    instance.stateful = instance.promise || (isFunction(next) && !next[$s])
     instance.view = instance.promise ? optimistic ? this.xs[this.i].view : instance.loading : next
     this.xs.length = this.top = this.i
     return this.xs[this.i++] = instance
@@ -808,14 +808,14 @@ function hydrate(dom) {
     last = last.nextSibling
 
   const x = Ret(dom.nextSibling, dom.nextSibling, last.previousSibling)
-  hasOwn.call(last, arrayStart) && markArray(last[arrayStart], last.previousSibling)
-  hasOwn.call(dom, componentSymbol) && (x.first[componentSymbol] = dom[componentSymbol])
-  if (hasOwn.call(dom, keysSymbol)) {
-    const keys = dom[keysSymbol]
-    const keyIndex = dom[keyIndexSymbol]
-    x.first[keysSymbol] = keys
-    x.first[keyIndexSymbol] = keyIndex
-    keys[dom[keyIndexSymbol]].dom = x.first
+  hasOwn.call(last, $arrayStart) && markArray(last[$arrayStart], last.previousSibling)
+  hasOwn.call(dom, $component) && (x.first[$component] = dom[$component])
+  if (hasOwn.call(dom, $keys)) {
+    const keys = dom[$keys]
+    const keyIndex = dom[$keyIndex]
+    x.first[$keys] = keys
+    x.first[$keyIndex] = keyIndex
+    keys[dom[$keyIndex]].dom = x.first
   }
   dom.remove()
   last.remove()
@@ -835,7 +835,7 @@ function updateComponent(
   component,
   context,
   parent,
-  stack = dom && dom[componentSymbol] || new Stack(),
+  stack = dom && dom[$component] || new Stack(),
   create = stack.changed(component, context),
   optimistic = false,
   local = false
@@ -857,7 +857,7 @@ function updateComponent(
     instance.next = bounds(dom)
   } else {
     let view = catchInstance(create, instance, component)
-    view && hasOwn.call(view, sSymbol) && (view = view(component.attrs, component.children, instance.context))
+    view && hasOwn.call(view, $s) && (view = view(component.attrs, component.children, instance.context))
     instance.next = update(
       dom,
       !instance.caught && !instance.promise && view instanceof View
@@ -875,20 +875,20 @@ function updateComponent(
 
   let i = stack.i - 1
   if (create && instance.promise) {
-    context[asyncSymbol](1)
+    context[$async](1)
     instance.promise
       .then(view => instance.view = view && hasOwn.call(view, 'default') ? view.default : view)
       .catch(error => {
         instance.caught = error
         instance.view = resolveError(instance, component, error)
       })
-      .then(() => hasOwn.call(instance.next.first, componentSymbol) && stack.xs[i] === instance && (
+      .then(() => hasOwn.call(instance.next.first, $component) && stack.xs[i] === instance && (
         hydratingAsync && (stack.dom = hydrate(dom)),
         context.hydrating = false,
         instance.recreate = true,
         instance.promise = false,
         instance.context.redraw(),
-        context[asyncSymbol](-1)
+        context[$async](-1)
       ))
   }
 
@@ -896,7 +896,7 @@ function updateComponent(
 
   if (stack.pop() && (changed || create)) {
     stack.dom = instance.next
-    instance.next.first[componentSymbol] = stack
+    instance.next.first[$component] = stack
   }
 
   return instance.next
@@ -905,7 +905,7 @@ function updateComponent(
 function catchInstance(create, instance, view) {
   try {
     return instance.stateful || create
-      ? isFunction(instance.view) && !instance.view[sSymbol]
+      ? isFunction(instance.view) && !instance.view[$s]
         ? instance.view(view.attrs, view.children, instance.context)
         : instance.view
       : view.component[0](view.attrs, view.children, instance.context)
@@ -915,7 +915,7 @@ function catchInstance(create, instance, view) {
 }
 
 function resolveError(instance, view, error) {
-  return hasOwn.call(instance.error, sSymbol)
+  return hasOwn.call(instance.error, $s)
     ? instance.error().component[0](error, view.attrs, view.children, instance.context)
     : instance.error(error, view.attrs, view.children, instance.context)
 }
@@ -924,7 +924,7 @@ function attributes(dom, view, context) {
   let tag = view.tag
     , value
 
-  const prev = dom[attrSymbol] || (context.hydrating && getAttributes(dom)) || undefined
+  const prev = dom[$attr] || (context.hydrating && getAttributes(dom)) || undefined
       , create = !prev
 
   if (create && hasOwn.call(view.attrs, 'id') === false) {
@@ -941,7 +941,7 @@ function attributes(dom, view, context) {
   for (const attr in view.attrs) {
     if (ignoredAttr(attr)) {
       if (attr === 'deferrable') {
-        dom[deferrableSymbol] = view.attrs[attr]
+        dom[$deferrable] = view.attrs[attr]
       }
     } else if (!prev || prev[attr] !== view.attrs[attr]) {
       updateAttribute(dom, view.attrs, attr, prev && prev[attr], view.attrs[attr], create)
@@ -981,7 +981,7 @@ function attributes(dom, view, context) {
         isEvent(attr)
           ? removeEvent(dom, attr)
           : ignoredAttr(attr)
-            ? (attr === 'deferrable' && (dom[deferrableSymbol] = false))
+            ? (attr === 'deferrable' && (dom[$deferrable] = false))
             : dom.removeAttribute(attr)
       }
     }
@@ -1000,7 +1000,7 @@ function attributes(dom, view, context) {
 
   hasOwn.call(view, stackTrace) && (dom[stackTrace] = view[stackTrace])
 
-  dom[attrSymbol] = view.attrs
+  dom[$attr] = view.attrs
 }
 
 function getAttributes(dom) {
@@ -1051,11 +1051,11 @@ function observe(dom, x, fn) {
   if (!(isObservable(x)))
     return
 
-  const has = hasOwn.call(dom, observableSymbol)
+  const has = hasOwn.call(dom, $observable)
   const xs = has
-    ? dom[observableSymbol]
+    ? dom[$observable]
     : new Set()
-  has || (dom[observableSymbol] = xs)
+  has || (dom[$observable] = xs)
   xs.add(x.observe(fn))
 }
 
@@ -1098,9 +1098,9 @@ function giveLife(dom, attrs, children, context, life) {
     asArray(life).forEach(async l => {
       let x = isFunction(l) && l(dom, attrs, children, context)
       x && isFunction(x.then) && (x = await x, redraw())
-      isFunction(x) && (hasOwn.call(dom, lifeSymbol)
-        ? dom[lifeSymbol].push(x)
-        : dom[lifeSymbol] = [x]
+      isFunction(x) && (hasOwn.call(dom, $life)
+        ? dom[$life].push(x)
+        : dom[$life] = [x]
       )
     }, [])
   })
@@ -1151,19 +1151,19 @@ function asProp(dom, attr) {
 }
 
 function removeEvent(dom, name) {
-  dom.removeEventListener(name.slice(2), dom[eventSymbol])
+  dom.removeEventListener(name.slice(2), dom[$event])
 }
 
 function addEvent(dom, attrs, name) {
   dom.addEventListener(
     name.slice(2),
-    dom[eventSymbol] || (dom[eventSymbol] = handleEvent(dom))
+    dom[$event] || (dom[$event] = handleEvent(dom))
   )
 }
 
 function handleEvent(dom) {
   return {
-    handleEvent: e => callHandler(dom[attrSymbol]['on' + e.type], e, dom)
+    handleEvent: e => callHandler(dom[$attr]['on' + e.type], e, dom)
   }
 }
 
@@ -1222,9 +1222,9 @@ function removeChild(parent, dom) {
 }
 
 function removeCall(dom) {
-  const x = hasOwn.call(dom, componentSymbol) && dom[componentSymbol]
+  const x = hasOwn.call(dom, $component) && dom[$component]
   x && x.i <= x.top && (x.i ? x.xs.slice(x.i) : x.xs).forEach(x => x.onremoves && x.onremoves.forEach(x => x()))
-  hasOwn.call(dom, observableSymbol) && dom[observableSymbol].forEach(x => x())
+  hasOwn.call(dom, $observable) && dom[$observable].forEach(x => x())
 }
 
 function remove(dom, parent, root = true, promises = [], deferrable = false) {
@@ -1252,8 +1252,8 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
     return after
   }
 
-  if (hasOwn.call(dom, lifeSymbol)) {
-    for (const life of dom[lifeSymbol]) {
+  if (hasOwn.call(dom, $life)) {
+    for (const life of dom[$life]) {
       try {
         const promise = life(deferrable || root)
         if (deferrable || root)
@@ -1264,7 +1264,7 @@ function remove(dom, parent, root = true, promises = [], deferrable = false) {
     }
   }
 
-  !deferrable && (deferrable = dom[deferrableSymbol] || false)
+  !deferrable && (deferrable = dom[$deferrable] || false)
   let child = dom.firstChild
   while (child) {
     remove(child, dom, false, promises, deferrable)

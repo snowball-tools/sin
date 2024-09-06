@@ -36,7 +36,7 @@ let lastWasText = false
 
 const noscript = process.env.SIN_NOSCRIPT
 const ignoredServerAttr = x => x !== 'href' && x !== 'type' && ignoredAttr(x)
-const uidSymbol = Symbol('uid')
+const $uid = Symbol('uid')
 const defaultTimeout = 1000 * 60 * 2
 const voidTags = new Set([
   'area',
@@ -94,7 +94,7 @@ export default function(mount, serverAttrs = {}, serverContext = {}) {
     ...serverContext,
     noscript,
     doc,
-    [uidSymbol]: 1,
+    [$uid]: 1,
     onremove: noop,
     ignore: noop,
     redraw: noop,
@@ -267,7 +267,7 @@ function updateComponent(view, context) {
   let x = view.component[0](view.attrs, view.children, context)
   mergeTag(x, view)
   return tryPromise(x, (x, wasPromise) => {
-    const asyncId = wasPromise && ('<!--a' + context[uidSymbol]++ + '-->') || ''
+    const asyncId = wasPromise && ('<!--a' + context[$uid]++ + '-->') || ''
     x && hasOwn.call(x, 'default') && (x = x.default) // we might be able to move check above
     isFunction(x) && (x = x(view.attrs, view.children, context))
     return tryPromise(update(x, context), x => (

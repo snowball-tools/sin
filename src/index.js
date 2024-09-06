@@ -612,7 +612,7 @@ function updateValue(
   component = false
 ) {
   const nodeChange = create || !dom || dom.nodeType !== nodeType
-  if (dom && hasOwn.call(dom, $component) && hasOwn.call(dom, $component) !== component)
+  if (dom && hasOwn.call(dom, $component) && dom[$component] !== component)
     removeCall(dom)
 
   nodeChange && replace(
@@ -791,7 +791,17 @@ class Stack {
     return instance
   }
   pop() {
-    return --this.i === this.bottom && !(this.xs.length = this.top + 1, this.top = 0)
+    if (--this.i !== this.bottom)
+      return false
+
+    this.cut(this.top + 1)
+    return true
+  }
+  cut(top = this.i) {
+    for (let i = top; i < this.xs.length; i++)
+      this.xs[i].onremoves && this.xs[i].onremoves.forEach(fn => fn())
+    this.xs.length = top
+    window.fun = this.xs
   }
 }
 
@@ -1222,8 +1232,7 @@ function removeChild(parent, dom) {
 }
 
 function removeCall(dom) {
-  const x = hasOwn.call(dom, $component) && dom[$component]
-  x && x.i <= x.top && (x.i ? x.xs.slice(x.i) : x.xs).forEach(x => x.onremoves && x.onremoves.forEach(x => x()))
+  hasOwn.call(dom, $component) && dom[$component].cut()
   hasOwn.call(dom, $observable) && dom[$observable].forEach(x => x())
 }
 

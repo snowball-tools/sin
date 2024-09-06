@@ -5,6 +5,7 @@ import cp from 'node:child_process'
 
 import prexit from '../prexit.js'
 import color from '../color.js'
+import coverage from '../test/coverage.js'
 
 import config from './config.js'
 import api from './api.js'
@@ -86,6 +87,10 @@ async function tryStart() {
 }
 
 async function close() {
+  if (ws && ws.coverage) {
+    const { result } = await ws.request('Profiler.takePreciseCoverage')
+    console.log('Node Coverage', await coverage(result))
+  }
   node && (node.kill(), node.connected && await new Promise(r => node.on('close', r)))
 }
 
@@ -187,6 +192,11 @@ async function start() {
       await request('Runtime.enable')
       await request('Runtime.setAsyncCallStackDepth', { maxDepth: 128 })
       await request('Debugger.enable')
+      if (config.coverage && config.coverage !== 'chrome') {
+        ws.coverage = true
+        await request('Profiler.enable')
+        await request('Profiler.startPreciseCoverage', { callCount: true, detailed: true })
+      }
     }
 
     function onmessage({ data }) {

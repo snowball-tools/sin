@@ -91,7 +91,7 @@ function pkgLookup(scope, name, version, rest, pkgPath, urlPath, force) {
   if (!pkg)
     return urlPath
 
-  const entry = resolveExports(pkg, rest ? rest.split('/') : ['.']) || resolveLegacy(pkg)
+  const entry = resolveExports(pkg, '.' + rest) || resolveLegacy(pkg)
 
   if (!entry)
     return urlPath
@@ -100,8 +100,8 @@ function pkgLookup(scope, name, version, rest, pkgPath, urlPath, force) {
 }
 
 function resolveExports(x, subPath) {
-  return firstString(x, 'exports', ...subPath, 'browser', 'import')
-      || firstString(x, 'exports', ...subPath, 'import')
+  return firstString(x, 'exports', subPath, 'browser', 'import')
+      || firstString(x, 'exports', subPath, 'import')
 }
 
 function resolveLegacy(pkg) {

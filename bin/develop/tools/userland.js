@@ -10,9 +10,9 @@ export default s
 
 export { stackTrace }
 
-api.redraw.observe(() => window.hmr ? s.redraw() : location.reload())
+api.redraw.observe(() => window.sindev.hmr ? s.redraw() : location.reload())
 
-const unquoteFilename = navigator.platform.toLowerCase().includes('win')
+const unquoteFilename = window.sindev.platform === 'win32'
   ? /"([^<>:"/\\|?*]+)":/ig
   : /"([^\0/]+)":/ig
 

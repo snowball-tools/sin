@@ -117,7 +117,7 @@ async function build(r) {
 function getTools() {
   const dev = true || process.env.SIN_DEBUG
   return `
-    <script type=module id=sindev port="${ process.env.SIN_DEV_PORT }" ${ process.env.SIN_DEBUG ? 'debug' : '' } ${
+    <script type=module id=sindev platform=${ process.platform } port=${ process.env.SIN_DEV_PORT } ${ process.env.SIN_DEBUG ? 'debug' : '' } ${
       dev
         ? 'src="/node_modules/sin/bin/develop/tools/index.js">'
         : 'src="/node_modules/sin/bin/develop/tools/dist.js">'

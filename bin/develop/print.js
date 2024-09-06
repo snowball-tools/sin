@@ -181,6 +181,7 @@ function padBetween(a, b, prefix = 0) {
 function logArg(x, max) {
   return x.type === 'string' ? (x.value ? c.cyan(x.value) : c.gray('\'\''))
     : x.type === 'number' ? c.blue(x.value)
+    : x.type === 'boolean' ? c.gray(x.value)
     : x.type === 'undefined' ? c.gray('undefined')
     : x.type === 'function' ? c.gray(x.className || 'Function')
     : x.type === 'object' ? (

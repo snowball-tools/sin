@@ -11,6 +11,7 @@ import prexit from '../prexit.js'
 import config from './config.js'
 import api from './api.js'
 import { rewrite } from './shared.js'
+import coverage from '../test/coverage.js'
 
 import s from '../../src/index.js'
 
@@ -18,7 +19,7 @@ if (!config.chromePath || !fs.existsSync(config.chromePath))
   throw new Error('Could not find a Chrome installation. Install Chrome or set a valid path using CHROME_PATH=')
 
 const root = 'http://127.0.0.1:' + config.chromePort
-    , hmr = 'if(window.self === window.top)window.hmr=1;'
+    , hmr = 'if(window.self === window.top)window.sindev.hmr=1;'
     , replace = Math.random()
 
 api.log({ replace, from: 'browser', type: 'status', value: '⏳' })
@@ -35,6 +36,10 @@ prexit(async() => {
   try {
     for (const x of tabs.values()) {
       if (x.ws) {
+        if (x.ws.coverage) {
+          const { result } = await x.ws.request('Profiler.takePreciseCoverage')
+          console.log('Chrome Coverage', await coverage(result))
+        }
         ok = await x.ws.request('Browser.close')
         break
       }
@@ -90,7 +95,12 @@ async function hotload(x) {
 }
 
 async function updateTabs(launch) {
-  const xs = await getTabs(config.origin)
+  let xs = await getTabs(config.origin)
+  while (launch && xs.length === 0) {
+    s.sleep(100)
+    xs = await getTabs(config.origin)
+  }
+
   await Promise.all(
     xs.map(async x => {
       if (launch && (x.url === 'about:blank' || x.url === 'chrome://newtab/'))
@@ -157,6 +167,11 @@ async function connect(tab) {
     await request('DOM.enable')
     await request('CSS.enable')
     await request('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
+    if (config.coverage && config.coverage !== 'node') {
+      ws.coverage = true
+      await request('Profiler.enable')
+      await request('Profiler.startPreciseCoverage', { callCount: true, detailed: true })
+    }
   }
 
   function onmessage({ data }) {

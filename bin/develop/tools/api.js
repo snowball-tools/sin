@@ -11,11 +11,18 @@ const api = {
   editor     : s.event(x => send('editor', x)),
   color      : s.live([0, 0, 0]),
   inspect    : s.live(false, x => send('inspect', x)),
+  tested     : s.event(tested),
   parseStackTrace
 }
 
+window.sindev.api = api
+
 export default api
 
+function tested(code) {
+  ws.onclose = null
+  send('tested', code)
+}
 function connect() {
   ws = new WebSocket(
     location.protocol.replace('http', 'ws') + location.hostname + ':' + window.sindev.getAttribute('port')
@@ -23,6 +30,7 @@ function connect() {
   ws.onmessage = onmessage
   ws.onclose = () => setTimeout(connect, 200)
   ws.onerror = error => debug && console.error(error) // eslint-disable-line
+  ws.onopen = () => window.sindev.tested != null && tested(window.sindev.tested)
 }
 
 function send(event, data) {

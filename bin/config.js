@@ -49,6 +49,7 @@ async function fromArgs() {
       create    : 0,
       develop   : { $: true, script: 1, static: 1 },
       generate  : 1,
+      test      : 1,
       help      : 1,
       purge     : 1,
       run       : 1,
@@ -84,7 +85,8 @@ async function fromArgs() {
       address     : x => x || env.ADDRESS || '0.0.0.0',
       workers     : x => x ? x === 'cpus' ? os.cpus().length : parseInt(x) : 1,
       tsconfig    : (x, xs) => xs.cwd + '/tsconfig.json',
-      tsconfigRaw : getTSConfigRaw
+      tsconfigRaw : getTSConfigRaw,
+      coverage    : (x, xs) => (xs.nojail = true, x || false),
     },
     flags: {
       version   : false,
@@ -98,6 +100,8 @@ async function fromArgs() {
       bundleNodeModules : false,
       devtools  : false,
       config    : false,
+      ci        : false,
+      coverage  : (x, xs) => (xs.nojail = true, x || false),
       script    : (_, xs) => xs.$[1] === 'script',
       static    : (_, xs) => xs.$[1] === 'static'
     },
@@ -121,11 +125,11 @@ async function fromArgs() {
 }
 
 function needsEntry(config) {
-  return !config.static && (process.env.SIN_BUILD || config.build || config.generate || config.develop || config.start)
+  return !config.static && (process.env.SIN_BUILD || config.build || config.generate || config.develop || config.start || config.test)
 }
 
 export function getEntry(x, config) {
-  x = x || config._[0] || ''
+  x = x || config._[0] || (config.test ? 'tests/index.js' : '')
   x = path.isAbsolute(x) ? x : path.join(process.cwd(), x)
   let file = isScript(x) && path.basename(x)
   const dir = file ? path.dirname(x) : x
@@ -183,7 +187,7 @@ function getPort(x, config) {
   if (x || env.PORT)
     return parseInt(x || env.PORT)
 
-  if (config.$[0] !== 'develop' && config.$[0] !== 'purge')
+  if (config.develop && config.purge)
     return
 
   const file = path.join(config.home, '.ports')

@@ -3,13 +3,15 @@ import Server from '#server'
 import api from '../api.js'
 import editor from './editor.js'
 import config from '../config.js'
+import prexit from '../../prexit.js'
 import eyeDropper from './eyedropper/index.js'
 
 let eyeDropperStop
 
 const events = {
   editor,
-  inspect
+  inspect,
+  tested
 }
 
 const wss = new Set()
@@ -40,4 +42,8 @@ function inspect(x, ws) {
   x
     ? eyeDropperStop = eyeDropper(x => send(ws, 'color', x))
     : eyeDropperStop && eyeDropperStop()
+}
+
+function tested(code) {
+  config.ci && prexit.exit(code)
 }

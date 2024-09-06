@@ -16,16 +16,17 @@ setTimeout(run)
 class Test {
   constructor(type, name, options, run, origin) {
     this.type = type
-    this.name = [name]
+    this.name = name
+    this.path = []
     this.options = options
     this.run = run
     this.origin = origin
   }
 
-  nest(type, name, options) {
+  nest(type, path, options) {
     type === 'not' && (this.type = type)
     this.options = { ...options, ...this.options }
-    this.name.unshift(name)
+    this.path.unshift(path)
     return this
   }
 }
@@ -60,11 +61,11 @@ async function run() {
   for (const test of tests) {
     if (test.type === 'not' || (only && test.type !== 'only'))
       continue
-    const name = test.name.pop()
-    const group = test.name.join(' > ')
-    if (group !== current) {
-      current = group
-      p('🧪', group)
+
+    const path = test.path.join(' > ')
+    if (path !== current) {
+      current = path
+      p('🧪', path)
     }
     try {
       let x = test.run()
@@ -79,12 +80,11 @@ async function run() {
       if (expected !== got)
         throw new Error('expected `' + expected + '` but got `' + got + '`')
 
-      p('✔ ', name)
+      p('✔ ', test.name)
       success.push(test)
-    } catch (e) {
+    } catch (error) {
+      test.error = error
       failed.push(test)
-      test.origin.message = '💥 ' + name + ': ' + (e.message || e)
-      throw test.origin
     }
   }
 
@@ -93,5 +93,8 @@ async function run() {
   p('⌛️ Ran in', duration.toFixed(2) + 'ms')
   ignored && p('🙈', ignored, 'test(s) was disabled')
   success.length && p('🎉', success.length, 'test(s) succeeded')
-  failed.length && p('🚨', failed.length, 'test(s) failed')
+  failed.map(x => console.error('💥 ' + x.path.join(' > ') + ' > ' + x.name + ': ' + (x.error.message || x.error)))
+  failed.length && console.error('🚨', failed.length, 'test(s) failed')
+  globalThis.sindev.tested = ignored || failed.length ? 1 : 0
+  globalThis?.sindev?.api?.tested(globalThis.sindev.exit_code)
 }

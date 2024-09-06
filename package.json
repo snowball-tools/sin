@@ -20,7 +20,8 @@
     "./env": "./bin/env.js",
     "./build": "./shared/build/index.js",
     "./server": "./shared/server/index.js",
-    "./mimes": "./shared/server/mimes.js"
+    "./mimes": "./shared/server/mimes.js",
+    "./test": "./bin/test/test.js"
   },
   "imports": {
     "#server": "./shared/server/index.js"

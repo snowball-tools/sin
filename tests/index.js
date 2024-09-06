@@ -1,5 +1,5 @@
 import s from 'sin'
-import t from './test'
+import t from 'sin/test'
 
 const $ = window.document.querySelector.bind(window.document)
 
@@ -144,7 +144,7 @@ t`CSS`(
   }),
 
   t`Custom units`(
-    s`Simple`(() => {
+    t`Simple`(() => {
       s.css.unit('n', x => x * 4 + 'px')
       s.mount(() => s`#x w 4n`)
       return ['16px', xStyle().width]
@@ -262,7 +262,7 @@ t`Rendering`(
     for (; i < xs.length; i++) {
       s.redraw.force()
       if (xs[i] !== xDom().textContent)
-        return [xs[i], xDom().textContent]
+        return [xs[i], xDom().textContent] // sinning
     }
 
     return [1, 1]
@@ -272,87 +272,128 @@ t`Rendering`(
 
 t`Components`(
 
-  t`onremove`(() => {
-    let called
-      , show = true
+  t`onremove`(
 
-    s.mount(() => [
-      show && s(({}, [], { onremove }) => {
-        onremove(() => called = true)
-        return () => s``('Hej')
-      })
-    ])
+    t`simple`(() => {
+      let called = 0
+        , show = true
 
-    show = false
-    s.redraw.force()
-
-    return [
-      true,
-      called
-    ]
-  }),
-
-  t`onremove nested`(() => {
-    let called
-      , show = true
-
-    s.mount(() => [
-      show && s``(
-        s(({}, [], { onremove }) => {
-          onremove(() => called = true)
+      s.mount(() =>
+        show && s(({}, [], { onremove }) => {
+          onremove(() => called++)
           return () => s``('Hej')
         })
       )
-    ])
 
-    show = false
-    s.redraw.force()
+      show = false
+      s.redraw.force()
 
-    return [
-      true,
-      called
-    ]
-  }),
+      return [
+        1,
+        called
+      ]
+    }),
 
-  t`onremove with no children`(() => {
-    let called
-      , show = true
+    t`simple in array`(() => {
+      let called = 0
+        , show = true
 
-    s.mount(() => [
-      show && s(({}, [], { onremove }) => {
-        onremove(() => called = true)
-        return () => false
-      })
-    ])
+      s.mount(() => [
+        show && s(({}, [], { onremove }) => {
+          onremove(() => called++)
+          return () => s``('Hej')
+        })
+      ])
 
-    show = false
-    s.redraw.force()
+      show = false
+      s.redraw.force()
 
-    return [
-      true,
-      called
-    ]
-  }),
+      return [
+        1,
+        called
+      ]
+    }),
 
-  t`onremove nested with no children`(() => {
-    let called
-      , show = true
+    t`nested`(() => {
+      let called = 0
+        , show = true
 
-    s.mount(() => [
-      show && s``(
-        s(({}, [], { onremove }) => {
-          onremove(() => called = true)
-          return () => []
+      s.mount(() => [
+        show && s``(
+          s(({}, [], { onremove }) => {
+            onremove(() => called++)
+            return () => s``('Hej')
+          })
+        )
+      ])
+
+      show = false
+      s.redraw.force()
+
+      return [
+        1,
+        called
+      ]
+    }),
+
+    t`with no children`(() => {
+      let called = 0
+        , show = true
+
+      s.mount(() => [
+        show && s(({}, [], { onremove }) => {
+          onremove(() => called++)
+          return () => false
+        })
+      ])
+
+      show = false
+      s.redraw.force()
+
+      return [
+        1,
+        called
+      ]
+    }),
+
+    t`nested with no children`(() => {
+      let called = 0
+        , show = true
+
+      s.mount(() => [
+        show && s``(
+          s(({}, [], { onremove }) => {
+            onremove(() => called++)
+            return () => []
+          })
+        )
+      ])
+
+      show = false
+      s.redraw.force()
+
+      return [
+        1,
+        called
+      ]
+    }),
+
+    t`in nested component`(() => {
+      let called = 0
+      let open = true
+      s.mount(() =>
+        s(() => {
+          return () => open && s(({}, [], { onremove }) => {
+            onremove(() => called++)
+            return () => 'hej'
+          })
         })
       )
-    ])
 
-    show = false
-    s.redraw.force()
+      open = false
+      s.redraw.force()
 
-    return [
-      true,
-      called
-    ]
-  })
+      return [1, called]
+    })
+  )
 )

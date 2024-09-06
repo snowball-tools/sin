@@ -1,4 +1,4 @@
-import t from './test'
+import t from 'sin/test'
 import rewrite from '../bin/develop/rewriter.js'
 
 t`Module Path Rewriter`(

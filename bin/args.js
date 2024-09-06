@@ -64,7 +64,7 @@ export default async function(x, options) {
         result[x] = true
         setEnv(x, result[x])
         argv.splice(idx, 1)
-    } else {
+    } else if (x in parameters === false) {
       throw new Error(x + ' is a flag (does not take a value)')
     }
   }

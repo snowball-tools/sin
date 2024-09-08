@@ -57,8 +57,8 @@ async function fromArgs() {
       install   : 0
     },
     parameters: {
-      publicDir   : (x, xs) => '+public',
-      outputDir   : (x, xs) => '+build',
+      publicDir   : '+public',
+      outputDir   : '+build',
       entry       : getEntry,
       cwd         : getCWD,
       root        : getRoot,

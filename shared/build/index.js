@@ -1,11 +1,11 @@
 import path from 'path'
 import ESBuild from 'esbuild'
-import '../bin/env.js'
-import { extensionless, getLocal } from '../bin/shared.js'
+import 'sin/env'
+import { extensionless, getLocal } from '../../bin/shared.js'
 
 export default async function(x = {}) {
   process.env.SIN_BUILD = true
-  const config = (await import('../bin/config.js')).default
+  const config = (await import('../../bin/config.js')).default
   const {
     entry = config.entry,
     plugins,
@@ -21,7 +21,7 @@ export default async function(x = {}) {
     splitting: true,
     sourcemap: 'external',
     minify: true,
-    outdir: options.outputDir || '+build',
+    outdir: options.outputDir || config.outputDir || '+build',
     format: 'esm',
     tsconfigRaw,
     ...esbuild,

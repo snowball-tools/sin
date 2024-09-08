@@ -1,6 +1,6 @@
 import '../env.js'
 import config from '../config.js'
-import build from '../../build/index.js'
+import build from 'sin/build'
 
 await build(config)
 

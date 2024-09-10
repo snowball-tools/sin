@@ -1,15 +1,18 @@
-export default async function(argv, options) {
+export default async function(x, options) {
   if (!options) {
-    options = argv
-    argv = process.argv.slice(2)
+    options = x
+    x = process.argv.slice(2)
   }
+
+  const extras = process.argv.indexOf('--')
+  let argv = extras > -1 ? x.slice(0, extras - 2) : x
 
   let { commands, parameters, flags, alias, env } = options
 
   const toKebab = x => '--' + x.replace(/([A-Z])/g, '-$1').toLowerCase()
       , toEnv = x => env ? (typeof env === 'string' ? env + '_' : '') + x.replace(/-/g, '_').replace(/([A-Z])/g, '_$1').toUpperCase() : undefined
       , saila = Object.entries(alias).reduce((acc, [k, v]) => (acc[v] = k, acc), {})
-      , result = { $: [], _: [] }
+      , result = { $: [], _: [], __: x.slice(argv.length) }
 
   argv = argv.flatMap(x => x.indexOf('=') !== -1 ? x.split('=') : x).flatMap(x => x in alias ? alias[x] : x)
 

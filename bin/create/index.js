@@ -4,6 +4,7 @@ import path from 'node:path'
 import readline from 'node:readline'
 
 import c from '../color.js'
+import config from '../config.js'
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 

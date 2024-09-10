@@ -140,7 +140,7 @@ export function getEntry(x, config) {
 
   if (pkg) {
     process.chdir(env.PWD = pkg.dir) // node doesn't update env.PWD
-    file || (canRead(pkg.json.main) && (file = pkg.json.main))
+    file || (canRead(pkg.json.main) && isScript(pkg.json.main) && (file = pkg.json.main))
   }
 
   const entry = file

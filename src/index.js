@@ -1008,7 +1008,7 @@ function attributes(dom, view, context) {
   if ((create || context.hydrating) && view.attrs.dom)
     giveLife(dom, view.attrs, view.children, context, view.attrs.dom)
 
-  hasOwn.call(view, stackTrace) && (dom[stackTrace] = view[stackTrace])
+  // dev-stack
 
   dom[$attr] = view.attrs
 }

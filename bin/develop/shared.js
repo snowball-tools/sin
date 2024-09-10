@@ -27,6 +27,11 @@ export function isModule(x) {
 
 export function rewrite(x, file) {
   const dir = path.dirname(file)
+  if (file.endsWith('/sin/src/view.js'))
+    x = x.replace('// dev-stack', `hasOwn.call(window, stackTrace) && (this[stackTrace] = new Error().stack)`)
+  if (file.endsWith('/sin/src/index.js'))
+    x = x.replace('// dev-stack', `hasOwn.call(view, stackTrace) && (dom[stackTrace] = view[stackTrace])`)
+
   return config.unsafe + rewriter(
     modify(x, file, config),
     x => {

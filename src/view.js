@@ -14,6 +14,6 @@ export default class View {
     this.key = attrs ? attrs.key : undefined
     this.dom = null
     this.children = children
-    this[stackTrace] = hasOwn.call(window, stackTrace) ? new Error().stack : null
+    // dev-stack
   }
 }

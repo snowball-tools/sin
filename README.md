@@ -25,6 +25,13 @@ If you understand html, css and javascript you will understand sin. You're not l
 
 # Getting Started
 
+#### Global install
+
+
+```bash
+npm install -g sin
+```
+
 #### Just import and go!
 ```js
 import sin from 'https://sinjs.com'
@@ -68,7 +75,7 @@ npx sin create
   - context.route
   - href
   - Recursive nested context
-  - Lazy /yo: () => import('./yo.js') - code splitting
+  - Lazy /users: () => import('./users.js') - code splitting
   - Query route.query
 * [Structure](#structure)
   - index.js
@@ -79,13 +86,21 @@ npx sin create
   - +public
 * [HTTP](#http)
   - s.http
-  - s.http.get
-  - ...
+  - s.http[method]
 * [CLI](#cli)
+  - create
   - dev
-  - prod
-  - --live
+    - --live
+  - start
+  - build
+  - generate
+  - install (private registry proxy)
+  - acme
+  - version
   - building
+* [TEST](#test)
+  - cli test
+  - sin/test
 
 ## Components
 

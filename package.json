@@ -7,6 +7,7 @@
   "scripts": {
     "postinstall": "node shared/server/uws.js",
     "start": "sin start",
+    "test": "sin test --headless --ci",
     "lint": "eslint . --ignore-pattern dist.js",
     "build": "npm run build:eyedropper && npm run build:dev",
     "build:min": "esbuild src/index.js --minify --format=esm --bundle --outfile=sin.min.js",

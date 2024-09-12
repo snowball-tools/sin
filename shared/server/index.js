@@ -261,7 +261,8 @@ function handler(fn) {
 
   function sub(x) {
     const url = x.r.url
-    x.r.url = x.r.url.slice(x.match.length)
+    if (typeof x.match === 'string')
+      x.r.url = x.r.url.slice(x.match.length)
     const result = direct(x)
     result && typeof result.then === 'function'
       ? result.finally(() => x.r.url = url)
@@ -293,7 +294,10 @@ function prepare(match, sub) {
 
 function prepareString(match, sub) {
   const named = match.match(/\/:([a-z][a-z0-9_]*)?/g)
-      , wildcard = match.indexOf('*') !== -1
+      , wildcard = match.endsWith('*') ? '.*?' : ''
+
+  if (wildcard)
+    match = match.slice(0, -1)
 
   if (!named && !wildcard) {
     return sub
@@ -304,8 +308,9 @@ function prepareString(match, sub) {
   const names = named && named.map(n => n.slice(2))
   const regex = new RegExp(
        '^('
-     + match.replace(/:.+?(\/|$)/g, '([^/]+?)$1').replace(/\*/, '.*?')
+     + match.replace(/:.+?(\/|$)/g, '([^/]+?)$1').replace(/\*/, '')
      + ')'
+     + wildcard
      + (sub ? '(/|$)' : '$')
   )
 

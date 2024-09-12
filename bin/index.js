@@ -3,6 +3,7 @@
 import path from 'node:path'
 import URL from 'node:url'
 
+import prexit from './prexit.js'
 import config, { error } from './config.js'
 import cp from 'child_process'
 
@@ -23,3 +24,5 @@ try {
   config.config && console.log(config) // eslint-disable-line
   error(e) // eslint-disable-line
 }
+
+prexit.exit()

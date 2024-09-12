@@ -243,7 +243,7 @@ function getChromePath(x, xs) {
     ].find(fs.existsSync)
   } else if (process.platform === 'linux') {
     return cp.execSync('which google-chrome || which chromium || echo', { encoding: 'utf8' }).trim()
-      || '/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe'
+      || '/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe'    // wsl
   } else if (process.platform === 'win32') {
     return [
       env['LOCALAPPDATA'] + '\\Google\\Chrome\\Application\\chrome.exe',      // eslint-disable-line

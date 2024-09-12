@@ -25,11 +25,15 @@ const root = 'http://127.0.0.1:' + config.chromePort
 api.log({ replace, from: 'browser', type: 'status', value: '⏳' })
 ensurePrefs()
 
+let closed
+const close = new Promise(r => closed = r)
 const tabs = new Map()
 const noop = () => { }
 
-const chrome = await spawn()
-await updateTabs(true)
+const chrome = await Promise.race([
+  spawn(),
+  s.sleep(1000 * 20).then(() => Promise.reject('Chrome spawn timed out'))
+])
 
 prexit(async() => {
   let ok
@@ -49,8 +53,15 @@ prexit(async() => {
   }
 })
 
+await Promise.race([
+  updateTabs(true),
+  s.sleep(1000 * 20).then(() => Promise.reject('Chrome connect timed out'))
+])
+
 api.browser.hotload.observe(hotload)
 api.log({ replace, from: 'browser', type: 'status', value: '🚀' })
+
+await close
 
 async function hotload(x) {
   await Promise.all([...tabs].map(async([_, { ws }]) => {
@@ -134,7 +145,7 @@ async function connect(tab) {
   ws.sheets = new Map()
   ws.onmessage = onmessage
   ws.onerror = noop
-  ws.onclose = () => closed(tab)
+  ws.onclose = () => tabClosed(tab)
   ws.request = request
 
   return new Promise(r => ws.onopen = () => (r(), onopen()))
@@ -236,10 +247,10 @@ async function connect(tab) {
 
 }
 
-async function closed(tab) {
+async function tabClosed(tab) {
   tabs.delete(tab.webSocketDebuggerUrl)
   if (tabs.size === 0 && (await getTabs(config.origin)).length === 0)
-    prexit.exit()
+    closed()
 }
 
 function isFile(x) {
@@ -294,7 +305,8 @@ async function spawn() {
       resolve(x)
     })
 
-    x.on('close', () => opened || reject('closed'))
+    x.on('error', reject)
+    x.on('close', x => opened || reject('Chrome Closed with exit code: ' + x))
   })
 }
 

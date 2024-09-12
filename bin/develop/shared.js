@@ -57,7 +57,7 @@ function readPkgJson(x) {
   try {
     return pkgJsonCache[x] || (pkgJsonCache[x] = JSON.parse(fs.readFileSync(x)))
   } catch(error) {
-    config.debug && console.error('Could not read pkg.json', error)
+    config.debug && console.error('Could not read package.json', error)
     return null
   }
 }

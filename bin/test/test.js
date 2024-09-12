@@ -80,7 +80,7 @@ async function run() {
       if (expected !== got)
         throw new Error('expected `' + expected + '` but got `' + got + '`')
 
-      p('✔ ', test.name)
+      p('✅ ', test.name)
       success.push(test)
     } catch (error) {
       test.error = error

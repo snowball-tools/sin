@@ -61,7 +61,7 @@ export default function router(s, root, rootContext, parent) {
       ? location.hash.slice(s.route.prefix.length + x)
       : s.route.prefix[0] === '?'
         ? location.search.slice(s.route.prefix.length + x)
-        : location.pathname.slice(s.route.prefix + x)
+        : location.pathname.slice(s.route.prefix.length + x)
     )
   }
 

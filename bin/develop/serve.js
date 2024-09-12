@@ -58,7 +58,7 @@ async function serve() {
   )
 
   router.get('/node_modules/sin', router.files(config.local, hijack))
-  router.get('/node_modules/SIN', router.files(config.local, hijack))
+  router.get('/node_modules/SIN', r => (r.url = r.url.toLowerCase(), r.pathname = r.pathname.toLowerCase()), router.files(config.local, hijack))
   config.bundleNodeModules && router.get('/node_modules/*', build)
   router.get(router.files(hijack))
   router.get('/favicon.ico', r => r.end(favicon))

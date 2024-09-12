@@ -66,7 +66,7 @@ export function resolveEntry(n, force = false) {
   if (force + n in resolveCache)
     return resolveCache[force + n]
 
-  let [x, scope = '', name, version, rest = ''] = n.match(/(?:(@[^/@]+)\/)?([^/]+)(?:@([0-9]+\.[0-9]+\.[0-9]+[^/]*))?(\/.+)?/)
+  let [x, scope = '', name, query = '', version, rest = ''] = n.match(/(?:(@[^/@]+)\/)?([^/?]+)(\?[^/]+)?(?:@([0-9]+\.[0-9]+\.[0-9]+[^/]*))?(\/.+)?/)
 
   const urlPath = 'node_modules/' + (scope ? scope + '/' : '') + name
   const modulePath = path.join(config.cwd, 'node_modules', scope, name)
@@ -74,8 +74,8 @@ export function resolveEntry(n, force = false) {
   const pkgPath = path.join(modulePath, 'package.json')
   return resolveCache[force + n] = (
     canRead(fullPath)
-      ? urlPath + rest
-      : pkgLookup(scope, name, version, rest, pkgPath, urlPath, force)
+      ? urlPath + rest + query
+      : pkgLookup(scope, name, version, rest, pkgPath, urlPath, force) + query
   )
 }
 
@@ -84,7 +84,7 @@ function removeRelativePrefix(x) {
 }
 
 function pkgLookup(scope, name, version, rest, pkgPath, urlPath, force) {
-  if (!force && config.bundleNodeModules && name !== 'sin' && name !== 'SIN') // never bundle sin
+  if (!force && config.bundleNodeModules && name !== 'sin') // never bundle sin
     return urlPath
 
   const pkg = readPkgJson(pkgPath)

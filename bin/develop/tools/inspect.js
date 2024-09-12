@@ -1,4 +1,4 @@
-import s from 'SIN'
+import s from 'sin?dev'
 import api from './api.js'
 import userland, { stackTrace } from './userland.js'
 import measure from './measure.js'

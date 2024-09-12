@@ -57,7 +57,6 @@ async function serve() {
     })
   )
 
-  router.get('/node_modules/SIN/*', r => (r.url = r.url.toLowerCase(), r.pathname = r.pathname.toLowerCase()))
   router.get('/node_modules/sin/*', router.files(config.local, hijack))
   config.bundleNodeModules && router.get('/node_modules/*', build)
   router.get(router.files(hijack))

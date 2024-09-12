@@ -1,5 +1,5 @@
 import './userland.js'
-import s from 'SIN'
+import s from 'sin?dev'
 
 import api from './api.js'
 import menu from './menu.js'

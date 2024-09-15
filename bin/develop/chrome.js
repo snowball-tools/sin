@@ -29,10 +29,10 @@ let closed
 const close = new Promise(r => closed = r)
 const tabs = new Map()
 const noop = () => { }
-
+const timeout = (config.ci ? 60 : 20) * 1000
 const chrome = await Promise.race([
   spawn(),
-  s.sleep(1000 * 20).then(() => Promise.reject('Chrome spawn timed out'))
+  s.sleep(timeout).then(() => Promise.reject('Chrome spawn timed out'))
 ])
 
 prexit(async() => {
@@ -55,7 +55,7 @@ prexit(async() => {
 
 await Promise.race([
   updateTabs(true),
-  s.sleep(1000 * 20).then(() => Promise.reject('Chrome connect timed out'))
+  s.sleep(timeout).then(() => Promise.reject('Chrome connect timed out'))
 ])
 
 api.browser.hotload.observe(hotload)

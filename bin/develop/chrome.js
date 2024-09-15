@@ -281,7 +281,7 @@ async function getTabs(url, retries = 0) {
 
 async function spawn() {
   return new Promise((resolve, reject) => {
-    const x = cp.spawn(config.chromePath, [
+    const chrome = cp.spawn(config.chromePath, [
       ...(config.headless ? ['--headless'] : []),
       ...(config.devtools ? ['--auto-open-devtools-for-tabs'] : []),
       '--no-first-run',
@@ -302,20 +302,20 @@ async function spawn() {
     })
 
     let opened
-    x.stderr.setEncoding('utf8')
-    x.stderr.on('data', x => {
+    chrome.stderr.setEncoding('utf8')
+    chrome.stderr.on('data', x => {
       config.debug && console.error('Chrome stderr: ' + x)
-      resolve(x)
+      resolve(chrome)
     })
-    x.stdout.setEncoding('utf8')
-    x.stdout.on('data', x => {
+    chrome.stdout.setEncoding('utf8')
+    chrome.stdout.on('data', x => {
       opened = true
       config.debug && console.error('Chrome stdout: ' + x)
-      resolve(x)
+      resolve(chrome)
     })
 
-    x.on('error', reject)
-    x.on('close', x => opened || reject('Chrome Closed with exit code: ' + x))
+    chrome.on('error', reject)
+    chrome.on('close', x => opened || reject('Chrome Closed with exit code: ' + x))
   })
 }
 

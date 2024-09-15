@@ -399,7 +399,7 @@ t`Components`(
 )
 
 t`Routing`(
-  t.o`Basics`(() => {
+  t`Basics`(() => {
     s.mount(({ }, [], { route }) =>
       () => route({
         '/': () => s`#x`('/'),
@@ -416,7 +416,7 @@ t`Routing`(
     }
   }),
 
-  t.o`Nested`(() => {
+  t`Nested`(() => {
     s.mount(({ }, [], { route }) => {
       return () => route({
         '/': () => s`#x`('/'),

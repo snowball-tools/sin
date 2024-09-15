@@ -91,10 +91,10 @@ async function run() {
   const duration = performance.now() - start
   const ignored = tests.length - (success.length + failed.length)
   p('⌛️ Ran in', duration.toFixed(2) + 'ms')
-  ignored && p('🙈', ignored, 'test(s) was disabled')
-  success.length && p('🎉', success.length, 'test(s) succeeded')
+  ignored && p('🙈', ignored, 'test' + (ignored === 1 ? '' : 's'), 'was disabled')
+  success.length && p('🎉', success.length, 'test' + (success.length === 1 ? '' : 's'), 'succeeded')
   failed.map(x => console.error('💥 ' + x.path.join(' > ') + ' > ' + x.name + ': ' + (x.error.message || x.error)))
-  failed.length && console.error('🚨', failed.length, 'test(s) failed')
+  failed.length && console.error('🚨', failed.length, 'test' + (failed.length === 1 ? '' : 's'), 'failed')
   globalThis.sindev.tested = ignored || failed.length ? 1 : 0
   globalThis?.sindev?.api?.tested(globalThis.sindev.exit_code)
 }

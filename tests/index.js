@@ -397,3 +397,44 @@ t`Components`(
     })
   )
 )
+
+t`Routing`(
+  t.o`Basics`(() => {
+    s.mount(({ }, [], { route }) =>
+      () => route({
+        '/': () => s`#x`('/'),
+        '/named': () => s`#x`('/named'),
+        '/named/:id': ({ id }) => s`#x`('/named/' + id),
+        '?': () => s`#x`('notfound')
+      })
+    )
+
+    for (const x of ['/', '/named', '/named/hello', 'notfound']) {
+      s.route(x)
+      s.redraw.force()
+      t.is(x, xDom()?.textContent)
+    }
+  }),
+
+  t.o`Nested`(() => {
+    s.mount(({ }, [], { route }) => {
+      return () => route({
+        '/': () => s`#x`('/'),
+        '/*': ({ }, [], { route }) => route({
+          '/?': () => s`#x`('notfound'),
+          '/rootsub': () => s`#x`('/rootsub')
+        }),
+        '/sub': ({ }, [], { route }) => route({
+          '/': () => s`#x`('/sub'),
+          '/subsub': () => s`#x`('/sub/subsub')
+        })
+      })
+    })
+
+    for (const x of ['/', 'notfound', '/sub', '/sub/subsub']) {
+      s.route(x)
+      s.redraw.force()
+      t.is(x, xDom()?.textContent)
+    }
+  })
+)

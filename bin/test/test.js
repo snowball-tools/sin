@@ -6,6 +6,7 @@ const o = test('only')
 const n = test('not')
 t.o = t.only = o
 t.n = t.not = n
+t.is = is
 
 t.timeout = 500
 
@@ -76,9 +77,7 @@ async function run() {
         ])
       }
 
-      const [expected, got] = x
-      if (expected !== got)
-        throw new Error('expected `' + expected + '` but got `' + got + '`')
+      Array.isArray(x) && is(...x)
 
       p('✅ ', test.name)
       success.push(test)
@@ -97,4 +96,9 @@ async function run() {
   failed.length && console.error('🚨', failed.length, 'test' + (failed.length === 1 ? '' : 's'), 'failed')
   globalThis.sindev.tested = ignored || failed.length ? 1 : 0
   globalThis?.sindev?.api?.tested(globalThis.sindev.exit_code)
+}
+
+function is(expected, got) {
+  if (expected !== got)
+    throw new Error('expected `' + expected + '` but got `' + got + '`')
 }

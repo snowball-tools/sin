@@ -114,8 +114,10 @@ async function updateTabs(launch) {
 
   await Promise.all(
     xs.map(async x => {
-      if (launch && (x.url === 'about:blank' || x.url === 'chrome://newtab/'))
-        s.http(root + '/json/close/' + x.id, { responseType: 'text' })
+      if (x.url === 'about:blank')
+        launch && await connect(x, api.url())
+      if (x.url === 'chrome://newtab/')
+        launch && s.http(root + '/json/close/' + x.id, { responseType: 'text' })
       else if (x.url.indexOf(config.origin) === 0) {
         launch && tabs.size === 0 && s.http(root + '/json/activate/' + x.id, { responseType: 'text' }).catch(noop)
         await connect(x)
@@ -124,12 +126,12 @@ async function updateTabs(launch) {
   )
 
   if (launch && tabs.size === 0) {
-    const x = await s.http.put(root + '/json/new?' + api.url())
-    await connect(x)
+    const x = await s.http.put(root + '/json/new?about:blank')
+    await connect(x, api.url())
   }
 }
 
-async function connect(tab) {
+async function connect(tab, url) {
   if (tabs.has(tab.webSocketDebuggerUrl))
     return
 
@@ -148,7 +150,7 @@ async function connect(tab) {
   ws.onclose = () => tabClosed(tab)
   ws.request = request
 
-  return new Promise(r => ws.onopen = () => (r(), onopen()))
+  return new Promise(r => ws.onopen = () => onopen().then(r))
 
   async function request(method, params) {
     return ws.readyState === 1 && new Promise((resolve, reject) => {
@@ -167,7 +169,6 @@ async function connect(tab) {
   async function onopen() {
     await request('Runtime.enable')
     await request('Runtime.setAsyncCallStackDepth', { maxDepth: 128 })
-    await request('Runtime.evaluate', { expression: hmr })
     await request('Debugger.enable').catch(e => api.log({ from: 'browser', type: 'chrome error', args: String(e) }))
     await request('Debugger.setBlackboxPatterns', { patterns: api.blackbox })
     await request('Network.enable')
@@ -177,12 +178,17 @@ async function connect(tab) {
     await request('Page.enable')
     await request('DOM.enable')
     await request('CSS.enable')
-    await request('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
+
     if (config.coverage && config.coverage !== 'node') {
       ws.coverage = true
       await request('Profiler.enable')
       await request('Profiler.startPreciseCoverage', { callCount: true, detailed: true })
     }
+
+    url && await request('Page.navigate', { url: api.url() })
+
+    await request('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
+    await request('Runtime.evaluate', { expression: hmr })
   }
 
   function onmessage({ data }) {
@@ -266,7 +272,7 @@ async function getTabs(url, retries = 0) {
     return await s.http(root + '/json/list/')
   } catch (err) {
     if (retries > 20)
-      throw new Error('Could not fetch Chrome tabs')
+      throw new Error('Could not fetch Chrome tabs: ' + err)
 
     await new Promise(r => setTimeout(r, 200))
     return getTabs(url, ++retries)
@@ -286,13 +292,12 @@ async function spawn() {
       '--disable-translate',
       '--disable-features=TranslateUI',
       '--disable-features=Translate',
-      '--restore-last-session',
       '--disable-infobars',
       '--test-type', // Remove warning banner from --disable-web-security usage
+      config.ci ? '' : '--restore-last-session',
       '--user-data-dir=' + config.project,
-      '--remote-debugging-port=' + config.chromePort,
-      'about:blank'
-    ], {
+      '--remote-debugging-port=' + config.chromePort
+    ].filter(x => x), {
       detached: true
     })
 

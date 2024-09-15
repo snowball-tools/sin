@@ -303,10 +303,14 @@ async function spawn() {
 
     let opened
     x.stderr.setEncoding('utf8')
-    x.stderr.on('data', () => resolve(x))
+    x.stderr.on('data', x => {
+      config.debug && console.error('Chrome stderr: ' + x)
+      resolve(x)
+    })
     x.stdout.setEncoding('utf8')
-    x.stdout.on('data', () => {
+    x.stdout.on('data', x => {
       opened = true
+      config.debug && console.error('Chrome stdout: ' + x)
       resolve(x)
     })
 

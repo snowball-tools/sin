@@ -282,7 +282,7 @@ async function getTabs(url, retries = 0) {
 async function spawn() {
   return new Promise((resolve, reject) => {
     const chrome = cp.spawn(config.chromePath, [
-      ...(config.headless ? ['--headless'] : []),
+      ...(config.headless ? ['--headless=new'] : []),
       ...(config.devtools ? ['--auto-open-devtools-for-tabs'] : []),
       '--no-first-run',
       '--disable-features=PrivacySandboxSettings4',

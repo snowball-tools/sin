@@ -301,7 +301,6 @@ async function spawn() {
       detached: true
     })
 
-    let opened
     chrome.stderr.setEncoding('utf8')
     chrome.stderr.on('data', x => {
       config.debug && console.error('Chrome stderr: ' + x)
@@ -309,13 +308,12 @@ async function spawn() {
     })
     chrome.stdout.setEncoding('utf8')
     chrome.stdout.on('data', x => {
-      opened = true
       config.debug && console.error('Chrome stdout: ' + x)
       resolve(chrome)
     })
 
     chrome.on('error', reject)
-    chrome.on('close', x => opened || reject('Chrome Closed with exit code: ' + x))
+    chrome.on('close', x => x || reject('Chrome Closed with exit code: ' + x))
   })
 }
 

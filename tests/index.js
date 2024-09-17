@@ -2,13 +2,11 @@ import s from 'sin'
 import t from 'sin/test'
 
 const $ = window.document.querySelector.bind(window.document)
+const w = window
+const d = w.document
 
 function xStyle() {
-  return window.getComputedStyle(xDom())
-}
-
-function xDom() {
-  return window.x
+  return w.getComputedStyle(w.x)
 }
 
 t`CSS`(
@@ -129,7 +127,7 @@ t`CSS`(
           s`p#x`('animating')
         )
       )
-      return [1, xDom().getAnimations().length]
+      return [1, w.x.getAnimations().length]
     })
 
   ),
@@ -261,8 +259,8 @@ t`Rendering`(
 
     for (; i < xs.length; i++) {
       s.redraw.force()
-      if (xs[i] !== xDom().textContent)
-        return [xs[i], xDom().textContent] // sinning
+      if (xs[i] !== w.x.textContent)
+        return [xs[i], w.x.textContent] // sinning
     }
 
     return [1, 1]
@@ -412,7 +410,7 @@ t`Routing`(
     for (const x of ['/', '/named', '/named/hello', 'notfound']) {
       s.route(x)
       s.redraw.force()
-      t.is(x, xDom()?.textContent)
+      t.is(x, w.x?.textContent)
     }
   }),
 
@@ -434,7 +432,7 @@ t`Routing`(
     for (const x of ['/', 'notfound', '/sub', '/sub/subsub']) {
       s.route(x)
       s.redraw.force()
-      t.is(x, xDom()?.textContent)
+      t.is(x, w.x?.textContent)
     }
   })
 )

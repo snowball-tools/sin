@@ -19,15 +19,25 @@ let node
   , ws
   , scripts = new Map()
   , startPerf
+  , closed
+  , closing = new Promise(r => closed = r)
 
-prexit(close)
+prexit(() => {
+  close()
+  closed()
+})
 
 export const onlyServer = await tryStart()
-config.script || api.log('🔥 ' + api.url)
+
+config.script
+  ? api.node.watch(config.entry)
+  : api.log('🔥 ' + api.url)
 
 Watcher(() => api.node.restart('reload')).add('.env')
 api.node.restart.observe(restart)
 api.node.hotload.observe(hotload)
+
+await closing
 
 async function hotload(x) {
   if (!node)
@@ -128,7 +138,7 @@ async function start() {
       : null
   })
 
-  node.on('message', x => {
+  config.script || node.on('message', x => {
     x.startsWith('started:')
       ? resolve(x.slice(8) === 'true')
       : x.startsWith('watch:') && api.browser.watch(x.slice(6))
@@ -197,6 +207,7 @@ async function start() {
         await request('Profiler.enable')
         await request('Profiler.startPreciseCoverage', { callCount: true, detailed: true })
       }
+      config.script && resolve(true)
     }
 
     function onmessage({ data }) {

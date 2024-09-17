@@ -63,8 +63,8 @@ const cache = new Map()
     , pxFunctions = ['perspective', 'blur', 'drop-shadow', 'inset', 'polygon', 'minmax']
     , nested = ['@media', '@supports', '@document', '@layer']
     , isNested = x => nested.some(n => x.indexOf(n) === 0)
-    , isPxFunction = x => (x.indexOf('translate') === 0 || pxFunctions.indexOf(x) > -1)
-    , isDegFunction = x => x.indexOf('rotate') === 0 || x.indexOf('skew') === 0
+    , isPx = (prop, x) => prop === 'translate' || (x.indexOf('translate') === 0 || pxFunctions.indexOf(x) > -1)
+    , isDeg = (prop, x) => prop === 'rotate' || x.indexOf('rotate') === 0 || x.indexOf('skew') === 0
     , isStartChar = x => x !== 32 && x !== 9 && x !== 10 && x !== 13 && x !== 59 // ws \t \n \r ;
     , isNumber = x => (x >= 48 && x <= 57) || x === 46 // 0-9-.
     , isLetter = x => (x >= 65 && x <= 90) || (x >= 97 && x <= 122) // a-z A-Z
@@ -460,9 +460,9 @@ function getUnit(prop, fn = '') {
     return unitCache[id]
 
   return unitCache[id] = (
-    fn && isPxFunction(fn)
+    fn && isPx(prop, fn)
       ? 'px'
-      : isDegFunction(fn)
+      : isDeg(prop, fn)
         ? 'deg'
         : fn
           ? ''

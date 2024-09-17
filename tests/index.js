@@ -4,6 +4,7 @@ import t from 'sin/test'
 const $ = window.document.querySelector.bind(window.document)
 const w = window
 const d = w.document
+const b = d.body
 
 function xStyle() {
   return w.getComputedStyle(w.x)
@@ -130,6 +131,19 @@ t`CSS`(
       return [1, w.x.getAnimations().length]
     })
 
+  ),
+
+  t`implicit units`({
+    wrap([a, el, prop]) {
+      s.mount(() => el)
+      return [a, w.getComputedStyle(b.firstElementChild)[prop]]
+    }
+  },
+    t`px`(() => ['1px', s` w 1`, 'width']),
+    t`transform deg`(() => ['matrix(1, 0, 0, 1, 0, 0)', s` transform rotate(360)`, 'transform']),
+    t`rotate deg`(() => ['360deg', s` rotate 360`, 'rotate']),
+    t`translate px`(() => ['1px', s` translate 1`, 'translate']),
+    t`translate two px`(() => ['1px 1px', s` translate 1 1`, 'translate']),
   ),
 
   t`Scoping with &`(() => {

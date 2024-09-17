@@ -126,6 +126,8 @@ const trusted = s(({ strings, values = [] }) => {
   const div = document.createElement('div')
   const raw = Array.isArray(strings.raw)
     ? [...strings.raw]
+    : Array.isArray(strings)
+    ? [...strings]
     : [strings.trim()]
   raw[0] = raw[0].trimStart()
   raw[raw.length - 1] = raw[raw.length - 1].trimEnd()

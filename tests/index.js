@@ -264,8 +264,35 @@ t`Rendering`(
     }
 
     return [1, 1]
-  })
+  }),
 
+  t`s.trust`({
+    wrap([a, b]) {
+      s.mount(() =>
+        s``({
+          dom: x => {
+            const h = x.innerHTML
+            t.is(a, h.slice(h.indexOf('>') + 1, h.lastIndexOf('<')))
+          }
+        },
+          b
+        )
+      )
+    }
+  },
+    t`tagged`(
+      t`single`(() => ['<h1>yo</h1>', s.trust`<h1>yo</h1>`]),
+      t`multiple`(() => ['<h1>yo</h1><h2>no</h2>', s.trust`<h1>yo</h1><h2>no</h2>`]),
+    ),
+    t`string`(
+      t`single`(() => ['<h1>yo</h1>', s.trust('<h1>yo</h1>')]),
+      t`multiple`(() => ['<h1>yo</h1><h2>no</h2>', s.trust('<h1>yo</h1><h2>no</h2>')]),
+    ),
+    t`array`(() => [
+      '<h1>yo</h1><h2>no</h2>',
+      s.trust(['<h1>yo</h1>', '<h2>no</h2>'])
+    ])
+  )
 )
 
 t`Components`(

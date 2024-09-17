@@ -5,7 +5,6 @@ import { isScript } from '../shared.js'
 
 config.develop = true
 await import('../develop/index.js')
-// await run(path.join(process.cwd(), 'tests'))
 
 async function run(root) {
   const folders = fs.readdirSync(root)

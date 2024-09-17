@@ -1,7 +1,7 @@
 const tests = []
 
 const p = console.log
-const t = test('rest')
+const t = test()
 const o = test('only')
 const n = test('not')
 t.o = t.only = o
@@ -25,7 +25,7 @@ class Test {
   }
 
   nest(type, path, options) {
-    type === 'not' && (this.type = type)
+    !this.type && (this.type = type)
     this.options = { ...options, ...this.options }
     this.path.unshift(path)
     return this
@@ -39,8 +39,10 @@ function test(type) {
       const options = xs[0] && typeof xs[0] === 'object' && !Array.isArray(xs[0]) && xs.shift()
 
       return xs.flatMap(x => {
-        if (Array.isArray(x))
-          return x.map(x => x.nest(type, name, options))
+        if (Array.isArray(x)) {
+          tests.push({ type, group: true })
+          return x.map(t => t.nest(type, name, options))
+        }
 
         const origin = new Error(name)
         Error.captureStackTrace(origin, scope)
@@ -61,6 +63,9 @@ async function run() {
   const only = tests.some(x => x.type === 'only')
   for (const test of tests) {
     if (test.type === 'not' || (only && test.type !== 'only'))
+      continue
+
+    if (test.group)
       continue
 
     const path = test.path.join(' > ')
@@ -88,9 +93,9 @@ async function run() {
   }
 
   const duration = performance.now() - start
-  const ignored = tests.length - (success.length + failed.length)
+  const ignored = tests.filter(x => !x.group).length - (success.length + failed.length)
   p('⌛️ Ran in', duration.toFixed(2) + 'ms')
-  ignored && p('🙈', ignored, 'test' + (ignored === 1 ? '' : 's'), 'was disabled')
+  ignored && p('🙈', ignored, 'test' + (ignored === 1 ? ' was' : 's were'), 'disabled')
   success.length && p('🎉', success.length, 'test' + (success.length === 1 ? '' : 's'), 'succeeded')
   failed.map(x => console.error('💥 ' + x.path.join(' > ') + ' > ' + x.name + ': ' + (x.error.message || x.error)))
   failed.length && console.error('🚨', failed.length, 'test' + (failed.length === 1 ? '' : 's'), 'failed')

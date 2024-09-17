@@ -17,7 +17,7 @@ const project = path.join(config.home, config.port + '-' + path.basename(config.
 fs.mkdirSync(project, { recursive: true })
 
 const env        = process.env
-    , url        = env.SIN_URL = env.SIN_URL || getUrl(config.home, config.port)
+    , url        = env.SIN_URL = env.SIN_URL || getUrl()
     , origin     = new URL(url).origin
     , devPort    = env.SIN_DEV_PORT = env.SIN_DEV_PORT || await getDevPort()
     , nodePort   = env.SIN_NODE_PORT = env.SIN_NODE_PORT || await reservePort()
@@ -36,7 +36,7 @@ export default Object.assign(config, {
 
 function getUrl() {
   const x = path.join(project, '.sin-url')
-  return fs.existsSync(x)
+  return !config.test && fs.existsSync(x)
     ? fs.readFileSync(x, 'utf8')
     : 'http://127.0.0.1:' + config.port
 }

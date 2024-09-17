@@ -71,7 +71,7 @@ async function run() {
     const path = test.path.join(' > ')
     if (path !== current) {
       current = path
-      p('🧪', path)
+      p('🧪 ', path)
     }
     try {
       let x = test.options.wrap

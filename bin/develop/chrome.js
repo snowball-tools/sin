@@ -300,7 +300,7 @@ async function spawn() {
       '--disable-features=Translate',
       '--disable-infobars',
       '--test-type', // Remove warning banner from --disable-web-security usage
-      config.ci ? '' : '--restore-last-session',
+      config.test ? '' : '--restore-last-session',
       '--user-data-dir=' + config.project,
       '--remote-debugging-port=' + config.chromePort
     ].filter(x => x), {

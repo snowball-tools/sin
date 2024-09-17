@@ -74,7 +74,9 @@ async function run() {
       p('🧪', path)
     }
     try {
-      let x = test.run()
+      let x = test.options.wrap
+        ? test.options.wrap(test.run())
+        : test.run()
       if (x && typeof x.then === 'function') {
         x = await Promise.race([
           x,

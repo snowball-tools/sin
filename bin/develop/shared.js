@@ -37,8 +37,9 @@ export function rewrite(x, file) {
     x => {
       x = tryImportMap(x, file) || x
       isModule(x) || isScript(x) || (x = extensionless(x, dir) || x)
-      return isModule(x)
-        ? '/' + resolveEntry(x)
+      const entry = isModule(x) && resolveEntry(x)
+      return entry
+        ? '/' + entry
         : x
     }
   )
@@ -72,11 +73,11 @@ export function resolveEntry(n, force = false) {
   const modulePath = path.join(config.cwd, 'node_modules', scope, name)
   const fullPath = path.join(modulePath, ...rest.split('/'))
   const pkgPath = path.join(modulePath, 'package.json')
-  return resolveCache[force + n] = (
-    canRead(fullPath)
-      ? urlPath + rest + query
-      : pkgLookup(scope, name, version, rest, pkgPath, urlPath, force) + query
-  )
+  const entry = canRead(fullPath)
+    ? urlPath + rest
+    : pkgLookup(scope, name, version, rest, pkgPath, urlPath, force)
+
+  return entry && (resolveCache[force + n] = entry + query)
 }
 
 function removeRelativePrefix(x) {
@@ -87,9 +88,10 @@ function pkgLookup(scope, name, version, rest, pkgPath, urlPath, force) {
   if (!force && config.bundleNodeModules && name !== 'sin') // never bundle sin
     return urlPath
 
-  const pkg = readPkgJson(pkgPath)
+  const pkg = readPkgJson(pkgPath) || (name === 'sin' && readPkgJson(path.join(config.local, 'package.json')))
+
   if (!pkg)
-    return urlPath
+    return
 
   const entry = resolveExports(pkg, '.' + rest) || resolveLegacy(pkg)
 

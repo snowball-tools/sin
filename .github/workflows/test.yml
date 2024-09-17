@@ -19,6 +19,4 @@ jobs:
           node-version: ${{ matrix.node }}
       - run: |
           npm ci
-          npm link
-          npm link sin
           npm test

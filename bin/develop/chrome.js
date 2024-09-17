@@ -19,7 +19,7 @@ if (!config.chromePath || !fs.existsSync(config.chromePath))
   throw new Error('Could not find a Chrome installation. Install Chrome or set a valid path using CHROME_PATH=')
 
 const root = 'http://127.0.0.1:' + config.chromePort
-    , hmr = 'if(window.self === window.top)window.sindev.hmr=1;'
+    , hmr = 'if(window.sindev)window.sindev.hmr=1;'
     , replace = Math.random()
 
 api.log({ replace, from: 'browser', type: 'status', value: '⏳' })
@@ -167,27 +167,33 @@ async function connect(tab, url) {
   }
 
   async function onopen() {
-    await request('Runtime.enable')
-    await request('Runtime.setAsyncCallStackDepth', { maxDepth: 128 })
-    await request('Debugger.enable').catch(e => api.log({ from: 'browser', type: 'chrome error', args: String(e) }))
-    await request('Debugger.setBlackboxPatterns', { patterns: api.blackbox })
-    await request('Network.enable')
-    await request('Target.setDiscoverTargets', { discover: true })
-    await request('Network.setCacheDisabled', { cacheDisabled: true })
-    await request('Log.enable')
-    await request('Page.enable')
-    await request('DOM.enable')
-    await request('CSS.enable')
+    await Promise.all([
+      request('Runtime.enable'),
+      request('Debugger.enable').catch(e => api.log({ from: 'browser', type: 'chrome error', args: String(e) })),
+      request('Network.enable'),
+      request('Log.enable'),
+      request('Page.enable'),
+      request('DOM.enable'),
+      request('CSS.enable')
+    ])
+
+    await Promise.all([
+      request('Runtime.setAsyncCallStackDepth', { maxDepth: 128 }),
+      request('Debugger.setBlackboxPatterns', { patterns: api.blackbox }),
+      request('Target.setDiscoverTargets', { discover: true }),
+      request('Network.setCacheDisabled', { cacheDisabled: true }),
+      request('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
+    ])
 
     if (config.coverage && config.coverage !== 'node') {
       ws.coverage = true
-      await request('Profiler.enable')
-      await request('Profiler.startPreciseCoverage', { callCount: true, detailed: true })
+      await Promise.all([
+        request('Profiler.enable'),
+        request('Profiler.startPreciseCoverage', { callCount: true, detailed: true })
+      ])
     }
 
     url && await request('Page.navigate', { url: api.url() })
-
-    await request('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
     await request('Runtime.evaluate', { expression: hmr })
   }
 

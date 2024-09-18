@@ -19,7 +19,7 @@ try {
 
 export default uws
 
-async function download(url = 'https://raw.githubusercontent.com/uNetworking/uWebSockets.js/v20.47.0/' + binaryName, retries = 0) {
+async function download(url = 'https://raw.githubusercontent.com/porsager/uWebSockets.js/v20.47.0/' + binaryName, retries = 0) {
   return new Promise((resolve, reject) => {
     https.get(url, async res => {
       if (retries > 10)
@@ -29,7 +29,7 @@ async function download(url = 'https://raw.githubusercontent.com/uNetworking/uWe
         return (res.destroy(), resolve(download(res.headers.location, retries + 1)))
 
       if (res.statusCode !== 200)
-        return reject(new Error('Could not download uWebSockets binary - error code: ' + res.statusCode))
+        return reject(new Error('Could not download uWebSockets binary - error code: ' + res.statusCode + ' - ' + url))
 
       pipeline(res, fs.createWriteStream(binaryPath)).then(resolve, reject)
     })

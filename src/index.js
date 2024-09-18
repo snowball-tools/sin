@@ -139,10 +139,17 @@ const trusted = s(({ strings, values = [] }) => {
 function event(fn) {
   const observers = new Set(fn ? [fn] : [])
   event.observe = observe
+  Object.defineProperty(event, 'signal', { get: signal })
   return event
 
   function event(...xs) {
     return [...observers].map(fn => fn(...xs))
+  }
+
+  function signal() {
+    const controller = new AbortController()
+    observe(() => controller.abort(), true)
+    return controller.signal
   }
 
   function observe(x, once) {

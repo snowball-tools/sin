@@ -8,6 +8,13 @@ export function isScript(x) {
   return /\.[mc]?[jt]sx?$/i.test(x)
 }
 
+export function parsePackage(x) {
+  const [_, scope = '', name, version = '', tag = '', pathname = '', query = '', hash = ''] =
+    x.match(/(?:(@[^/@]+)\/)?([^@/?]+)(?:@(?:([0-9]+\.[0-9]+\.[0-9]+(?:-[^/]+)?)|([^0-9?/][^?/]+)))?(\/[^?#]+)?(\?[^/#]+)?(#.+)?/)
+
+  return { scope, name, version, tag, pathname, query, hash }
+}
+
 export function extensionless(x, root = '') {
   x.indexOf('file://') === 0 && (x = fileURLToPath(x))
   root = path.isAbsolute(x) ? process.cwd() : root

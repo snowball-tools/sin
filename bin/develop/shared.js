@@ -5,7 +5,7 @@ import fsp from 'node:fs/promises'
 
 import config from './config.js'
 import rewriter from './rewriter.js'
-import { isScript, extensionless, modify, canRead } from '../shared.js'
+import { isScript, extensionless, modify, canRead, parsePackage } from '../shared.js'
 
 const resolveCache = Object.create(null)
 const pkgJsonCache = Object.create(null)
@@ -67,7 +67,7 @@ export function resolveEntry(n, force = false) {
   if (force + n in resolveCache)
     return resolveCache[force + n]
 
-  let [x, scope = '', name, query = '', version, rest = ''] = n.match(/(?:(@[^/@]+)\/)?([^/?]+)(\?[^/]+)?(?:@([0-9]+\.[0-9]+\.[0-9]+[^/]*))?(\/.+)?/)
+  const {  scope, name, version, pathname, query } = parsePackage(n)
 
   const urlPath = 'node_modules/' + (scope ? scope + '/' : '') + name
   const modulePath = path.join(config.cwd, 'node_modules', scope, name)

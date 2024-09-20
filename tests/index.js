@@ -134,7 +134,7 @@ t`CSS`(
   ),
 
   t`implicit units`({
-    wrap([a, el, prop]) {
+    run([a, el, prop]) {
       s.mount(() => el)
       return [a, w.getComputedStyle(b.firstElementChild)[prop]]
     }
@@ -281,7 +281,7 @@ t`Rendering`(
   }),
 
   t`s.trust`({
-    wrap([a, b]) {
+    run([a, b]) {
       s.mount(() =>
         s``({
           dom: x => {

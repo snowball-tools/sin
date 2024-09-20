@@ -22,6 +22,7 @@ try {
   config.config && console.log(config) // eslint-disable-line
 } catch (e) {
   config.config && console.log(config) // eslint-disable-line
+  config.debug && console.error(e)
   error(e) // eslint-disable-line
 }
 

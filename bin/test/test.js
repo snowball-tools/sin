@@ -37,9 +37,9 @@ function test(type) {
     const name = String.raw(...args)
     return function scope(...xs) {
       const options = xs[0] && typeof xs[0] === 'object' && !Array.isArray(xs[0]) && xs.shift()
-
       return xs.flatMap(x => {
-        if (Array.isArray(x)) {
+        typeof x === 'function' && x.name === 'scope' && (x = x(null)) // fix with eg. symbol
+        if (Array.isArray(x) && x[0] instanceof Test) {
           tests.push({ type, group: true })
           return x.map(t => t.nest(type, name, options))
         }
@@ -74,8 +74,8 @@ async function run() {
       p('🧪 ', path)
     }
     try {
-      let x = test.options.wrap
-        ? test.options.wrap(test.run())
+      let x = test.options.run
+        ? test.options.run(typeof test.run === 'function' ? test.run() : test.run, test)
         : test.run()
       if (x && typeof x.then === 'function') {
         x = await Promise.race([
@@ -98,11 +98,13 @@ async function run() {
   const ignored = tests.filter(x => !x.group).length - (success.length + failed.length)
   p('⌛️ Ran in', duration.toFixed(2) + 'ms')
   ignored && p('🙈', ignored, 'test' + (ignored === 1 ? ' was' : 's were'), 'disabled')
-  success.length && p('🎉', success.length, 'test' + (success.length === 1 ? '' : 's'), 'succeeded')
+  success.length && p(failed.length ? '🫳' : '🎉', success.length, 'test' + (success.length === 1 ? '' : 's'), 'succeeded')
   failed.map(x => console.error('💥 ' + x.path.join(' > ') + ' > ' + x.name + ': ' + (x.error.message || x.error)))
   failed.length && console.error('🚨', failed.length, 'test' + (failed.length === 1 ? '' : 's'), 'failed')
-  globalThis.sindev.tested = ignored || failed.length ? 1 : 0
-  globalThis?.sindev?.api?.tested(globalThis.sindev.exit_code)
+  if (globalThis.sindev) {
+    globalThis.sindev.tested = ignored || failed.length ? 1 : 0
+    globalThis.sindev.api?.tested(globalThis.sindev.exit_code)
+  }
 }
 
 function is(expected, got) {

@@ -37,7 +37,7 @@ Watcher(() => api.node.restart('reload')).add('.env')
 api.node.restart.observe(restart)
 api.node.hotload.observe(hotload)
 
-await closing
+config.script && await closing
 
 async function hotload(x) {
   if (!node)

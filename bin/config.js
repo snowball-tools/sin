@@ -102,6 +102,8 @@ async function fromArgs() {
       config    : false,
       ci        : false,
       production: false,
+      saveDev   : false,
+      saveOptional: false,
       coverage  : (x, xs) => (xs.nojail = true, x || false),
       script    : (_, xs) => xs.$[1] === 'script',
       static    : (_, xs) => xs.$[1] === 'static'
@@ -110,6 +112,8 @@ async function fromArgs() {
       development: 'develop',
       production: 'start',
       prod: 'start',
+      '-D': '--save-dev',
+      '-O': '--save-optional',
       '-p': '--port',
       '-l': '--live',
       '-n': '--nochrome',

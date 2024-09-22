@@ -1,33 +1,40 @@
 import fs from 'node:fs'
-import tls from 'node:tls'
 import Path from 'node:path'
 import zlib from 'node:zlib'
-import https from 'node:https'
 import crypto from 'node:crypto'
 import { Buffer } from 'node:buffer'
 import config from '../config.js'
 import { parsePackage } from '../shared.js'
 import { best, isRange } from './semver.js'
+import { get, destroy } from './socket.js'
 
 let lockChanged = false
-const p = console.log
+const p = (...xs) => (ani >= 0 && process.stdout.write('\x1B[F\x1B[2K'), ani = -1, console.log(...xs), xs[0])
 
-const pkg = await jsonRead('package.json')
-const lock = await jsonRead('package-lock.json') || defaultLock(pkg)
-const remove = new Set(Object.keys(lock.packages))
+let ani = -1
+const clocks = ['🕐','🕜','🕑','🕝','🕒','🕟','🕞','🕠','🕓','🕡','🕢','🕔','🕕','🕖','🕣','🕗','🕤','🕘','🕥','🕙','🕦','🕚','🕧','🕛']
+const moveClock = () => (ani >= 0 && process.stdout.write('\x1B[F\x1B[2K'), console.log(animation[ani++ % animation.length]))
+const animate = x => (ani >= 0 && process.stdout.write('\x1B[F\x1B[2K'), ani++, console.log(x))
 
 const versions = new Map()
 const packages = new Map()
 
-const added = await fromCLI()
-await fromPackage('', pkg)
+const pkg = await jsonRead('package.json')
+const lock = await jsonRead('package-lock.json') || defaultLock(pkg)
+const remove = new Set(Object.keys(lock.packages))
+remove.delete('')
 
-if (remove.size) {
-  lockChanged = true
-  remove.forEach(x => delete lock.packages[x])
-}
+const added = await fromCLI()
+await installDependencies('', {
+  ...pkg.optionalDependencies,
+  ...pkg.dependencies,
+  ...pkg.devDependencies
+})
+
+destroy()
 cleanup()
 writeLock()
+
 await writePackage(added)
 
 async function writeLock() {
@@ -45,6 +52,11 @@ async function writeLock() {
 }
 
 async function cleanup() {
+  if (remove.size) {
+    lockChanged = true
+    remove.forEach(x => delete lock.packages[x])
+  }
+
   const xs = fs.readdirSync('node_modules')
   for (const x of xs) {
     if (x.charCodeAt === 46) // .
@@ -88,20 +100,32 @@ async function writePackage(xs) {
     x[scope + name] = version
     needsWrite = true
   }
-  needsWrite && fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2))
+
+  if (needsWrite) {
+    pkg.devDependencies && (pkg.devDependencies = sort(pkg.devDependencies))
+    pkg.dependencies && (pkg.dependencies = sort(pkg.dependencies))
+    pkg.optionalDependencies && (pkg.optionalDependencies = sort(pkg.optionalDependencies))
+    fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2))
+  }
 }
 
-async function fromPackage(dir = '', pkg) {
-  const xs = Object.entries({
-    ...pkg.optionalDependencies,
-    ...pkg.dependencies,
-    ...pkg.devDependencies
-  })
+function sort(x) {
+  return Object.keys(x).sort().reduce((a, key) => (a[key] = x[key], a), {})
+}
 
+async function installDependencies(dir = '', dependencies) {
   const installs = []
-  await Promise.all(xs.map(async ([x, version]) => {
-    const pkg = parsePackage(x + '@' + version)
-    pkg.root = dir + 'node_modules/' + x
+  await Promise.all(Object.entries(dependencies).map(async ([name, v]) => {
+    if (v.startsWith('~/') || v.startsWith('/') || v.startsWith('.') || v.indexOf(':\\') === 1 || v.indexOf('file:') === 0)
+      return
+
+    if (v.indexOf('github:') === 0)
+      return
+
+    const pkg = v.indexOf('npm:') === 0
+      ? parsePackage(v.slice(4))
+      : parsePackage(name + '@' + v)
+    pkg.root = dir + 'node_modules/' + name
     const l = lock.packages[pkg.root]
     remove.delete(pkg.root)
 
@@ -112,7 +136,7 @@ async function fromPackage(dir = '', pkg) {
     if (l && l.resolved === pkg.url && l.version === (await jsonRead(Path.join(pkg.root, 'package.json')))?.version)
       return
 
-    installs.push(install(pkg))
+    installs.push(install(pkg, dir))
   }))
 
   for (const root in remove) {
@@ -177,7 +201,7 @@ function tgzPath({ scope, name, version }) {
   return '/' + (scope ? scope + '/' + name : name) + '/-/' + name + '-' + version + '.tgz'
 }
 
-async function install(pkg) {
+function install(pkg, dir) {
   const { scope, name, version, root } = pkg
   const full = (scope ? scope + '/' : '') + name
   const id = full + '@' + version
@@ -185,166 +209,96 @@ async function install(pkg) {
   if (packages.has(id))
     return packages.get(id)
 
-  packages.set(id, new Promise((resolve, reject) => {
-    let stream
-    let l = -2
-    let n = -1
-    let h = -1
-    let s = -1
-    let t = ''
-    let be = 0
-    let size = 0
-    let target = ''
-    let output = ''
-    let prev = null
-    let file = null
-    let pkgJson = null
-    const hash = crypto.createHash('sha512')
-    const host = 'registry.npmjs.org'
-    const pathname = tgzPath(pkg)
-    const buffer = Buffer.allocUnsafe(1024 * 1024)
-    pkg.url = 'https://' + host + pathname
+  let l = -2
+  let n = -1
+  let h = -1
+  let t = ''
+  let size = 0
+  let target = ''
+  let output = ''
+  let file = null
+  let x
+  const hash = crypto.createHash('sha512')
+  const host = 'registry.npmjs.org'
+  const pathname = tgzPath(pkg)
+  pkg.url = 'https://' + host + pathname
 
-    const client = tls.connect({
-      port: 443,
-      host,
-      onread: {
-        buffer,
-        callback: end => {
-          if (l === -2) {
-            if (!(buffer[9] === 50 && buffer[10] === 48 && buffer[10] === 48))
-              throw new Error(host + pathname + ' failed with: ' + buffer.subarray(0, 200).toString())
+  animate('⏳ ' + id)
 
-            t = buffer.subarray(0, end).toString().toLowerCase()
-            h = t.indexOf('content-length:')
-            n = t.indexOf('\n', h)
-            l = +t.slice(h + 15, n)
+  return get(host, 'GET ' + pathname + ' HTTP/1.1\nHost: registry.npmjs.org\n\n', (end, buffer, resolve) => {
+    if (l === -2) {
+      if (!(buffer[9] === 50 && buffer[10] === 48 && buffer[11] === 48))
+        throw new Error(host + pathname + ' failed with: ' + buffer.subarray(0, buffer.indexOf(10)).toString())
 
-            while (buffer[n + 1] !== 10 && buffer[n + 2] !== 10)
-              n = buffer.indexOf(10, n + 1)
+      t = buffer.subarray(0, end).toString().toLowerCase()
+      h = t.indexOf('content-length:')
+      n = t.indexOf('\n', h)
+      l = +t.slice(h + 15, n)
+      x = Buffer.allocUnsafe(l)
 
-            n = buffer.indexOf(10, n + 1) + 1
-            l += n
-          }
+      while (buffer[n + 1] !== 10 && buffer[n + 2] !== 10)
+        n = buffer.indexOf(10, n + 1)
 
-          if (!stream) {
-            stream = zlib.createGunzip()
-            stream.on('error', reject)
-            stream.on('close', () => {
-              pkg.sha512 = hash.digest('base64')
-              lockChanged = true
-              lock.packages[pkg.root] = {
-                version: pkg.package.version,
-                resolved: pkg.url,
-                integrity: 'sha512-' + pkg.sha512
-              }
-              pkg.package.dependencies
-                ? resolve(fromPackage(pkg.root + '/', pkg.package))
-                : resolve()
-            })
-            stream.on('data', x => {
-              if (be) {
-                if (x.byteLength <= be) {
-                  be -= x.byteLength
-                  size -= size < x.byteLength
-                    ? size
-                    : x.byteLength
-                  return size < x.byteLength
-                    ? write(x.subarray(0, size))
-                    : write(x)
-                }
-
-                write(x.subarray(0, size))
-                close(x = x.subarray(be))
-              }
-
-              prev && (x = Buffer.concat([prev, x]))
-              prev = null
-
-              while (x.byteLength >= 512) {
-                if (x[0] === 0)
-                  return
-
-                h = x.indexOf(0, 0, 100)
-                target = x.toString('utf8', x.indexOf(47, 0, h) + 1, h)
-                p('parse', x.indexOf(47), x.toString('utf8', 0, 100), root)
-                output = Path.join(root, target)
-                if (x[h - 1] === 47) { // /
-                  x = x.subarray(512)
-                  fs.mkdirSync(output, { recursive: true })
-                } else {
-                  size = parseInt(x.toString('utf8', 124, 136).trim(), 8)
-                  target === 'package.json' && (pkgJson = Buffer.allocUnsafe(size))
-                  be = 512 + Math.ceil(size / 512) * 512
-                  fs.mkdirSync(Path.dirname(output), { recursive: true })
-                  file = fs.openSync(output, 'w')
-                  if (be > x.byteLength) {
-                    write(x.subarray(512, Math.min(x.byteLength, 512 + size)))
-                    size -= Math.min(size, x.byteLength - 512)
-                    be -= x.byteLength
-                    x = x.subarray(be)
-                    return
-                  } else {
-                    write(x.subarray(512, 512 + size))
-                    close(x = x.subarray(be))
-                  }
-                }
-              }
-              x.byteLength && (prev = x)
-            })
-          }
-          const chunk = buffer.subarray(n, end)
-          hash.update(chunk)
-          stream.write(Buffer.from(chunk)) // need to copy
-          n = 0
-          l -= end - n
-
-          if (l <= 0) {
-            stream.end()
-            client.destroy()
-          }
-        }
-      }
-    })
-
-    client.write('GET ' + pathname + ' HTTP/1.1\nHost: registry.npmjs.org\n\n')
-
-    function write(x) {
-      fs.appendFileSync(file, x)
-      //p('write', root, target)
-      target === 'package.json' && x.copy(pkgJson, pkgJson.byteLength - size)
+      n = buffer.indexOf(10, n + 1) + 1
     }
 
-    function close() {
-      fs.closeSync(file)
-      //p('close', root, target)
-      if (target === 'package.json') {
-        try {
-          pkg.package = JSON.parse(pkgJson)
-        } catch (e) {
-          console.error(e)
-          console.log(pkgJson.toString('utf8'))
-        }
-      }
-      be = size = 0
-      file = prev = null
-    }
-  }))
+    buffer.copy(x, x.byteLength - l, n, end)
+    hash.update(buffer.subarray(n, end))
+    l -= end - n
+    n = 0
+    if (l > 0)
+      return
 
-  return packages.get(id)
+    pkg.sha512 = hash.digest('base64')
+    x = zlib.gunzipSync(x)
+    l = x.byteLength - 1029
+    n = 0
+    while(n < l) {
+      h = x.indexOf(0, n)
+      if (h === n)
+        break
+      const slash = x.indexOf(47, n) + 1
+      target = x.toString('utf8', slash, h) // /
+      output = Path.join(root, target)
+      if (x[n + 156] === 53 || x[h - 1] === 47) { // /
+        n += 512
+        fs.mkdirSync(output, { recursive: true })
+      } else {
+        size = parseInt(x.toString('utf8', n + 124, n + 136).trim(), 8)
+        fs.mkdirSync(Path.dirname(output), { recursive: true })
+        n += 512
+        file = x.subarray(n, n + size)
+        target === 'package.json' && (pkg.package = JSON.parse(file))
+        fs.writeFileSync(output, file)
+        n += Math.ceil(size / 512) * 512
+      }
+    }
+
+    lockChanged = true
+    lock.packages[pkg.root] = {
+      version: pkg.package.version,
+      resolved: pkg.url,
+      integrity: 'sha512-' + pkg.sha512
+    }
+    dir || (lock.packages[''].dependencies[full] = pkg.package.version)
+    pkg.package.dependencies
+      ? resolve(installDependencies(pkg.root + '/', pkg.package.dependencies))
+      : resolve()
+  })
 }
 
 function getVersion({ scope, name, version, tag }) {
   if (version && !isRange(version))
     return version
 
-  const full = (scope ? scope + '/' : '') + name
-  const id = full + '@' + tag
+  const pathname = (scope ? scope + '/' : '') + name
+  const id = pathname + '@' + tag
 
   if (versions.has(id))
     return versions.get(id)
 
-  const buffer = Buffer.allocUnsafe(1024 * 1024)
+  const host = 'registry.npmjs.org'
+  const range = isRange(version)
   let complete
   let l = -2
   let n = -1
@@ -353,73 +307,65 @@ function getVersion({ scope, name, version, tag }) {
   let t = ''
   let x = -2
 
-  versions.set(id, new Promise((resolve, reject) => {
-    const client = tls.connect({
-      port: 443,
-      host: 'registry.npmjs.org',
-      onread: {
-        buffer,
-        callback: isRange(version)
-          ? getVersions
-          : getTag
-      }
-    })
+  animate('🔎 ' + id)
 
-    client.write('GET /'+ full + ' HTTP/1.1\nHost: registry.npmjs.org\n\n')
+  return versions.set(id, get(
+    host,
+    range
+      ? 'GET /'+ pathname + ' HTTP/1.1\nHost: registry.npmjs.org\n\n'
+      : 'GET /'+ pathname + ' HTTP/1.1\nHost: registry.npmjs.org\nRange: bytes=0-10240\n\n',
+    range
+      ? getVersions
+      : getTag
+  )).get(id)
 
-    function getTag(end) {
-      if (x === -2 && !(buffer[9] === 50 && buffer[10] === 48 && buffer[11] === 48)) // 2 0 0
-        throw new Error(buffer.subarray(9, end).toString())
+  function getTag(end, buffer, resolve) {
+    if (x === -2 && !(buffer[9] === 50 && buffer[10] === 48 && buffer[11] === 48)) // 2 0 0
+      throw new Error(buffer.subarray(9, end).toString())
 
-      x = buffer.indexOf(123) // {
-      while (x < end && x !== -1) {
-        if (buffer[x - 5] === 97) { // a
-          resolve(
-            JSON.parse(
-              buffer.subarray(x, buffer.indexOf(125, x + 1) + 1)  // {
-            )[tag || 'latest']
-          )
-          client.destroy()
-        }
-        x = buffer.indexOf(123, x + 1)
-      }
-    }
-
-    function getVersions(end) {
-      if (l === -2) {
-        if (!(buffer[9] === 50 && buffer[10] === 48 && buffer[10] === 48))
-          throw new Error(host + pathname + ' failed with: ' + buffer.subarray(0, 200).toString())
-
-        t = buffer.subarray(0, end).toString().toLowerCase()
-        h = t.indexOf('content-length:')
-        n = t.indexOf('\n', h)
-        l = +t.slice(h + 15, n)
-        complete = Buffer.allocUnsafe(l)
-        while (buffer[n + 1] !== 10 && buffer[n + 2] !== 10)
-          n = buffer.indexOf(10, n + 1)
-
-        n = buffer.indexOf(10, n + 1) + 1
-        l += n
-      }
-
-      buffer.copy(complete, w, n, end)
-      w += end - n
-      n = 0
-      l -= end - n
-
-      if (l <= 0) {
+    x = buffer.indexOf(123) // {
+    while (x < end && x !== -1) {
+      if (buffer[x - 5] === 97) { // a
         resolve(
-          best(
-            version,
-            (complete.toString().match(/"version":"[^"]+"/g) || []).map(x => x.slice(11,-1))
-          )
+          JSON.parse(
+            buffer.subarray(x, buffer.indexOf(125, x + 1) + 1)  // {
+          )[tag || 'latest']
         )
-        client.destroy()
       }
+      x = buffer.indexOf(123, x + 1)
     }
-  }))
+  }
 
-  return versions.get(id)
+  function getVersions(end, buffer, resolve) {
+    if (l === -2) {
+      if (!(buffer[9] === 50 && buffer[10] === 48 && buffer[11] === 48))
+        throw new Error(host + '/' + pathname + ' failed with: ' + buffer.subarray(0, 200).toString())
+
+      t = buffer.subarray(0, end).toString().toLowerCase()
+      h = t.indexOf('content-length:')
+      n = t.indexOf('\n', h)
+      l = +t.slice(h + 15, n)
+      complete = Buffer.allocUnsafe(l)
+      while (buffer[n + 1] !== 10 && buffer[n + 2] !== 10)
+        n = buffer.indexOf(10, n + 1)
+
+      n = buffer.indexOf(10, n + 1) + 1
+    }
+
+    buffer.copy(complete, w, n, end)
+    w += end - n
+    n = 0
+
+    if (w < l)
+      return
+
+    resolve(
+      best(
+        version,
+        (complete.toString().match(/(:{|},)"\d+\.\d+\.\d+[^"]*":{"/g) || []).map(x => x.slice(3, -4))
+      )
+    )
+  }
 }
 
 async function jsonRead(x) {
@@ -436,6 +382,12 @@ function defaultLock(x) {
     version: pkg.version,
     lockfileVersion: 3,
     requires: true,
-    packages: {}
+    packages: {
+      '': {
+        name: pkg.name,
+        version: pkg.version,
+        dependencies: {}
+      }
+    }
   }
 }

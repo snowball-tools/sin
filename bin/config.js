@@ -68,6 +68,7 @@ async function fromArgs() {
       port        : getPort,
       unsafe      : getUnsafe,
       sucrase     : getSucrase,
+      globalPath  : (x, xs) => path.join(xs.home, '.modules'),
       chromePath  : getChromePath,
       domain      : null,
       server      : null,

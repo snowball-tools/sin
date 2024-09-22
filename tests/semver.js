@@ -101,7 +101,8 @@ t`semver`(
     ),
 
     t`multiple`(
-      t`>1.0 >2.0.0-prerelease+build`('>=1.0.1 >=2.0.1-prerelease+build')
+      t`>1.0 >2.0.0-prerelease+build`('>=1.0.1 >=2.0.1-prerelease+build'),
+      t`>= 2.1.2 < 3`('>=2.1.2 <3.0.0')
     )
   ),
 
@@ -134,5 +135,6 @@ t`semver`(
     t`>=1.2.3-beta.2 <1.3.0 = 1.2.3-beta.3` ('1.2.3-alpha.1,1.2.3-beta.2,1.2.3-beta.3'),
     t`>=1.2.3-beta.2 <1.3.0 = 1.2.5`        ('1.2.3-alpha.1,1.2.3-beta.2,1.2.3-beta.3,1.2.5'),
     t`>=1.2.3-beta.2 <1.3.0 = 1.2.3-beta.2` ('1.2.3-beta.2,1.2.4-beta.2'),
+    t`15 = 15.1.1`                          ('15.1.1,15.0.0-canary.161.tgz')
   )
 )

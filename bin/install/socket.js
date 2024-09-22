@@ -1,6 +1,8 @@
 import tls from 'node:tls'
 
 const open = {}
+let i = 0
+let fin = 0
 
 export function destroy() {
   for (const host in open) {
@@ -9,10 +11,11 @@ export function destroy() {
   }
 }
 
-export function get(host, data, fn) {
+export async function get(host, data, fn) {
+  const hosts = open[host]
+  const socket = hosts && hosts.pop() || (await create(host, data, fn))
+
   return new Promise((resolve, reject) => {
-    const hosts = open[host]
-    const socket = hosts && hosts.pop() || create(host, data, fn)
     socket.resolve = resolve
     socket.reject = reject
     socket.handler = fn
@@ -21,6 +24,13 @@ export function get(host, data, fn) {
 }
 
 function create(host) {
+  const xs = host in open
+    ? open[host]
+    : open[host] = Object.assign([], { count: 1, queue: [] })
+
+  if (xs.count >= 20)
+    return new Promise(r => xs.queue.unshift(r))
+
   const socket = tls.connect({
     port: 443,
     host,
@@ -28,7 +38,7 @@ function create(host) {
       buffer: Buffer.allocUnsafe(1024 * 1024),
       callback: (end, buffer) => {
         if (!socket.handler)
-          return p('no handler', end, '\n\n')
+          return
 
         try {
           socket.handler(end, buffer, done)
@@ -40,15 +50,18 @@ function create(host) {
   })
 
   socket.on('error', x => socket.reject(x))
-  socket.on('close', () => open[host].splice(open[host].indexOf(socket), 1))
+  socket.on('close', () => {
+    xs.splice(xs.indexOf(socket), 1)
+    xs.count--
+  })
 
   return socket
 
   function done(x) {
     socket.handler = null
-    host in open
-      ? open[host].unshift(socket)
-      : open[host] = [socket]
     socket.resolve(x)
+    xs.queue.length
+      ? xs.queue.pop()(socket)
+      : xs.unshift(socket)
   }
 }

@@ -9,10 +9,10 @@ export function isScript(x) {
 }
 
 export function parsePackage(x) {
-  const [_, scope = '', name, version = '', tag = '', pathname = '', query = '', hash = ''] =
-    x.match(/(?:(@[^/@]+)\/)?([^@/?]+)(?:@(?:([0-9]+\.[0-9]+\.[0-9]+(?:-[^/]+)?)|([^0-9?/][^?/]+)))?(\/[^?#]+)?(\?[^/#]+)?(#.+)?/)
+  const [_, scope = '', name, version = '', pathname = '', query = '', hash = ''] =
+    x.match(/(?:(@[^/@]+)\/)?([^@/?]+)(?:@([^/?#]+))?(\/[^?#]+)?(\?[^/#]+)?(#.+)?/)
 
-  return { scope, name, version, tag, pathname, query, hash }
+  return { scope, name, version, pathname, query, hash }
 }
 
 export function extensionless(x, root = '') {

@@ -65,15 +65,19 @@ export function satisfies(v, ranges) {
   )
 }
 
-export function isRange(x) {
-  return !/^\d+\.\d+\.\d+($|[-+])/.test(x) // /[ _|=<>xX*^~]/.test(x)
+export function isDistTag(x) {
+  return x !== 'x' && x !== 'X' && !/[^a-z]/.test(x)
+}
+
+export function isVersion(x) {
+  return /^\d+\.\d+\.\d+($|[-+])/.test(x) // /[ _|=<>xX*^~]/.test(x)
 }
 
 export function buildRanges(x) {
-  if (!isRange(x))
+  if (isVersion(x))
       return x
 
-  return x.replace(/\s-\s/g, '_').split(/\s*\|\|\s*/).map(x =>
+  return x.replace(/\s-\s/g, '_').replace(/\s+([0-9])/g, '$1').split(/\s*\|\|\s*/).map(x =>
     x.split(/\s+/).map(buildRange)
   )
 }
@@ -201,7 +205,7 @@ export function parseVersion(x) {
     }
     i++
   }
-  parts(l, i)
+  parts()
 
   return {
     raw: x,

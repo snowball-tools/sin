@@ -106,7 +106,7 @@ function rm(x) {
 
   cleaned || (cleaned = true, console.log('Remove unused modules:'))
   console.log('-', path.slice(13))
-  fs.rmSync(path, { recursive: true })
+  //fs.rmSync(path, { recursive: true })
 }
 
 async function writePackage(xs) {
@@ -142,24 +142,34 @@ async function installDependencies(dependencies, parent) {
   const installs = []
   await Promise.all(Object.entries(dependencies).map(async ([name, v]) => {
     if (v.startsWith('~/') || v.startsWith('/') || v.startsWith('.') || v.indexOf(':\\') === 1 || v.indexOf('file:') === 0)
-      return
+      return p('Cannot use', v)
 
     if (v.indexOf('github:') === 0)
-      return
+      return p('Cannot use', v)
+
+    if (v.indexOf('git@') === 0)
+      return p('Cannot use', v)
 
     const pkg = v.indexOf('npm:') === 0
       ? parsePackage(v.slice(4))
       : parsePackage(name + '@' + v)
 
-    addLocal(pkg, parent)
+
     if (!pkg.version || !isVersion(pkg.version)) {
+      /*
+      // We could traverse from node_modules/pkgname > to find the proper lookup in pkglock
+      // or pkg lock could be a dependenceny tree so we can lookup by dep path
       const satisfied = pkg.version && pkg.local in lock.packages && satisfies(lock.packages[pkg.local].version, pkg.version)
       pkg.version = satisfied
         ? lock.packages[pkg.local].version
-        : await getVersion(pkg)
+        :
+      */
+      pkg.version = await getVersion(pkg)
     }
 
+    addLocal(pkg, parent)
     addGlobal(pkg)
+
     const l = lock.packages[pkg.local]
     remove.delete(pkg.local)
 
@@ -172,15 +182,17 @@ async function installDependencies(dependencies, parent) {
     delete lock.packages[local]
   }
 
-  await Promise.all(installs)
+  return Promise.all(installs)
 }
 
 function addGlobal(pkg) {
-  pkg.global = Path.join(config.globalPath, (pkg.scope ? pkg.scope + '+' : '') + pkg.name + '@' + pkg.version)
+  const { scope, name, version } = pkg
+  pkg.global = Path.join(config.globalPath, (scope ? scope + '+' : '') + name + '@' + version)
 }
 
 function addLocal(pkg, parent) {
-  pkg.local = (parent ? parent.local + '/' : '') + 'node_modules/' + (pkg.scope ? pkg.scope + '/' : '') + pkg.name
+  const { scope, name, version } = pkg
+  pkg.local = 'node_modules/.sin/' + (scope ? scope + '+' : '') + name + '@' + version + '/node_modules/' + (scope ? scope + '/' : '') + name
 }
 
 function fromCLI() {
@@ -227,8 +239,7 @@ async function getNpm(pkg) {
     }
   }
 
-  await install(pkg)
-  return pkg
+  return install(pkg)
 }
 
 function tgzPath({ scope, name, version }) {
@@ -240,16 +251,16 @@ async function install(pkg, parent) {
   const full = (scope ? scope + '/' : '') + name
   const id = full + '@' + version
 
-  if (packages.has(id))
-    return packages.get(id).then(() => fromGlobal(pkg))
+  if (packages.has(global))
+    return packages.get(global).then(() => fromGlobal(pkg))
 
-  if (fs.existsSync(pkg.local)) {
+  if (false && fs.existsSync(pkg.local)) {
     pkg.package = JSON.parse(fs.readFileSync(Path.join(pkg.local, 'package.json')))
     return installed(pkg)
   }
 
-  if (fs.existsSync(pkg.global))
-    return fromGlobal(pkg)
+  if (false && fs.existsSync(pkg.global))
+    return packages.set(global, fromGlobal(pkg)).get(global)
 
   let l = -2
   let n = -1
@@ -268,7 +279,6 @@ async function install(pkg, parent) {
   pkg.url = 'https://' + host + pathname
 
   animate('⏳ ' + id)
-
   return packages.set(global, get(host, 'GET ' + pathname + ' HTTP/1.1\nHost: registry.npmjs.org\n\n', (end, buffer, resolve) => {
     if (l === -2) {
       if (!(buffer[9] === 50 && buffer[10] === 48 && buffer[11] === 48))
@@ -290,6 +300,7 @@ async function install(pkg, parent) {
     hash.update(buffer.subarray(n, end))
     l -= end - n
     n = 0
+
     if (l > 0)
       return
 
@@ -325,20 +336,17 @@ async function install(pkg, parent) {
         n += 512 + Math.ceil(size / 512) * 512
       }
     }
-
-    resolve(
-      installed(pkg, resolve)
-    )
+    resolve(installed(pkg))
   })).get(global)
 
   async function fromGlobal(pkg) {
     pkg.package = JSON.parse(fs.readFileSync(Path.join(pkg.global, 'package.json')))
-    await fsp.mkdir(Path.dirname(pkg.local), { recursive: true })
-    await fsp.cp(pkg.global, pkg.local, { recursive: true })
+    fs.mkdirSync(Path.dirname(pkg.local), { recursive: true })
+    fs.cpSync(pkg.global, pkg.local, { recursive: true })
     return installed(pkg)
   }
 
-  function installed(pkg) {
+  async function installed(pkg) {
     lockChanged = true
     lock.packages[pkg.local] = {
       version: pkg.package.version,
@@ -356,8 +364,24 @@ async function install(pkg, parent) {
 
     pkg.package.scripts?.postinstall && postInstalls.add(pkg)
 
-    return pkg.package.dependencies && installDependencies(pkg.package.dependencies, pkg)
+    const xs = pkg.package.dependencies ? (await installDependencies(pkg.package.dependencies, pkg)) : []
+    for (const { scope, name, version } of xs) {
+      const target = Path.join('..', '..', scope ? '..' : '', (scope ? scope + '+' : '') + name + '@' + version, 'node_modules', scope, name)
+      const path = Path.join(pkg.local.slice(0, pkg.local.lastIndexOf('node_modules') + 12), scope, name)
+      symlink(target, path)
+    }
+    parent || symlink(pkg.local.slice(13), Path.join('node_modules', pkg.scope, pkg.name))
+    return pkg
+  }
+}
 
+function symlink(target, path) {
+  try {
+    fs.mkdirSync(Path.dirname(path), { recursive: true })
+    fs.symlinkSync(target, path)
+  } catch (error) {
+    fs.rmSync(path, { recursive: true })
+    fs.symlinkSync(target, path)
   }
 }
 
@@ -366,12 +390,7 @@ function addBin(name, file, local) {
   const target = Path.join('..', local.split('node_modules/').pop(), file)
   const path = Path.join(bin, name)
   fs.mkdirSync(bin, { recursive: true })
-  try {
-    fs.symlinkSync(target, path)
-  } catch (error) {
-    fs.rmSync(path, { recursive: true })
-    fs.symlinkSync(target, path)
-  }
+  symlink(target, path)
 }
 
 function getVersion({ scope, name, version }) {

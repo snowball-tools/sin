@@ -20,7 +20,6 @@ export function destroy() {
 }
 
 export async function get(host, data, fn) {
-  console.log('get', data)
   const hosts = open[host]
   const socket = hosts && hosts.pop() || (await create(host, data, fn))
 
@@ -37,7 +36,7 @@ async function create(host) {
     ? open[host]
     : open[host] = Object.assign([], { count: 1, queue: [] })
 
-  if (xs.count >= 20)
+  if (xs.count >= 200)
     return new Promise(r => xs.queue.unshift(r))
 
   const socket = tls.connect({

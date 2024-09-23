@@ -4,7 +4,7 @@ export function best(target, versions) {
   for (const x of versions) {
     const v = parseVersion(x)
     v.version = otob(v)
-    if (!satisfies(v, ranges))
+    if (!satisfiesRanges(v, ranges))
       continue
 
     if (!best || better(v, best))
@@ -49,7 +49,11 @@ function satisfiesUpper(a, b) {
       && upperCombo(a.version, b.version, a.build, a.buildVersion, b.build, b.buildVersion)
 }
 
-export function satisfies(v, ranges) {
+export function satisfies(version, range) {
+  return satisfiesRanges(parseVersion(version), buildRanges(range))
+}
+
+function satisfiesRanges(v, ranges) {
   if (typeof ranges === 'string')
     return v.raw === ranges
 

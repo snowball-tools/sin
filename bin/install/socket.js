@@ -1,8 +1,16 @@
 import tls from 'node:tls'
+import net from 'node:net'
+import dns from 'node:dns/promises'
 
+const ips = {}
 const open = {}
 let i = 0
 let fin = 0
+
+export async function cacheDns() {
+  const host = 'registry.npmjs.org'
+  ips[host] = (await dns.lookup(host)).address
+}
 
 export function destroy() {
   for (const host in open) {
@@ -12,6 +20,7 @@ export function destroy() {
 }
 
 export async function get(host, data, fn) {
+  console.log('get', data)
   const hosts = open[host]
   const socket = hosts && hosts.pop() || (await create(host, data, fn))
 
@@ -23,7 +32,7 @@ export async function get(host, data, fn) {
   })
 }
 
-function create(host) {
+async function create(host) {
   const xs = host in open
     ? open[host]
     : open[host] = Object.assign([], { count: 1, queue: [] })
@@ -33,7 +42,8 @@ function create(host) {
 
   const socket = tls.connect({
     port: 443,
-    host,
+    host: ips[host],
+    servername: host,
     onread: {
       buffer: Buffer.allocUnsafe(1024 * 1024),
       callback: (end, buffer) => {

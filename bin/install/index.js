@@ -232,7 +232,7 @@ async function getNpm(pkg) {
 }
 
 function tgzPath({ scope, name, version }) {
-  return '/' + (scope ? scope + '/' + name : name) + '/-/' + name + '-' + version + '.tgz'
+  return '/' + (scope ? scope + '/' + name : name) + '/-/' + name + '-' + version.split('+')[0] + '.tgz'
 }
 
 async function install(pkg, parent) {

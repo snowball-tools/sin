@@ -16,7 +16,6 @@ export function best(target, versions) {
 function better(a, b) {
   return a.version > b.version
       || (a.version === b.version && betterCombo(a.pre, a.preVersion, b.pre, b.preVersion))
-      || (a.version === b.version && betterCombo(a.build, a.buildVersion, b.build, b.buildVersion))
 }
 
 function betterCombo(an, ai, bn, bi) {
@@ -40,13 +39,11 @@ function upperCombo(av, bv, an, ai, bn, bi) {
 function satisfiesLower(a, b) {
   return a.version >= b.version
       && lowerCombo(a.version, b.version, a.pre, a.preVersion, b.pre, b.preVersion)
-      && lowerCombo(a.version, b.version, a.build, a.buildVersion, b.build, b.buildVersion)
 }
 
 function satisfiesUpper(a, b) {
   return a.version < b.version
       && upperCombo(a.version, b.version, a.pre, a.preVersion, b.pre, b.preVersion)
-      && upperCombo(a.version, b.version, a.build, a.buildVersion, b.build, b.buildVersion)
 }
 
 export function satisfies(version, range) {

@@ -4,8 +4,6 @@ import dns from 'node:dns/promises'
 
 const ips = {}
 const open = {}
-let i = 0
-let fin = 0
 
 export async function cacheDns() {
   const host = 'registry.npmjs.org'
@@ -21,7 +19,7 @@ export function destroy() {
 
 export async function get(host, data, fn) {
   const hosts = open[host]
-  const socket = hosts && hosts.pop() || (await create(host, data, fn))
+  const socket = hosts && hosts.pop() || (await create(host))
 
   return new Promise((resolve, reject) => {
     socket.resolve = resolve
@@ -36,8 +34,10 @@ async function create(host) {
     ? open[host]
     : open[host] = Object.assign([], { count: 1, queue: [] })
 
-  if (xs.count >= 200)
+  if (xs.count > 20)
     return new Promise(r => xs.queue.unshift(r))
+
+  xs.count++
 
   const socket = tls.connect({
     port: 443,

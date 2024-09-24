@@ -56,7 +56,7 @@ await installDependencies(pkgDependencies)
 while (allPeers.length) {
   const xs = allPeers.slice()
   allPeers = []
-  await Promise.all(allPeers.map(({ peers, pkg }) =>
+  await Promise.all(xs.map(({ peers, pkg }) =>
     installDependencies(peers, pkg)
   ))
 }
@@ -200,7 +200,9 @@ async function installDependencies(dependencies, parent) {
 
     pkg.url = 'https://registry.npmjs.org' + tgzPath(pkg)
     pending.add((pkg.scope?pkg.scope + '/':'') + pkg.name)
-    installs.push(install(pkg, parent).then(x => (pending.delete((pkg.scope?pkg.scope + '/':'') + pkg.name), x)))
+    packages.has(pkg.global)
+      ? packages.get(pkg.global).then(() => symlinkIt(pkg, parent)) // packages.get(pkg.global).then(() => installed(pkg))
+      : installs.push(install(pkg, parent).then(x => (pending.delete((pkg.scope?pkg.scope + '/':'') + pkg.name), x)))
   }))
 
   for (const local in remove) {
@@ -270,7 +272,7 @@ function tgzPath({ scope, name, version }) {
 }
 
 async function install(pkg, parent) {
-  const { scope, name, version, global } = pkg
+  const { scope, name, version, global, local } = pkg
       , full = (scope ? scope + '/' : '') + name
       , id = full + '@' + version
 
@@ -362,27 +364,38 @@ async function install(pkg, parent) {
       postInstalls.add(pkg)
     }
 
+    symlinkIt(pkg, parent)
+
     const peers = pkg.package.peerDependencies
-    if (peers && pkg.package.peerDependenciesMeta) {
+    if (false && peers && pkg.package.peerDependenciesMeta) {
       for (const key in pkg.package.peerDependenciesMeta)
         pkg.package.peerDependenciesMeta[key].optional && delete peers[key]
     }
 
     peers && allPeers.push({ pkg, peers })
-
     const deps = { ...pkg.package.optionalDependencies, ...pkg.package.dependencies }
-    pkg.parents = [full, ...(parent?.parents || [])]
-    pkg.parents.forEach(x => delete deps[x])
-    const xs = await installDependencies(deps, pkg)
-    for (const { scope, name, version } of xs) {
-      const target = Path.join('..', '..', scope ? '..' : '', (scope ? scope + '+' : '') + name + '@' + version, 'node_modules', scope, name)
-      const path = Path.join(pkg.local.slice(0, pkg.local.lastIndexOf('node_modules') + 12), scope, name)
-      symlink(target, path)
-    }
 
-    parent || symlink(Path.join(scope ? '..' : '', pkg.local.slice(13)), Path.join('node_modules', pkg.scope, pkg.name))
+    await installDependencies(deps, pkg)
+
     return pkg
   }
+}
+
+async function symlinkIt({ scope, name, version, local }, parent) {
+  symlink(
+    Path.join('..', '..', scope ? '..' : '', (scope ? scope + '+' : '') + name + '@' + version, 'node_modules', scope, name),
+    Path.join(local, scope, name)
+  )
+
+  parent
+    ? symlink(
+        Path.join('..', '..', scope ? '..' : '', (scope ? scope + '+' : '') + name + '@' + version, 'node_modules', scope, name),
+        Path.join(parent.local.slice(0, parent.local.lastIndexOf('node_modules/') + 12), scope, name)
+      )
+    : symlink(
+      Path.join(scope ? '..' : '', local.slice(13)),
+      Path.join('node_modules', scope, name)
+    )
 }
 
 async function unpackTar(pkg, x) {

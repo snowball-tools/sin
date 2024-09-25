@@ -25,6 +25,7 @@ t`semver`(
     t`prerelease`(
       t`1.2.3-alpha`('1.2.3-alpha'),
       t`1.2.3-alpha.2`('1.2.3-alpha.2'),
+      t`1.2.3-alpha.1.2`('1.2.3-alpha.1.2'),
       t`release is ''`(() => ['', parseVersion('1.2.3').pre])
     ),
 
@@ -109,7 +110,7 @@ t`semver`(
   t`satisfies`({
     run(_, test) {
       const [version, expect, range] = test.name.split(/ ([!=]) /)
-      const got = satisfies(parseVersion(version), buildRanges(range))
+      const got = satisfies(version, range)
       return [(expect === '='), got]
     }
   },
@@ -131,10 +132,13 @@ t`semver`(
     t`^1.2.3 || 1.2.2 = 1.2.5`              ('1.0.0,1.2.2,1.2.5'),
     t`^1 = 1.3.4`                           ('1.2.3,1.3.4,2.0.0,2.1.1'),
     t`~1.2.3-beta.2 = 1.2.3-beta.3`         ('1.2.3-alpha.1,1.2.3-beta.2,1.2.3-beta.3'),
-    t`~1.2.3-beta.2 = 1.2.3-beta.3`         ('1.2.3-alpha.1,1.2.3-beta.2,1.2.3-beta.3'),
     t`>=1.2.3-beta.2 <1.3.0 = 1.2.3-beta.3` ('1.2.3-alpha.1,1.2.3-beta.2,1.2.3-beta.3'),
     t`>=1.2.3-beta.2 <1.3.0 = 1.2.5`        ('1.2.3-alpha.1,1.2.3-beta.2,1.2.3-beta.3,1.2.5'),
     t`>=1.2.3-beta.2 <1.3.0 = 1.2.3-beta.2` ('1.2.3-beta.2,1.2.4-beta.2'),
-    t`15 = 15.1.1`                          ('15.1.1,15.0.0-canary.161.tgz')
+    t`15 = 15.1.1`                          ('15.1.1,15.0.0-canary.161.tgz'),
+    t`^2.0.0-next.5 = 2.0.0-next.5`         ('1.9.2,2.0.0-next.5'),
+    t`^2.0.0-next.5 = 2.0.0`                ('2.0.0,2.0.0-next.5'),
+    t`^2.0.0-next.5 = 2.0.1`                ('2.0.0-next.5,2.0.1'),
+    t`^1.8.0 = 1.8.0`                       ('1.8.0,1.8.0-alpha.20240903.2')
   )
 )

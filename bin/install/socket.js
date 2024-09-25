@@ -4,7 +4,7 @@ import dns from 'node:dns/promises'
 
 const ips = {}
 const open = {}
-
+const highWaterMark = 128 * 1024
 export async function cacheDns() {
   const host = 'registry.npmjs.org'
   ips[host] = (await dns.lookup(host)).address
@@ -34,7 +34,7 @@ async function create(host) {
     ? open[host]
     : open[host] = Object.assign([], { count: 1, queue: [] })
 
-  if (xs.count > 20)
+  if (xs.count > 50)
     return new Promise(r => xs.queue.unshift(r))
 
   xs.count++
@@ -43,8 +43,9 @@ async function create(host) {
     port: 443,
     host: ips[host],
     servername: host,
+    highWaterMark,
     onread: {
-      buffer: Buffer.allocUnsafe(1024 * 1024),
+      buffer: Buffer.allocUnsafe(highWaterMark),
       callback: (end, buffer) => {
         if (!socket.handler)
           return

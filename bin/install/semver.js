@@ -10,27 +10,27 @@ export function best(target, versions) {
     if (!best || better(v, best))
       best = v
   }
+
   return best && best.raw
 }
 
 function better(a, b) {
   return a.version > b.version
-      || (a.version === b.version && betterCombo(a.pre, a.preVersion, b.pre, b.preVersion))
+      || betterCombo(a.version, b.version, a.pre, a.preVersion, b.pre, b.preVersion)
 }
 
-function betterCombo(an, ai, bn, bi) {
-  return !an || !bn || (an === bn && ai > bi) || (an > bn)
+function betterCombo(av, bv, an, ai, bn, bi) {
+  return av === bv && (bn && (!an || (an === bn && ai > bi) || (an > bn)))
 }
 
 function lowerCombo(av, bv, an, ai, bn, bi) {
-  return !an || !bn || (
-    av === bv &&
-    (an > bn || (an === bn && ai >= bi))
+  return (!an && av >= bv) || (!an && !bn) || (
+    av === bv && (an > bn || (an === bn && ai >= bi))
   )
 }
 
 function upperCombo(av, bv, an, ai, bn, bi) {
-  return !an || !bn || (
+  return av < bv || !an || (!an && !bn) || (
     av === bv &&
     (an < bn || (an === bn && ai < bi))
   )
@@ -61,7 +61,7 @@ function satisfiesRanges(v, ranges) {
         ? satisfiesLower(v, lower) && satisfiesUpper(v, upper)
         : lower
         ? satisfiesLower(v, lower)
-        : satisfiesUpper(v, upper)
+        : upper && satisfiesUpper(v, upper)
     )
   )
 }
@@ -193,7 +193,7 @@ export function parseVersion(x) {
 
   while (i < x.length) {
     c = x.charCodeAt(i)
-    if (c === 46) { // .
+    if (c === 46 && (pi === -1 || !pre)) { // .
       parts()
     } else if (c === 45) { // -
       parts()
@@ -223,7 +223,7 @@ export function parseVersion(x) {
     bi !== -1
       ? (build === '' ? build = x.slice(bi, i) : buildVersion = ~~x.slice(l, i))
       : pi !== -1
-      ? (pre === '' ? pre = x.slice(pi, i) : preVersion = ~~x.slice(l, i))
+      ? (pre === '' ? pre = x.slice(pi, i) : preVersion = Number(x.slice(l, i)))
       : major === -1
       ? major = ~~x.slice(l, i)
       : minor === -1

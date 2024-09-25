@@ -20,22 +20,12 @@ let allPeers = []
 
 const overwrite = () => process.stdout.write('\x1B[F\x1B[2K')
 const p = (...xs) => (ani >= 0 && overwrite(), ani = -1, console.log(...xs), xs[0])
-const clocks = ['🕐', '🕜', '🕑', '🕝', '🕒', '🕟', '🕞', '🕠', '🕓', '🕡', '🕢', '🕔', '🕕', '🕖', '🕣', '🕗', '🕤', '🕘', '🕥', '🕙', '🕦', '🕚', '🕧', '🕛']
-const moveClock = () => (ani >= 0 && overwrite(), console.log(clocks[ani++ % clocks.length]))
-const animate = (...x) => (ani >= 0 && overwrite(), ani++, console.log(...x))
+const progress = (...x) => (ani >= 0 && overwrite(), ani++, console.log(...x))
 
-const installed = new Set()
-const pending = new Set()
 const dirs = new Map()
 const versions = new Map()
 const packages = new Map()
 const postInstalls = new Set()
-
-process.on('SIGINT', function(){
-  console.log('pending', [...pending], { versionRequests, tgzRequests, lightVersionRequests })
-  console.log(packages)
-  process.exit()
-})
 
 const resolved = Promise.resolve()
 const pkg = await jsonRead('package.json') // || defaultPackage
@@ -179,6 +169,7 @@ async function installDependencies(dependencies, parent) {
       ? parsePackage(v.slice(4))
       : parsePackage(name + '@' + v)
 
+    const pre = pkg.version
     if (!pkg.version || !isVersion(pkg.version)) {
 
       /*
@@ -193,16 +184,18 @@ async function installDependencies(dependencies, parent) {
       pkg.version = await getVersion(pkg)
     }
 
+    if (!pkg.version)
+      throw new Error('Could not find version for ' + pkg.scope + '' + pkg.name + ' exp ' + pre)
+
     addPaths(pkg, parent)
 
     const l = lock.packages[pkg.local]
     remove.delete(pkg.local)
 
     pkg.url = 'https://registry.npmjs.org' + tgzPath(pkg)
-    pending.add((pkg.scope?pkg.scope + '/':'') + pkg.name)
     packages.has(pkg.global)
       ? packages.get(pkg.global).then(() => symlinkIt(pkg, parent)) // packages.get(pkg.global).then(() => installed(pkg))
-      : installs.push(install(pkg, parent).then(x => (pending.delete((pkg.scope?pkg.scope + '/':'') + pkg.name), x)))
+      : installs.push(install(pkg, parent))
   }))
 
   for (const local in remove) {
@@ -277,7 +270,7 @@ async function install(pkg, parent) {
       , id = full + '@' + version
 
   if (packages.has(global))
-    return packages.get(global).then(({ tar, local }) => local === pkg.local ? pkg : fromGlobal(pkg, tar))
+    return packages.get(global).then(({ tar, local }) => local === pkg.local ? pkg : installed(pkg, tar))
 
   if (false && fs.existsSync(pkg.local)) {
     pkg.package = JSON.parse(fs.readFileSync(Path.join(pkg.local, 'package.json')))
@@ -299,7 +292,7 @@ async function install(pkg, parent) {
 
   pkg.url = 'https://' + host + pathname
 
-  animate('⏳ ' + id)
+  progress('⏳ ' + id)
   tgzRequests++
   return packages.set(
     global,
@@ -328,9 +321,9 @@ async function install(pkg, parent) {
       if (l <= 0)
         resolve()
 
-    }).then(() => {
+    }).then(async() => {
       pkg.sha512 = hash.digest('base64')
-      pkg.tar = zlib.gunzipSync(x)
+      pkg.tar = await new Promise((r, e) => zlib.gunzip(x, (err, x) => err ? e(err) : r(x)))
       return Promise.all([
         mkdir(Path.dirname(pkg.global)).then(() => fsp.writeFile(pkg.global, pkg.tar)),
         fromGlobal(pkg, pkg.tar)
@@ -352,42 +345,26 @@ async function install(pkg, parent) {
     }
 
     parent || (lock.packages[''].dependencies[full] = pkg.package.version)
+    pkg.package.scripts?.postinstall && postInstalls.add(pkg)
+    Object.entries(pkg.package.bin === 'string' ? { [pkg.name]: pkg.package.bin } : pkg.package.bin || {}).forEach(([name, file]) => addBin(name, file, pkg.local))
 
-    const bin = pkg.package.bin
-    typeof bin === 'string'
-      ? addBin(pkg.name, bin, pkg.local)
-      : typeof bin === 'object'
-      && Object.entries(bin).forEach(([name, file]) => addBin(name, file, pkg.local))
-
-    if (pkg.package.scripts?.postinstall) {
-      p('\n\nPostinstall for', scope, name, pkg.package.scripts.postinstall, '\n\n')
-      postInstalls.add(pkg)
-    }
-
-    symlinkIt(pkg, parent)
+    await symlinkIt(pkg, parent)
 
     const peers = pkg.package.peerDependencies
-    if (false && peers && pkg.package.peerDependenciesMeta) {
+    if (peers && pkg.package.peerDependenciesMeta) {
       for (const key in pkg.package.peerDependenciesMeta)
         pkg.package.peerDependenciesMeta[key].optional && delete peers[key]
     }
 
     peers && allPeers.push({ pkg, peers })
-    const deps = { ...pkg.package.optionalDependencies, ...pkg.package.dependencies }
-
-    await installDependencies(deps, pkg)
+    await installDependencies({ ...pkg.package.optionalDependencies, ...pkg.package.dependencies }, pkg)
 
     return pkg
   }
 }
 
-async function symlinkIt({ scope, name, version, local }, parent) {
-  symlink(
-    Path.join('..', '..', scope ? '..' : '', (scope ? scope + '+' : '') + name + '@' + version, 'node_modules', scope, name),
-    Path.join(local, scope, name)
-  )
-
-  parent
+function symlinkIt({ scope, name, version, local }, parent) {
+  return parent
     ? symlink(
         Path.join('..', '..', scope ? '..' : '', (scope ? scope + '+' : '') + name + '@' + version, 'node_modules', scope, name),
         Path.join(parent.local.slice(0, parent.local.lastIndexOf('node_modules/') + 12), scope, name)
@@ -443,13 +420,13 @@ function mkdir(x) {
     : dirs.set(x, fsp.mkdir(x, { recursive: true })).get(x)
 }
 
-function symlink(target, path) {
+async function symlink(target, path) {
   try {
-    fs.mkdirSync(Path.dirname(path), { recursive: true })
-    fs.symlinkSync(target, path)
+    await fsp.mkdir(Path.dirname(path), { recursive: true })
+    await fsp.symlink(target, path)
   } catch (error) {
-    fs.rmSync(path, { recursive: true })
-    fs.symlinkSync(target, path)
+    await fsp.rm(path, { recursive: true })
+    await fsp.symlink(target, path)
   }
 }
 
@@ -478,9 +455,8 @@ function getVersion({ scope, name, version }) {
   let w = 0
   let t = ''
   let x = -2
-  let found = null
 
-  animate('🔎 ' + id)
+  progress('🔎 ' + id)
 
   distTag
     ? lightVersionRequests++
@@ -488,7 +464,7 @@ function getVersion({ scope, name, version }) {
   return versions.set(id, get(
     host,
     distTag
-      ? 'GET /'+ pathname + ' HTTP/1.1\nHost: registry.npmjs.org\n\n' //Range: bytes=0-65535\n\n'
+      ? 'GET /'+ pathname + ' HTTP/1.1\nHost: registry.npmjs.org\n\n' // Range: bytes=0-65535\n\n'
       : 'GET /'+ pathname + ' HTTP/1.1\nHost: registry.npmjs.org\n\n',
     (end, buffer, resolve) => {
 

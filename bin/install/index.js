@@ -169,24 +169,26 @@ async function installDependencies(dependencies, parent) {
       ? parsePackage(v.slice(4))
       : parsePackage(name + '@' + v)
 
-    const pre = pkg.version
-    if (!pkg.version || !isVersion(pkg.version)) {
+    /*
+    // We could traverse from node_modules/pkgname > to find the proper lookup in pkglock
+    // or pkg lock could be a dependenceny tree so we can lookup by dep path
+    const satisfied = pkg.version && pkg.local in lock.packages && satisfies(lock.packages[pkg.local].version, pkg.version)
+    pkg.version = satisfied
+      ? lock.packages[pkg.local].version
+      :
+    */
 
-      /*
-      // We could traverse from node_modules/pkgname > to find the proper lookup in pkglock
-      // or pkg lock could be a dependenceny tree so we can lookup by dep path
-      const satisfied = pkg.version && pkg.local in lock.packages && satisfies(lock.packages[pkg.local].version, pkg.version)
-      pkg.version = satisfied
-        ? lock.packages[pkg.local].version
-        :
-      */
+    const { version, os, cpu } = await getVersion(pkg)
+    if (os && os.length && !os.some(x => x === process.platform))
+      return
 
-      pkg.version = await getVersion(pkg)
-    }
+    if (cpu && cpu.length && !cpu.some(x => x === process.arch))
+      return
 
-    if (!pkg.version)
-      throw new Error('Could not find version for ' + pkg.scope + '' + pkg.name + ' exp ' + pre)
+    if (!version)
+      throw new Error('Could not find version for ' + pkg.scope + '' + pkg.name + ' exp ' + pkg.version)
 
+    pkg.version = version
     addPaths(pkg, parent)
 
     const l = lock.packages[pkg.local]
@@ -244,6 +246,7 @@ async function getNpm(pkg) {
     return pkg
   }
 
+  // can we shortcut and use installDependencies()?
   if (!pkg.version || !isVersion(pkg.version))
     pkg.version = await getVersion(pkg)
 
@@ -277,7 +280,7 @@ async function install(pkg, parent) {
     return installed(pkg)
   }
 
-  if (false && fs.existsSync(global))
+  if (fs.existsSync(global))
     return packages.set(global, fsp.readFile(global).then(tar => (pkg.tar = tar, fromGlobal(pkg, tar)))).get(global)
 
   let l = -2
@@ -494,22 +497,40 @@ function getVersion({ scope, name, version }) {
         x = 2
         while ((x = complete.indexOf(123, x + 1)) !== -1) {
           if (complete[x - 5] === 97) { // a
-            return resolve(JSON.parse(
+            version = JSON.parse(
               complete.subarray(x, complete.indexOf(125, x + 1) + 1)  // {
-            )[version])
+            )[version]
+            break
           }
         }
-        throw new Error('Could not find dist-tag for ' + name + '@' + version)
       }
 
-      resolve(
-        best(
-          version,
-          (complete.toString().match(/(:{|},)"\d+\.\d+\.\d+[^"]*":{"/g) || []).map(x => x.slice(3, -4))
-        )
-      )
+      const versions = (complete.toString().match(/(:{|},)"\d+\.\d+\.\d+[^"]*":{"/g) || []).map(x => x.slice(3, -4))
+      version = best(version, versions)
+      resolve(getInfo(version, complete.toString()))
     }
   )).get(id)
+}
+
+function getInfo(version, x) {
+  version = '"' + version + '":{'
+  let end = -1
+  let l = 1
+  let quot = -1
+  let start = x.indexOf(version) + version.length
+  for (let i = start; i < x.length; i++) {
+    let c = x.charCodeAt(i)
+    if (c === 123)
+      l++
+    else if (c === 125)
+      l--
+    if (l === 0) {
+      end = i + 1
+      break
+    }
+  }
+
+  return JSON.parse(x.slice(start - 1, end))
 }
 
 async function jsonRead(x) {

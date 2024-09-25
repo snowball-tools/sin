@@ -8,7 +8,7 @@ import { Buffer } from 'node:buffer'
 import config from '../config.js'
 import { parsePackage } from '../shared.js'
 import { best, isVersion, isDistTag, satisfies } from './semver.js'
-import { get, destroy, cacheDns } from './socket.js'
+import { fetch, destroy, cacheDns } from './socket.js'
 
 let lockChanged = false
 let cleaned = false
@@ -18,6 +18,7 @@ let versionRequests = 0
 let tgzRequests = 0
 let allPeers = []
 
+const host = 'registry.npmjs.org'
 const overwrite = () => process.stdout.write('\x1B[F\x1B[2K')
 const p = (...xs) => (ani >= 0 && overwrite(), ani = -1, console.log(...xs), xs[0])
 const progress = (...x) => (ani >= 0 && overwrite(), ani++, console.log(...x))
@@ -178,7 +179,7 @@ async function installDependencies(dependencies, parent) {
       :
     */
 
-    const { version, os, cpu } = await getVersion(pkg)
+    const { version, os, cpu } = await fetchVersion(pkg)
     if (os && os.length && !os.some(x => x === process.platform))
       return
 
@@ -213,7 +214,6 @@ function addPaths(pkg, parent) {
   pkg.global = Path.join(config.globalPath, (scope ? scope + '+' : '') + name + '@' + version)
   pkg.local = 'node_modules/.sin/' + (scope ? scope + '+' : '') + name + '@' + version + '/node_modules/' + (scope ? scope + '/' : '') + name
 }
-
 
 function fromCLI() {
   return Promise.all(config._.map(x => {
@@ -283,14 +283,7 @@ async function install(pkg, parent) {
   if (fs.existsSync(global))
     return packages.set(global, fsp.readFile(global).then(tar => (pkg.tar = tar, fromGlobal(pkg, tar)))).get(global)
 
-  let l = -2
-    , n = -1
-    , h = -1
-    , t = ''
-    , x
-
   const hash = crypto.createHash('sha512')
-      , host = 'registry.npmjs.org'
       , pathname = tgzPath(pkg)
 
   pkg.url = 'https://' + host + pathname
@@ -299,34 +292,13 @@ async function install(pkg, parent) {
   tgzRequests++
   return packages.set(
     global,
-    get(host, 'GET ' + pathname + ' HTTP/1.1\nHost: registry.npmjs.org\n\n', (end, buffer, resolve) => {
-      if (l === -2) {
-        if (!(buffer[9] === 50 && buffer[10] === 48 && buffer[11] === 48))
-          throw new Error(host + pathname + ' failed with: ' + buffer.subarray(0, buffer.indexOf(10)).toString())
-
-        t = buffer.subarray(0, end).toString().toLowerCase()
-        h = t.indexOf('content-length:')
-        n = t.indexOf('\n', h)
-        l = +t.slice(h + 15, n)
-        x = Buffer.allocUnsafe(l)
-
-        while (buffer[n + 1] !== 10 && buffer[n + 2] !== 10)
-          n = buffer.indexOf(10, n + 1)
-
-        n = buffer.indexOf(10, n + 1) + 1
-      }
-
-      buffer.copy(x, x.byteLength - l, n, end)
-      hash.update(buffer.subarray(n, end))
-      l -= end - n
-      n = 0
-
-      if (l <= 0)
-        resolve()
-
-    }).then(async() => {
+    fetch(
+      host,
+      pathname,
+      (xs, start, end) => hash.update(xs.subarray(start, end))
+    ).then(async(body) => {
       pkg.sha512 = hash.digest('base64')
-      pkg.tar = await new Promise((r, e) => zlib.gunzip(x, (err, x) => err ? e(err) : r(x)))
+      pkg.tar = await new Promise((r, e) => zlib.gunzip(body, (err, x) => err ? e(err) : r(x)))
       return Promise.all([
         mkdir(Path.dirname(pkg.global)).then(() => fsp.writeFile(pkg.global, pkg.tar)),
         fromGlobal(pkg, pkg.tar)
@@ -441,93 +413,81 @@ function addBin(name, file, local) {
   symlink(target, path)
 }
 
+function fetchVersion(x) {
+  return !x.version || isVersion(x.version) || isDistTag(x.version)
+    ? getVersion(x)
+    : findVersion(x)
+}
+
 function getVersion({ scope, name, version }) {
   version || (version = 'latest')
-  const distTag = isDistTag(version)
-  const pathname = (scope ? scope + '/' : '') + name
+  const pathname = '/' + (scope ? scope + '/' : '') + name + '/' + version
   const id = pathname + '@' + version
 
   if (versions.has(id))
     return versions.get(id)
 
-  const host = 'registry.npmjs.org'
-  let complete
-  let l = -2
-  let n = -1
-  let h = -1
-  let w = 0
-  let t = ''
-  let x = -2
+  progress('🔎 ' + id.slice(1))
+  lightVersionRequests++
 
-  progress('🔎 ' + id)
+  return versions.set(
+    id,
+    fetch(
+      host,
+      pathname
+    ).then(x => JSON.parse(x))
+  ).get(id)
+}
 
-  distTag
-    ? lightVersionRequests++
-    : versionRequests++
-  return versions.set(id, get(
-    host,
-    distTag
-      ? 'GET /'+ pathname + ' HTTP/1.1\nHost: registry.npmjs.org\n\n' // Range: bytes=0-65535\n\n'
-      : 'GET /'+ pathname + ' HTTP/1.1\nHost: registry.npmjs.org\n\n',
-    (end, buffer, resolve) => {
+function findVersion(pkg) {
+  pkg.version || (pkg.version = 'latest')
 
-      if (l === -2) {
-        if (!(buffer[9] === 50 && buffer[10] === 48 && (buffer[11] === 48 || buffer[11] === 54)))
-          throw new Error(host + '/' + pathname + ' failed with: ' + buffer.subarray(0, 200).toString())
+  const pathname = '/' + (pkg.scope ? pkg.scope + '/' : '') + pkg.name
+      , id = pathname + '@' + pkg.version
 
-        t = buffer.subarray(0, end).toString().toLowerCase()
-        h = t.indexOf('content-length:')
-        n = t.indexOf('\n', h)
-        l = +t.slice(h + 15, n)
-        complete = Buffer.allocUnsafe(l)
-        while (buffer[n + 1] !== 10 && buffer[n + 2] !== 10)
-          n = buffer.indexOf(10, n + 1)
+  if (versions.has(id))
+    return versions.get(id)
 
-        n = buffer.indexOf(10, n + 1) + 1
-      }
+  progress('🔎 ' + id.slice(1))
+  versionRequests++
 
-      buffer.copy(complete, w, n, end)
-      w += end - n
-      n = 0
-
-      if (w < l)
-        return
-
-      if (distTag) {
-        x = 2
-        while ((x = complete.indexOf(123, x + 1)) !== -1) {
-          if (complete[x - 5] === 97) { // a
-            version = JSON.parse(
-              complete.subarray(x, complete.indexOf(125, x + 1) + 1)  // {
-            )[version]
-            break
-          }
-        }
-      }
-
-      const versions = (complete.toString().match(/(:{|},)"\d+\.\d+\.\d+[^"]*":{"/g) || []).map(x => x.slice(3, -4))
-      version = best(version, versions)
-      resolve(getInfo(version, complete.toString()))
-    }
-  )).get(id)
+  return versions.set(
+    id,
+    fetch(
+      host,
+      pathname
+    ).then(body => {
+      const x = body.toString('utf8')
+      const versions = (x.match(/(:{|},)"\d+\.\d+\.\d+[^"]*":{"/g) || []).map(x => x.slice(3, -4))
+      pkg.version = best(pkg.version, versions)
+      return getInfo(pkg.version, x)
+    })
+  ).get(id)
 }
 
 function getInfo(version, x) {
   version = '"' + version + '":{'
   let end = -1
-  let l = 1
-  let quot = -1
+  let l = -1
+  let d = 1
+  let quote = false
   let start = x.indexOf(version) + version.length
   for (let i = start; i < x.length; i++) {
     let c = x.charCodeAt(i)
-    if (c === 123)
-      l++
-    else if (c === 125)
-      l--
-    if (l === 0) {
+    if (c === 34) { // "
+      l !== 92 && (quote = !quote)
+    } else if (quote) {
+      // noop
+    } else if (c === 123) { // {
+      d++
+    } else if (c === 125) { // }
+      d--
+    }
+    if (d === 0) {
       end = i + 1
       break
     }
+    l = c
   }
 
   return JSON.parse(x.slice(start - 1, end))

@@ -18,6 +18,14 @@ let versionRequests = 0
 let tgzRequests = 0
 let allPeers = []
 
+let tgzDownloadTime = 0
+let tgzUnzipTime = 0
+let tarTime = 0
+let getVersionTime = 0
+let findVersionFetchTime = 0
+let findVersionParseTime = 0
+let getInfoTime = 0
+
 const host = 'registry.npmjs.org'
 const overwrite = () => process.stdout.write('\x1B[F\x1B[2K')
 const p = (...xs) => (ani >= 0 && overwrite(), ani = -1, console.log(...xs), xs[0])
@@ -27,10 +35,11 @@ const dirs = new Map()
 const versions = new Map()
 const packages = new Map()
 const postInstalls = new Set()
+const symlinked = new Map()
 
 const resolved = Promise.resolve()
 const pkg = await jsonRead('package.json') // || defaultPackage
-const lock = await jsonRead('package-lock.json') || defaultLock(pkg)
+const lock = (await jsonRead('package-lock.json')) || defaultLock(pkg)
 const remove = new Set(Object.keys(lock.packages))
 remove.delete('')
 
@@ -59,7 +68,9 @@ cleanup()
 writeLock()
 await writePackage(added)
 
-p('Finished', { versionRequests, tgzRequests, lightVersionRequests })
+p('requests', { versionRequests, tgzRequests, lightVersionRequests })
+p('times', { tgzDownloadTime, tgzUnzipTime, tarTime })
+p('more times', { getVersionTime, findVersionFetchTime, findVersionParseTime, getInfoTime })
 
 function writeLock() {
   if (Object.keys(lock.packages).length === 0) {
@@ -197,16 +208,20 @@ async function installDependencies(dependencies, parent) {
 
     pkg.url = 'https://registry.npmjs.org' + tgzPath(pkg)
     packages.has(pkg.global)
-      ? packages.get(pkg.global).then(() => symlinkIt(pkg, parent)) // packages.get(pkg.global).then(() => installed(pkg))
-      : installs.push(install(pkg, parent))
+      ? then(packages.get(pkg.global), () => symlinkIt(pkg, parent)) // packages.get(pkg.global).then(() => installed(pkg))
+      : await install(pkg, parent)
   }))
 
   for (const local in remove) {
     lockChanged = true
     delete lock.packages[local]
   }
+}
 
-  return Promise.all(installs)
+function then(x, fn) {
+  return typeof x.then === 'function'
+    ? x.then(fn)
+    : fn(x)
 }
 
 function addPaths(pkg, parent) {
@@ -273,7 +288,7 @@ async function install(pkg, parent) {
       , id = full + '@' + version
 
   if (packages.has(global))
-    return packages.get(global).then(({ tar, local }) => local === pkg.local ? pkg : installed(pkg, tar))
+    return then(packages.get(global), ({ tar, local }) => local === pkg.local ? pkg : installed(pkg, tar))
 
   if (false && fs.existsSync(pkg.local)) {
     pkg.package = JSON.parse(fs.readFileSync(Path.join(pkg.local, 'package.json')))
@@ -290,24 +305,35 @@ async function install(pkg, parent) {
 
   progress('⏳ ' + id)
   tgzRequests++
-  return packages.set(
+  let start = performance.now()
+  return set(
+    packages,
     global,
-    fetch(
-      host,
-      pathname,
-      (xs, start, end) => hash.update(xs.subarray(start, end))
-    ).then(async(body) => {
-      pkg.sha512 = hash.digest('base64')
-      pkg.tar = await new Promise((r, e) => zlib.gunzip(body, (err, x) => err ? e(err) : r(x)))
-      return Promise.all([
-        mkdir(Path.dirname(pkg.global)).then(() => fsp.writeFile(pkg.global, pkg.tar)),
-        fromGlobal(pkg, pkg.tar)
-      ]).then(([_, x]) => x)
-    })
-  ).get(global)
+    then(
+      fetch(
+        host,
+        pathname,
+        //(xs, start, end) => hash.update(xs.subarray(start, end))
+      ),
+      async(body) => {
+        pkg.sha512 = hash.digest('base64')
+        tgzDownloadTime += performance.now() - start
+        start = performance.now()
+        pkg.tar = await new Promise((r, e) => zlib.gunzip(body, (err, x) => err ? e(err) : r(x)))
+        tgzUnzipTime += performance.now() - start
+        return then(
+          Promise.all([
+            then(mkdir(Path.dirname(pkg.global)), () => fsp.writeFile(pkg.global, pkg.tar)),
+            fromGlobal(pkg, pkg.tar)
+          ]),
+          ([_, x]) => set(packages, global, x)
+        )
+      }
+    )
+  )
 
   async function fromGlobal(pkg, tar) {
-    await unpackTar(pkg, tar)
+    await untar(pkg, tar)
     return installed(pkg)
   }
 
@@ -323,16 +349,18 @@ async function install(pkg, parent) {
     pkg.package.scripts?.postinstall && postInstalls.add(pkg)
     Object.entries(pkg.package.bin === 'string' ? { [pkg.name]: pkg.package.bin } : pkg.package.bin || {}).forEach(([name, file]) => addBin(name, file, pkg.local))
 
-    await symlinkIt(pkg, parent)
-
     const peers = pkg.package.peerDependencies
     if (peers && pkg.package.peerDependenciesMeta) {
       for (const key in pkg.package.peerDependenciesMeta)
-        pkg.package.peerDependenciesMeta[key].optional && delete peers[key]
+        pkg.package.peerDependenciesMeta[key]?.optional && delete peers[key]
     }
 
     peers && allPeers.push({ pkg, peers })
-    await installDependencies({ ...pkg.package.optionalDependencies, ...pkg.package.dependencies }, pkg)
+
+    await Promise.all([
+      symlinkIt(pkg, parent),
+      installDependencies({ ...pkg.package.optionalDependencies, ...pkg.package.dependencies }, pkg)
+    ])
 
     return pkg
   }
@@ -350,7 +378,8 @@ function symlinkIt({ scope, name, version, local }, parent) {
     )
 }
 
-async function unpackTar(pkg, x) {
+async function untar(pkg, x) {
+  const start = performance.now()
   let size = 0
     , target = ''
     , output = ''
@@ -385,24 +414,26 @@ async function unpackTar(pkg, x) {
       n += 512 + Math.ceil(size / 512) * 512
     }
   }
-
+  tarTime += performance.now() - start
   return pkg
 }
 
 function mkdir(x) {
   return dirs.has(x)
     ? dirs.get(x)
-    : dirs.set(x, fsp.mkdir(x, { recursive: true })).get(x)
+    : then(set(dirs, x, fsp.mkdir(x, { recursive: true }), () => set(dirs, x, true)))
 }
 
 async function symlink(target, path) {
-  try {
-    await fsp.mkdir(Path.dirname(path), { recursive: true })
-    await fsp.symlink(target, path)
-  } catch (error) {
-    await fsp.rm(path, { recursive: true })
-    await fsp.symlink(target, path)
-  }
+  const id = target + '$' + path
+  if (symlinked.has(id))
+    return symlinked.get(id)
+
+  return set(
+    symlinked,
+    id,
+    then(then(mkdir(Path.dirname(path)), () => fsp.symlink(target, path)), () => set(symlinked, id, true))
+  )
 }
 
 function addBin(name, file, local) {
@@ -420,6 +451,7 @@ function fetchVersion(x) {
 }
 
 function getVersion({ scope, name, version }) {
+  const start = performance.now()
   version || (version = 'latest')
   const pathname = '/' + (scope ? scope + '/' : '') + name + '/' + version
   const id = pathname + '@' + version
@@ -430,16 +462,30 @@ function getVersion({ scope, name, version }) {
   progress('🔎 ' + id.slice(1))
   lightVersionRequests++
 
-  return versions.set(
+  return set(
+    versions,
     id,
-    fetch(
-      host,
-      pathname
-    ).then(x => JSON.parse(x))
-  ).get(id)
+    then(
+      fetch(
+        host,
+        pathname
+      ),
+      x => {
+        const json = JSON.parse(x)
+        getVersionTime += performance.now() - start
+        return set(versions, id, json)
+      }
+    )
+  )
+}
+
+function set(xs, id, x) {
+  xs.set(id, x)
+  return x
 }
 
 function findVersion(pkg) {
+  let start = performance.now()
   pkg.version || (pkg.version = 'latest')
 
   const pathname = '/' + (pkg.scope ? pkg.scope + '/' : '') + pkg.name
@@ -451,21 +497,30 @@ function findVersion(pkg) {
   progress('🔎 ' + id.slice(1))
   versionRequests++
 
-  return versions.set(
+  return set(
+    versions,
     id,
-    fetch(
-      host,
-      pathname
-    ).then(body => {
-      const x = body.toString('utf8')
-      const versions = (x.match(/(:{|},)"\d+\.\d+\.\d+[^"]*":{"/g) || []).map(x => x.slice(3, -4))
-      pkg.version = best(pkg.version, versions)
-      return getInfo(pkg.version, x)
-    })
-  ).get(id)
+    then(
+      fetch(
+        host,
+        pathname
+      ),
+      body => {
+        findVersionFetchTime += performance.now() - start
+        start = performance.now()
+        const x = body.toString('utf8')
+        const xs = (x.match(/(:{|},)"\d+\.\d+\.\d+[^"]*":{"/g) || []).map(x => x.slice(3, -4))
+        pkg.version = best(pkg.version, xs)
+        const json = getInfo(pkg.version, x)
+        findVersionParseTime += performance.now() - start
+        return set(versions, id, json)
+      }
+    )
+  )
 }
 
 function getInfo(version, x) {
+  const starto = performance.now()
   version = '"' + version + '":{'
   let end = -1
   let l = -1
@@ -490,7 +545,9 @@ function getInfo(version, x) {
     l = c
   }
 
-  return JSON.parse(x.slice(start - 1, end))
+  const json = JSON.parse(x.slice(start - 1, end))
+  getInfoTime += performance.now() - starto
+  return json
 }
 
 async function jsonRead(x) {

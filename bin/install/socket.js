@@ -6,6 +6,7 @@ const open = {}
 const highWaterMark = 128 * 1024
 const empty = Buffer.alloc(0)
 const noop = () => { /* noop */ }
+const cache = new Map()
 
 export async function cacheDns() {
   const host = 'registry.npmjs.org'
@@ -20,6 +21,10 @@ export function destroy() {
 }
 
 export async function fetch(host, pathname, ondata = noop) {
+  const id = host + pathname
+  if (cache.has(id))
+    return cache.get(id)
+
   const hosts = open[host]
   const socket = hosts && hosts.pop() || (await create(host))
   const body = await new Promise((resolve, reject) => {
@@ -28,6 +33,7 @@ export async function fetch(host, pathname, ondata = noop) {
     socket.handler = handler(resolve, reject, ondata)
     socket.write('GET ' + pathname + ' HTTP/1.1\nHost: registry.npmjs.org\n\n')
   })
+  cache.set(id, body)
   socket.done()
   return body
 }

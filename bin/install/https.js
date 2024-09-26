@@ -8,9 +8,8 @@ const empty = Buffer.alloc(0)
 const noop = () => { /* noop */ }
 const cache = new Map()
 
-export async function cacheDns() {
-  const host = 'registry.npmjs.org'
-  ips[host] = (await dns.lookup(host)).address
+export async function cacheDns(host) {
+  return ips[host] = (await dns.lookup(host)).address
 }
 
 export function destroy() {
@@ -20,7 +19,7 @@ export function destroy() {
   }
 }
 
-export async function fetch(host, pathname, ondata = noop) {
+export async function fetch(host, pathname, headers = {}, ondata = noop) {
   const id = host + pathname
   if (cache.has(id))
     return cache.get(id)
@@ -31,11 +30,18 @@ export async function fetch(host, pathname, ondata = noop) {
     socket.resolve = resolve
     socket.reject = reject
     socket.handler = handler(resolve, reject, ondata)
-    socket.write('GET ' + pathname + ' HTTP/1.1\nHost: registry.npmjs.org\n\n')
+    socket.write('GET ' + pathname + ' HTTP/1.1\nHost: ' + host + '\n' + setHeaders(headers) + 'User-Agent: sin/0.0.1\n\n')
   })
   cache.set(id, body)
   socket.done()
   return body
+}
+
+function setHeaders(xs) {
+  let x = ''
+  for (const h in xs)
+    x += h + ': ' + xs[h] + '\n'
+  return x
 }
 
 async function create(host) {
@@ -50,7 +56,7 @@ async function create(host) {
 
   const socket = tls.connect({
     port: 443,
-    host: ips[host],
+    host: ips[host] || (await cacheDns(host)),
     servername: host,
     highWaterMark,
     onread: {

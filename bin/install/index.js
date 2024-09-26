@@ -4,11 +4,10 @@ import Path from 'node:path'
 import zlib from 'node:zlib'
 import cp from 'child_process'
 import crypto from 'node:crypto'
-import { Buffer } from 'node:buffer'
 import config from '../config.js'
 import { parsePackage } from '../shared.js'
-import { best, isVersion, isDistTag, satisfies } from './semver.js'
-import { fetch, destroy, cacheDns } from './socket.js'
+import { best, isVersion, isDistTag } from './semver.js'
+import { fetch, destroy, cacheDns } from './https.js'
 
 let lockChanged = false
 let cleaned = false
@@ -37,11 +36,13 @@ const packages = new Map()
 const postInstalls = new Set()
 const symlinked = new Map()
 
-const resolved = Promise.resolve()
 const pkg = await jsonRead('package.json') // || defaultPackage
 const lock = (await jsonRead('package-lock.json')) || defaultLock(pkg)
 const remove = new Set(Object.keys(lock.packages))
 remove.delete('')
+
+await cacheDns('registry.npmjs.org')
+const added = await fromCLI()
 
 const pkgDependencies = {
   ...pkg.optionalDependencies,
@@ -49,8 +50,6 @@ const pkgDependencies = {
   ...pkg.devDependencies
 }
 
-await cacheDns()
-const added = await fromCLI()
 await installDependencies(pkgDependencies)
 
 while (allPeers.length) {
@@ -231,18 +230,43 @@ function addPaths(pkg, parent) {
 }
 
 function fromCLI() {
-  return Promise.all(config._.map(x => {
-    if ('.~/\\'.includes(x[0]) || x.slice(1, 3) === ':\\')
-      return getLocal('file:' + Path.resolve(x[0]))
-    else if (x.startsWith('git://') || x.startsWith('https://'))
-      return getGit(x)
-
-    const pkg = parsePackage(x)
-    if (pkg.name && pkg.pathname)
-      return getGithub('github:' + pkg.name + '/' + pkg.pathname + pkg.hash)
-
-    return getNpm(pkg)
+  return Promise.all(config._.map(async x => {
+    const pkg = await (
+        x.startsWith('file:') || '.~/\\'.includes(x[0]) || x.slice(1, 3) === ':\\'
+      ? addLocal('file:' + Path.resolve(x[0]))
+      : x.startsWith('git+ssh://') || x.startsWith('git+https://') || x.startsWith('git://')
+      ? addGit(x)
+      : x.startsWith('github:') || (x[0] !== '@' && x.indexOf('/') > 1)
+      ? addGithub(x)
+      : x.startsWith('https:')
+      ? addUrl(x)
+      : x.endsWith('.tgz') || x.endsWith('.tar') || x.endsWith('.tar.gz')
+      ? addLocalTarball(x)
+      : fetchVersion(parsePackage(x))
+    )
+    return pkg
   }))
+}
+
+async function addGithub(x) {
+  const pkg = parsePackage(x)
+      , pathname = pkg.name + pkg.pathname
+
+  const auth = process.env.GITHUB_TOKEN ? { Authorization: 'token ' + process.env.GITHUB_TOKEN } : undefined
+  p(auth)
+  const ref = pkg.hash
+    ? pkg.hash.slice(1)
+    : JSON.parse(await fetch('api.github.com', '/repos/' + pathname, auth)).default_branch
+
+  const { sha } = JSON.parse(await fetch('api.github.com', '/repos/' + pathname + '/commits/' + ref, auth))
+  const { name } = auth
+    ? await fetch('api.github.com', '/repos/' + pathname + '/contents/package.json?ref=' + sha, auth).then(x => JSON.parse(x))
+    : await fetch('raw.githubusercontent.com', '/' + pathname + '/' + sha +'/package.json').then(x => JSON.parse(x))
+
+  return {
+    name,
+    version: 'github:' + pathname + hash
+  }
 }
 
 async function getLocal(x) {
@@ -253,7 +277,7 @@ async function getGithub(x) {
   return console.log('Get Github ', x)
 }
 
-async function getNpm(pkg) {
+async function oldAddNpm() {
   const id = (pkg.scope ? pkg.scope + '/' : '') + pkg.name
 
   if ((!pkg.version && id in pkgDependencies) || pkgDependencies[id] === pkg.version) {
@@ -313,7 +337,8 @@ async function install(pkg, parent) {
       fetch(
         host,
         pathname,
-        //(xs, start, end) => hash.update(xs.subarray(start, end))
+        {},
+        (xs, start, end) => hash.update(xs.subarray(start, end))
       ),
       async(body) => {
         pkg.sha512 = hash.digest('base64')
@@ -429,6 +454,12 @@ async function symlink(target, path) {
   if (symlinked.has(id))
     return symlinked.get(id)
 
+  const current = await fsp.readlink(path).catch(() => {})
+  if (current === target)
+    return set(symlinked, id, true)
+  else if (current)
+    await fsp.unlink(path)
+
   return set(
     symlinked,
     id,
@@ -451,6 +482,7 @@ function fetchVersion(x) {
 }
 
 function getVersion({ scope, name, version }) {
+  p(scope, name, version)
   const start = performance.now()
   version || (version = 'latest')
   const pathname = '/' + (scope ? scope + '/' : '') + name + '/' + version
@@ -459,7 +491,7 @@ function getVersion({ scope, name, version }) {
   if (versions.has(id))
     return versions.get(id)
 
-  progress('🔎 ' + id.slice(1))
+  progress('🔎 ' + (scope ? scope + '/' : '') + name + '@' + version)
   lightVersionRequests++
 
   return set(
@@ -510,10 +542,12 @@ function findVersion(pkg) {
         start = performance.now()
         const x = body.toString('utf8')
         const xs = (x.match(/(:{|},)"\d+\.\d+\.\d+[^"]*":{"/g) || []).map(x => x.slice(3, -4))
-        pkg.version = best(pkg.version, xs)
+        pkg.version = best(pkg.version, xs) || pkg.version
         const json = getInfo(pkg.version, x)
         findVersionParseTime += performance.now() - start
-        return set(versions, id, json)
+        return json
+          ? set(versions, id, json)
+          : getVersion(pkg).then(x => set(versions, id, x))
       }
     )
   )
@@ -521,33 +555,37 @@ function findVersion(pkg) {
 
 function getInfo(version, x) {
   const starto = performance.now()
-  version = '"' + version + '":{'
-  let end = -1
-  let l = -1
-  let d = 1
-  let quote = false
-  let start = x.indexOf(version) + version.length
-  for (let i = start; i < x.length; i++) {
-    let c = x.charCodeAt(i)
-    if (c === 34) { // "
-      l !== 92 && (quote = !quote)
-    } else if (quote) {
-      // noop
-    } else if (c === 123) { // {
-      d++
-    } else if (c === 125) { // }
-      d--
+  try {
+    const lookup = '"' + version + '":{'
+    let end = -1
+    let l = -1
+    let d = 1
+    let quote = false
+    let start = x.indexOf(lookup) + lookup.length
+    for (let i = start; i < x.length; i++) {
+      let c = x.charCodeAt(i)
+      if (c === 34) { // "
+        l !== 92 && (quote = !quote)
+      } else if (quote) {
+        // noop
+      } else if (c === 123) { // {
+        d++
+      } else if (c === 125) { // }
+        d--
+      }
+      if (d === 0) {
+        end = i + 1
+        break
+      }
+      l = c
     }
-    if (d === 0) {
-      end = i + 1
-      break
-    }
-    l = c
-  }
 
-  const json = JSON.parse(x.slice(start - 1, end))
-  getInfoTime += performance.now() - starto
-  return json
+    const json = JSON.parse(x.slice(start - 1, end))
+    getInfoTime += performance.now() - starto
+    return json
+  } catch (err) {
+    return
+  }
 }
 
 async function jsonRead(x) {

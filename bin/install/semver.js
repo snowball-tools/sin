@@ -24,9 +24,9 @@ function betterCombo(av, bv, an, ai, bn, bi) {
 }
 
 function lowerCombo(av, bv, an, ai, bn, bi) {
-  return (!an && av >= bv) || (!an && !bn) || (
+  return (!an && av >= bv) || (an && bn && (
     av === bv && (an > bn || (an === bn && ai >= bi))
-  )
+  ))
 }
 
 function upperCombo(av, bv, an, ai, bn, bi) {

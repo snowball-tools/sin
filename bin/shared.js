@@ -12,7 +12,7 @@ export function parsePackage(x) {
   const [_, scope = '', name, version = '', pathname = '', query = '', hash = ''] =
     x.match(/(?:(@[^/@]+)\/)?([^@/?]+)(?:@([^/?#]+))?(\/[^?#]+)?(\?[^/#]+)?(#.+)?/)
 
-  return { scope, name, version, pathname, query, hash }
+  return { scope, name, version, pathname, query, hash, raw: x }
 }
 
 export function extensionless(x, root = '') {

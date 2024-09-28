@@ -142,18 +142,17 @@ function rm(x) {
 async function writePackage(xs) {
   const pkg = await jsonRead('package.json')
   let needsWrite = false
-  for (const { scope, name, version } of xs) {
-    const full = (scope ? scope + '/' : '') + name
+  for (const { name, version } of xs) {
     const x = config.saveDev
       ? pkg.devDependencies || (pkg.devDependencies = {})
       : config.saveOptional
         ? pkg.optionalDependencies || (pkg.optionalDependencies = {})
         : pkg.dependencies || (pkg.dependencies = {})
 
-    if (x[full] === version)
+    if (x[name] === version)
       continue
 
-    x[full] = version
+    x[name] = version
     needsWrite = true
   }
 
@@ -175,7 +174,7 @@ async function installDependencies(dependencies, parent) {
     const pkg = await (
         t === 'local'  ? addLocal('file:' + Path.resolve(version[0]))
       : t === 'git'    ? resolveGit(version)
-      : t === 'https'  ? addUrl(x)
+      : t === 'https'  ? addUrl(version)
       : t === 'tar'    ? addLocalTarball(version)
       : t === 'github' ? resolveGithub(version)
       : t === 'alias'  ? addAlias()
@@ -199,7 +198,7 @@ async function installDependencies(dependencies, parent) {
       return
 
     if (!pkg.version)
-      throw new Error('Could not find version for ' + pkg.scope + '' + pkg.name + ' exp ' + version)
+      throw new Error('Could not find version for ' + pkg.name + ' exp ' + version)
 
     const l = lock.packages[pkg.local]
     remove.delete(pkg.local)
@@ -219,7 +218,6 @@ async function resolveNpm(name, version) {
   pkg.url = { host: 'registry.npmjs.org', pathname: tgzPath(pkg) }
   pkg.resolved = 'https://' + pkg.url.host + pkg.url.pathname
   addPaths(pkg)
-
   return pkg
 }
 
@@ -230,11 +228,9 @@ function then(x, fn) {
 }
 
 function addPaths(pkg) {
-  let { scope, name, version } = pkg
-  name = name.replace(/[#@!:/]/g, '+')
-  version = version.replace(/[#@!:/]/g, '+')
-  pkg.global = Path.join(config.globalPath, (scope ? scope + '+' : '') + name + '@' + version)
-  pkg.local = ('node_modules/.sin/' + (scope ? scope + '+' : '') + name + '@' + version + '/node_modules/' + (scope ? scope + '/' : '') + name)
+  const safeName = pkg.name.replace(/[#@!:/]/g, '+') + '@' + pkg.version.replace(/[#@!:/]/g, '+') // try with empty
+  pkg.global = Path.join(config.globalPath, safeName)
+  pkg.local = Path.join('node_modules', '.sin/', safeName, 'node_modules', ...pkg.name.split('/'))
 }
 
 function fromCLI() {
@@ -390,40 +386,13 @@ async function getGithub(x) {
   return console.log('Get Github ', x)
 }
 
-async function oldAddNpm(pkg) {
-  const id = (pkg.scope ? pkg.scope + '/' : '') + pkg.name
-
-  if ((!pkg.version && id in pkgDependencies) || pkgDependencies[id] === pkg.version) {
-    pkg.version = pkgDependencies[id].version
-    return pkg
-  }
-
-  // can we shortcut and use installDependencies()?
-  if (!pkg.version || !semver.isVersion(pkg.version))
-    pkg.version = await getVersion(pkg)
-
-  addPaths(pkg)
-
-  if (pkg.local in lock.packages) {
-    const l = lock.packages[pkg.local]
-    if (l.version === pkg.version) {
-      remove.delete(pkg.local)
-      return pkg
-    }
-  }
-  p(pkg)
-  throw 1
-  return install(pkg)
-}
-
 function tgzPath({ name, version }) {
   return '/' + name + '/-/' + (name.split('/')[1] || name) + '-' + version.split('+')[0] + '.tgz'
 }
 
 function install(pkg, parent) {
-  const { scope, name, version, global, local } = pkg
-      , full = (scope ? scope + '/' : '') + name
-      , id = full + '@' + version
+  const { name, version, global, local } = pkg
+      , id = name + '@' + version
 
   if (packages.has(global))
     return then(packages.get(global), ({ tar, local }) => local === pkg.local ? pkg : installed(pkg, tar))
@@ -480,9 +449,9 @@ function install(pkg, parent) {
       integrity: 'sha512-' + pkg.sha512
     }
 
-    parent || (lock.packages[''].dependencies[full] = pkg.package.version)
+    parent || (lock.packages[''].dependencies[pkg.name] = pkg.package.version)
     pkg.package.scripts?.postinstall && postInstalls.push(pkg)
-    Object.entries(pkg.package.bin === 'string' ? { [pkg.name]: pkg.package.bin } : pkg.package.bin || {}).forEach(([name, file]) => addBin(name, file, pkg.local))
+    Object.entries(pkg.package.bin === 'string' ? { [pkg.name.split('/').pop()]: pkg.package.bin } : pkg.package.bin || {}).forEach(([name, file]) => addBin(name, file, pkg.local))
 
     const peers = pkg.package.peerDependencies
     if (peers && pkg.package.peerDependenciesMeta) {
@@ -501,12 +470,12 @@ function install(pkg, parent) {
   }
 }
 
-function symlinkIt({ scope = '', name, version, local }, parent) {
+function symlinkIt(pkg, parent) {
   if (!parent)
-    return symlink(local.slice(13), Path.join('node_modules', scope, name))
+    return symlink(Path.join(pkg.name[0] === '@' ? '..' : '', pkg.local.slice(13)), Path.join('node_modules', ...pkg.name.split('/')))
 
-  const path = Path.join(Path.dirname(parent.local), ...name.split('/'))
-  return symlink(Path.relative(path, local).slice(3), path)
+  const path = Path.join(parent.local.slice(0, parent.local.lastIndexOf('node_modules') + 12), ...pkg.name.split('/'))
+  return symlink(Path.relative(path, pkg.local).slice(3), path)
 }
 
 async function untar(pkg, x, write = true) {
@@ -595,16 +564,16 @@ function fetchVersion(x) {
     : findVersion(x)
 }
 
-function getVersion({ scope, name, version }) {
+function getVersion({ name, version }) {
   const start = performance.now()
   version || (version = 'latest')
-  const pathname = '/' + (scope ? scope + '/' : '') + name + '/' + version
+  const pathname = '/' + name + '/' + version
   const id = pathname + '@' + version
 
   if (versions.has(id))
     return versions.get(id)
 
-  progress('🔎 ' + (scope ? scope + '/' : '') + name + '@' + version)
+  progress('🔎 ' + name + '@' + version)
   lightVersionRequests++
 
   return set(
@@ -633,7 +602,7 @@ function findVersion(pkg) {
   let start = performance.now()
   pkg.version || (pkg.version = 'latest')
 
-  const pathname = '/' + (pkg.scope ? pkg.scope + '/' : '') + pkg.name
+  const pathname = '/' + pkg.name
       , id = pathname + '@' + pkg.version
 
   if (versions.has(id))

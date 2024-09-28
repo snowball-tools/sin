@@ -6,8 +6,8 @@ import cp from 'child_process'
 import crypto from 'node:crypto'
 import config from '../config.js'
 import { parsePackage } from '../shared.js'
-import { best, isVersion, isDistTag } from './semver.js'
-import { fetch, destroy, cacheDns } from './https.js'
+import * as semver from './semver.js'
+import * as https from './https.js'
 
 let lockChanged = false
 let cleaned = false
@@ -25,29 +25,31 @@ let findVersionFetchTime = 0
 let findVersionParseTime = 0
 let getInfoTime = 0
 
+const noop = () => { /* noop */ }
 const host = 'registry.npmjs.org'
 const overwrite = () => process.stdout.write('\x1B[F\x1B[2K')
-const p = (...xs) => (ani >= 0 && overwrite(), ani = -1, console.log(...xs), xs[0])
+const p = (...xs) => (ani >= 0 && overwrite(), ani = -1, console.log(...xs), xs[xs.length - 1])
 const progress = (...x) => (ani >= 0 && overwrite(), ani++, console.log(...x))
 
 const dirs = new Map()
 const versions = new Map()
 const packages = new Map()
-const postInstalls = new Set()
+const postInstalls = []
 const symlinked = new Map()
+const resolved = new Map()
 
-const pkg = await jsonRead('package.json') // || defaultPackage
-const lock = (await jsonRead('package-lock.json')) || defaultLock(pkg)
+const packageJson = await jsonRead('package.json') // || defaultPackage
+const lock = (await jsonRead('package-lock.json')) || defaultLock(packageJson)
 const remove = new Set(Object.keys(lock.packages))
 remove.delete('')
 
-await cacheDns('registry.npmjs.org')
+await mkdir(config.globalPath)
 const added = await fromCLI()
 
 const pkgDependencies = {
-  ...pkg.optionalDependencies,
-  ...pkg.dependencies,
-  ...pkg.devDependencies
+  ...packageJson.optionalDependencies,
+  ...packageJson.dependencies,
+  ...packageJson.devDependencies
 }
 
 await installDependencies(pkgDependencies)
@@ -60,12 +62,14 @@ while (allPeers.length) {
   ))
 }
 
-destroy()
+https.destroy()
 cleanup()
-// postInstall()
+await postInstall()
 
-writeLock()
-await writePackage(added)
+if (!config.ci) {
+  writeLock()
+  await writePackage(added)
+}
 
 p('requests', { versionRequests, tgzRequests, lightVersionRequests })
 p('times', { tgzDownloadTime, tgzUnzipTime, tarTime })
@@ -106,17 +110,18 @@ function cleanup() {
 }
 
 function postInstall() {
-  for (const x of postInstalls) {
-    p('Execute', x.package.scripts.postinstall, x.package.local)
-    p(cp.execSync(x.package.scripts.postinstall, {
-      stdio: 'inherit',
-      cwd: x.package.local,
-      env: {
-        ...process.env,
-        INIT_CWD: process.cwd()
-      }
-    }))
-  }
+  return Promise.all(postInstalls.map(x =>
+    new Promise((resolve, reject) =>
+      cp.exec(x.package.scripts.postinstall, {
+        stdio: 'inherit',
+        cwd: x.local,
+        env: {
+          ...process.env,
+          INIT_CWD: process.cwd()
+        }
+      }, (err, stdout, stderr) => err ? reject(err) : resolve())
+    )
+  ))
 }
 
 function rm(x) {
@@ -165,20 +170,18 @@ function sort(x) {
 }
 
 async function installDependencies(dependencies, parent) {
-  const installs = []
-  await Promise.all(Object.entries(dependencies).map(async([name, v]) => {
-    if (v.startsWith('~/') || v.startsWith('/') || v.startsWith('.') || v.indexOf(':\\') === 1 || v.indexOf('file:') === 0)
-      return p('Cannot use', v)
-
-    if (v.indexOf('github:') === 0)
-      return p('Cannot use', v)
-
-    if (v.indexOf('git@') === 0)
-      return p('Cannot use', v)
-
-    const pkg = v.indexOf('npm:') === 0
-      ? parsePackage(v.slice(4))
-      : parsePackage(name + '@' + v)
+  await Promise.all(Object.entries(dependencies).map(async([name, version]) => {
+    const t = resolveType(version)
+    const pkg = await (
+        t === 'local'  ? addLocal('file:' + Path.resolve(version[0]))
+      : t === 'git'    ? resolveGit(version)
+      : t === 'https'  ? addUrl(x)
+      : t === 'tar'    ? addLocalTarball(version)
+      : t === 'github' ? resolveGithub(version)
+      : t === 'alias'  ? addAlias()
+      : t === 'npm'    ? resolveNpm(name, version)
+      : Promise.reject('Unknown type')
+    )
 
     /*
     // We could traverse from node_modules/pkgname > to find the proper lookup in pkglock
@@ -189,23 +192,17 @@ async function installDependencies(dependencies, parent) {
       :
     */
 
-    const { version, os, cpu } = await fetchVersion(pkg)
-    if (os && os.length && !os.some(x => x === process.platform))
+    if (pkg.os && pkg.os.length && !pkg.os.some(x => x === process.platform))
       return
 
-    if (cpu && cpu.length && !cpu.some(x => x === process.arch))
+    if (pkg.cpu && pkg.cpu.length && !pkg.cpu.some(x => x === process.arch))
       return
 
-    if (!version)
-      throw new Error('Could not find version for ' + pkg.scope + '' + pkg.name + ' exp ' + pkg.version)
-
-    pkg.version = version
-    addPaths(pkg, parent)
+    if (!pkg.version)
+      throw new Error('Could not find version for ' + pkg.scope + '' + pkg.name + ' exp ' + version)
 
     const l = lock.packages[pkg.local]
     remove.delete(pkg.local)
-
-    pkg.url = 'https://registry.npmjs.org' + tgzPath(pkg)
     packages.has(pkg.global)
       ? then(packages.get(pkg.global), () => symlinkIt(pkg, parent)) // packages.get(pkg.global).then(() => installed(pkg))
       : await install(pkg, parent)
@@ -217,56 +214,172 @@ async function installDependencies(dependencies, parent) {
   }
 }
 
+async function resolveNpm(name, version) {
+  const pkg = await fetchVersion(parsePackage(name + '@' + version))
+  pkg.url = { host: 'registry.npmjs.org', pathname: tgzPath(pkg) }
+  pkg.resolved = 'https://' + pkg.url.host + pkg.url.pathname
+  addPaths(pkg)
+
+  return pkg
+}
+
 function then(x, fn) {
   return typeof x.then === 'function'
     ? x.then(fn)
     : fn(x)
 }
 
-function addPaths(pkg, parent) {
-  const { scope, name, version } = pkg
+function addPaths(pkg) {
+  let { scope, name, version } = pkg
+  name = name.replace(/[#@!:/]/g, '+')
+  version = version.replace(/[#@!:/]/g, '+')
   pkg.global = Path.join(config.globalPath, (scope ? scope + '+' : '') + name + '@' + version)
-  pkg.local = 'node_modules/.sin/' + (scope ? scope + '+' : '') + name + '@' + version + '/node_modules/' + (scope ? scope + '/' : '') + name
+  pkg.local = ('node_modules/.sin/' + (scope ? scope + '+' : '') + name + '@' + version + '/node_modules/' + (scope ? scope + '/' : '') + name)
 }
 
 function fromCLI() {
   return Promise.all(config._.map(async x => {
+    const t = resolveType(x)
     const pkg = await (
-        x.startsWith('file:') || '.~/\\'.includes(x[0]) || x.slice(1, 3) === ':\\'
-      ? addLocal('file:' + Path.resolve(x[0]))
-      : x.startsWith('git+ssh://') || x.startsWith('git+https://') || x.startsWith('git://')
-      ? addGit(x)
-      : x.startsWith('github:') || (x[0] !== '@' && x.indexOf('/') > 1)
-      ? addGithub(x)
-      : x.startsWith('https:')
-      ? addUrl(x)
-      : x.endsWith('.tgz') || x.endsWith('.tar') || x.endsWith('.tar.gz')
-      ? addLocalTarball(x)
+        t === 'local'  ? resolveLocal('file:' + Path.resolve(x[0]))
+      : t === 'git'    ? resolveGit(x)
+      : t === 'https'  ? resolveUrl(x)
+      : t === 'tar'    ? resolveLocalTarball(x)
+      : t === 'github' ? resolveGithub(x)
+      : t === 'alias'  ? resolveAlias(x)
       : fetchVersion(parsePackage(x))
     )
+
+    const deps = config.saveDev
+      ? packageJson.devDependencies || (packageJson.devDependencies = {})
+      : config.saveOptional
+        ? packageJson.optionalDependencies || (packageJson.optionalDependencies = {})
+        : packageJson.dependencies || (packageJson.dependencies = {})
+
+    if (deps[pkg.name] !== pkg.version)
+      deps[pkg.name] = pkg.version
+
     return pkg
   }))
 }
 
-async function addGithub(x) {
-  const pkg = parsePackage(x)
-      , pathname = pkg.name + pkg.pathname
+function resolveType(x) {
+  return x.startsWith('file:') || x.startsWith('~/') || x.startsWith('/') || x.startsWith('./') || x.slice(1, 3) === ':\\' || x.startsWith('.\\')
+    ? 'local'
+    : x.startsWith('git+ssh:') || x.startsWith('git+https:') || x.startsWith('git:') || x.startsWith('git@')
+    ? 'git'
+    : x.startsWith('https:')
+    ? 'https'
+    : x.endsWith('.tgz') || x.endsWith('.tar') || x.endsWith('.tar.gz')
+    ? 'tar'
+    : x.startsWith('github:') || (x[0] !== '@' && x.indexOf('/') > 1)
+    ? 'github'
+    : x.startsWith('npm:')
+    ? 'alias'
+    : 'npm'
+}
 
-  const auth = process.env.GITHUB_TOKEN ? { Authorization: 'token ' + process.env.GITHUB_TOKEN } : undefined
-  p(auth)
-  const ref = pkg.hash
-    ? pkg.hash.slice(1)
-    : JSON.parse(await fetch('api.github.com', '/repos/' + pathname, auth)).default_branch
+async function resolveAlias() {
+  throw 'support for npm: alias not implemented'
+}
 
-  const { sha } = JSON.parse(await fetch('api.github.com', '/repos/' + pathname + '/commits/' + ref, auth))
-  const { name } = auth
-    ? await fetch('api.github.com', '/repos/' + pathname + '/contents/package.json?ref=' + sha, auth).then(x => JSON.parse(x))
-    : await fetch('raw.githubusercontent.com', '/' + pathname + '/' + sha +'/package.json').then(x => JSON.parse(x))
+async function resolveLocal() {
+  throw 'support for local paths not implemented'
+}
 
-  return {
-    name,
-    version: 'github:' + pathname + hash
-  }
+async function $(x, args, o) {
+  return new Promise((resolve, reject) => {
+    const xs = []
+    let stderr = ''
+    const child = cp.spawn(x, args, { stdio: 'pipe', ...o })
+    child.stdout.on('data', x => xs.push(x))
+    child.stderr.on('data', x => stderr += x)
+    child.on('close', () => stderr ? reject(stderr) : resolve(Buffer.concat(xs)))
+    child.on('error', reject)
+  })
+}
+
+async function resolveGit(x) {
+  if (resolved.has(x))
+    return resolved.get(x)
+
+  return set(
+    resolved,
+    x,
+    (async() => {
+      let [pathname, ref = 'HEAD'] = x.split('#')
+        , temp = Path.join(config.home, '.temp', Math.random().toString(36).slice(2))
+
+      try {
+        await mkdir(temp)
+        await $('git', ['clone', '-q', '--tags', '--depth=1', pathname.replace(/^git\+/, ''), 'x'], { cwd: temp })
+        const cwd = Path.join(temp, 'x')
+        await $('git', ['fetch', '-q', '--depth=1', '--tags'], { cwd })
+        const sha = (await $('git', ['rev-parse', ref], { cwd, stdio: 'pipe' })).toString().trim()
+        await $('git', ['fetch', '-q', '--depth=1', 'origin', sha], { cwd })
+        await $('git', ['checkout', '-q', sha], { cwd })
+        await $('git', ['archive', '--format=tar', '--prefix=package/', '-o', temp + '.tar', 'HEAD'], { cwd })
+
+        const pkg = JSON.parse(await $('git', ['--no-pager', 'show', 'HEAD:package.json'], { cwd }))
+
+        pkg.version = pathname
+        pkg.resolved = pathname + '#' + sha
+
+        addPaths(pkg)
+
+        fsp.rename(temp + '.tar', pkg.global)
+
+        return set(resolved, x, pkg)
+      } finally {
+        await fsp.rm(temp, { recursive: true })
+      }
+    })()
+  )
+}
+
+async function resolveLocalTarball() {
+  throw 'support for local tarballs not implemented'
+}
+
+async function resolveUrl() {
+  throw 'support for url tarballs not implemented'
+}
+
+async function resolveGithub(x) {
+  x = x.replace(/^github:/, '')
+  if (resolved.has(x))
+    return resolved.get(x)
+
+  return set(
+    resolved,
+    x,
+    (async() => {
+      let pkg = parsePackage(x)
+        , pathname = pkg.name + pkg.pathname
+
+      const auth = process.env.GITHUB_TOKEN ? { Authorization: 'token ' + process.env.GITHUB_TOKEN } : undefined
+      const info = JSON.parse(await https.fetch('api.github.com', '/repos/' + pathname, auth))
+
+      const ref = pkg.hash
+        ? pkg.hash.slice(1)
+        : info.default_branch
+
+      const { sha } = JSON.parse(await https.fetch('api.github.com', '/repos/' + pathname + '/commits/' + ref, auth))
+      pkg = auth
+        ? await https.fetch('api.github.com', '/repos/' + pathname + '/contents/package.json?ref=' + sha, auth).then(x => JSON.parse(Buffer.from(JSON.parse(x).content, 'base64')))
+        : await https.fetch('raw.githubusercontent.com', '/' + pathname + '/' + sha + '/package.json').then(x => JSON.parse(x))
+
+      pkg.version = 'github:' + pathname + '#' + sha
+      pkg.url = auth
+        ? { host: 'api.github.com', pathname: '/repos/' + pathname + '/tarball/' + sha, headers: auth }
+        : { host: 'codeload.github.com', pathname: '/' + pathname + '/tar.gz/' + sha }
+      pkg.resolved = 'https://' + pkg.url.host + pkg.url.pathname
+
+      addPaths(pkg)
+
+      return set(resolved, x, pkg)
+    })()
+  )
 }
 
 async function getLocal(x) {
@@ -277,7 +390,7 @@ async function getGithub(x) {
   return console.log('Get Github ', x)
 }
 
-async function oldAddNpm() {
+async function oldAddNpm(pkg) {
   const id = (pkg.scope ? pkg.scope + '/' : '') + pkg.name
 
   if ((!pkg.version && id in pkgDependencies) || pkgDependencies[id] === pkg.version) {
@@ -286,7 +399,7 @@ async function oldAddNpm() {
   }
 
   // can we shortcut and use installDependencies()?
-  if (!pkg.version || !isVersion(pkg.version))
+  if (!pkg.version || !semver.isVersion(pkg.version))
     pkg.version = await getVersion(pkg)
 
   addPaths(pkg)
@@ -298,15 +411,16 @@ async function oldAddNpm() {
       return pkg
     }
   }
-
+  p(pkg)
+  throw 1
   return install(pkg)
 }
 
-function tgzPath({ scope, name, version }) {
-  return '/' + (scope ? scope + '/' + name : name) + '/-/' + name + '-' + version.split('+')[0] + '.tgz'
+function tgzPath({ name, version }) {
+  return '/' + name + '/-/' + (name.split('/')[1] || name) + '-' + version.split('+')[0] + '.tgz'
 }
 
-async function install(pkg, parent) {
+function install(pkg, parent) {
   const { scope, name, version, global, local } = pkg
       , full = (scope ? scope + '/' : '') + name
       , id = full + '@' + version
@@ -314,19 +428,15 @@ async function install(pkg, parent) {
   if (packages.has(global))
     return then(packages.get(global), ({ tar, local }) => local === pkg.local ? pkg : installed(pkg, tar))
 
-  if (false && fs.existsSync(pkg.local)) {
+  if (false && fs.existsSync(pkg.local)) { // is this needed?
     pkg.package = JSON.parse(fs.readFileSync(Path.join(pkg.local, 'package.json')))
     return installed(pkg)
   }
 
   if (fs.existsSync(global))
-    return packages.set(global, fsp.readFile(global).then(tar => (pkg.tar = tar, fromGlobal(pkg, tar)))).get(global)
+    return set(packages, global, then(fsp.readFile(global), tar => (pkg.tar = tar, fromGlobal(pkg, tar))))
 
   const hash = crypto.createHash('sha512')
-      , pathname = tgzPath(pkg)
-
-  pkg.url = 'https://' + host + pathname
-
   progress('⏳ ' + id)
   tgzRequests++
   let start = performance.now()
@@ -334,10 +444,10 @@ async function install(pkg, parent) {
     packages,
     global,
     then(
-      fetch(
-        host,
-        pathname,
-        {},
+      https.fetch(
+        pkg.url.host,
+        pkg.url.pathname,
+        pkg.url.headers,
         (xs, start, end) => hash.update(xs.subarray(start, end))
       ),
       async(body) => {
@@ -366,12 +476,12 @@ async function install(pkg, parent) {
     lockChanged = true
     lock.packages[pkg.local] = {
       version: pkg.package.version,
-      resolved: pkg.url,
+      resolved: pkg.resolved,
       integrity: 'sha512-' + pkg.sha512
     }
 
     parent || (lock.packages[''].dependencies[full] = pkg.package.version)
-    pkg.package.scripts?.postinstall && postInstalls.add(pkg)
+    pkg.package.scripts?.postinstall && postInstalls.push(pkg)
     Object.entries(pkg.package.bin === 'string' ? { [pkg.name]: pkg.package.bin } : pkg.package.bin || {}).forEach(([name, file]) => addBin(name, file, pkg.local))
 
     const peers = pkg.package.peerDependencies
@@ -391,21 +501,20 @@ async function install(pkg, parent) {
   }
 }
 
-function symlinkIt({ scope, name, version, local }, parent) {
-  return parent
-    ? symlink(
-        Path.join('..', '..', scope ? '..' : '', (scope ? scope + '+' : '') + name + '@' + version, 'node_modules', scope, name),
-        Path.join(parent.local.slice(0, parent.local.lastIndexOf('node_modules/') + 12), scope, name)
-      )
-    : symlink(
-      Path.join(scope ? '..' : '', local.slice(13)),
-      Path.join('node_modules', scope, name)
-    )
+function symlinkIt({ scope = '', name, version, local }, parent) {
+  if (!parent)
+    return symlink(local.slice(13), Path.join('node_modules', scope, name))
+
+  const path = Path.join(Path.dirname(parent.local), ...name.split('/'))
+  return symlink(Path.relative(path, local).slice(3), path)
 }
 
-async function untar(pkg, x) {
+async function untar(pkg, x, write = true) {
   const start = performance.now()
+  const writeFile = write ? fsp.writeFile : noop
+  const writeDir = write ? mkdir : noop
   let size = 0
+    , mode = 0
     , target = ''
     , output = ''
     , l = -2
@@ -426,15 +535,15 @@ async function untar(pkg, x) {
     output = Path.join(pkg.local, target)
 
     if (x[n + 156] === 53 || x[h - 1] === 47) { // /
-      await mkdir(output)
+      await writeDir(output)
       n += 512
     } else {
       size = parseInt(x.toString('utf8', n + 124, n + 136).trim(), 8)
       if (x[n + 156] !== 103) {
         const file = x.subarray(n + 512, n + 512 + size)
         target === 'package.json' && (pkg.package = JSON.parse(file))
-        await mkdir(Path.dirname(output))
-        await fsp.writeFile(output, file)
+        await writeDir(Path.dirname(output))
+        await writeFile(output, file, { mode: x[103] === 53 || x[103] === 55 ? 0o766 : 0o666 })
       }
       n += 512 + Math.ceil(size / 512) * 512
     }
@@ -463,7 +572,12 @@ async function symlink(target, path) {
   return set(
     symlinked,
     id,
-    then(then(mkdir(Path.dirname(path)), () => fsp.symlink(target, path)), () => set(symlinked, id, true))
+    then(
+      then(
+        mkdir(Path.dirname(path)),
+        () => fsp.symlink(target, path).catch(() => fsp.rm(path, { recursive: true }).then(() => fsp.symlink(target, path)))),
+      () => set(symlinked, id, true)
+    )
   )
 }
 
@@ -476,13 +590,12 @@ function addBin(name, file, local) {
 }
 
 function fetchVersion(x) {
-  return !x.version || isVersion(x.version) || isDistTag(x.version)
+  return !x.version || semver.isVersion(x.version) || semver.isDistTag(x.version)
     ? getVersion(x)
     : findVersion(x)
 }
 
 function getVersion({ scope, name, version }) {
-  p(scope, name, version)
   const start = performance.now()
   version || (version = 'latest')
   const pathname = '/' + (scope ? scope + '/' : '') + name + '/' + version
@@ -498,7 +611,7 @@ function getVersion({ scope, name, version }) {
     versions,
     id,
     then(
-      fetch(
+      https.fetch(
         host,
         pathname
       ),
@@ -533,7 +646,7 @@ function findVersion(pkg) {
     versions,
     id,
     then(
-      fetch(
+      https.fetch(
         host,
         pathname
       ),
@@ -542,7 +655,7 @@ function findVersion(pkg) {
         start = performance.now()
         const x = body.toString('utf8')
         const xs = (x.match(/(:{|},)"\d+\.\d+\.\d+[^"]*":{"/g) || []).map(x => x.slice(3, -4))
-        pkg.version = best(pkg.version, xs) || pkg.version
+        pkg.version = semver.best(pkg.version, xs) || pkg.version
         const json = getInfo(pkg.version, x)
         findVersionParseTime += performance.now() - start
         return json
@@ -598,14 +711,14 @@ async function jsonRead(x) {
 
 function defaultLock(x) {
   return {
-    name: pkg.name,
-    version: pkg.version,
+    name: packageJson.name,
+    version: packageJson.version,
     lockfileVersion: 3,
     requires: true,
     packages: {
       '': {
-        name: pkg.name,
-        version: pkg.version,
+        name: packageJson.name,
+        version: packageJson.version,
         dependencies: {}
       }
     }

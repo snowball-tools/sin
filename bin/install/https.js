@@ -3,11 +3,9 @@ import dns from 'node:dns/promises'
 
 const ips = {}
 const open = {}
-const cache = new Map()
 const empty = Buffer.alloc(0)
 const highWaterMark = 128 * 1024
 const noop = () => { /* noop */ }
-const p = (...xs) => (console.log(...xs), xs[xs.length - 1])
 
 export async function cacheDns(host) {
   return ips[host] = (await dns.lookup(host)).address
@@ -21,10 +19,6 @@ export function destroy() {
 }
 
 export async function fetch(host, pathname, headers = {}, ondata = noop) {
-  const id = host + pathname
-  if (cache.has(id))
-    return cache.get(id)
-
   const hosts = open[host]
   const socket = hosts && hosts.pop() || (await create(host))
   const body = await new Promise((resolve, reject) => {
@@ -33,7 +27,6 @@ export async function fetch(host, pathname, headers = {}, ondata = noop) {
     socket.handler = handler(resolve, reject, ondata, host, pathname)
     socket.write('GET ' + pathname + ' HTTP/1.1\nHost: ' + host + '\n' + setHeaders(headers) + 'User-Agent: sin/0.0.1\n\n')
   })
-  cache.set(id, body)
   socket.done()
   return body
 }

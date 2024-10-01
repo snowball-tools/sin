@@ -475,5 +475,29 @@ t`Routing`(
       s.redraw.force()
       t.is(x, w.x?.textContent)
     }
+  }),
+
+  t`Nested wildcard`(() => {
+    s.mount(({ }, [], { route }) => [
+      route({
+        '/': () => s`#x`('/'),
+        '/d': s(({ }, [], { route }) => {
+          return () => route({
+            '/': () => s`#x`('/d'),
+            '/*': window.haha = function yo({}, [], { route }) {
+              return route({
+                '/wat': () => s`#x`('/d/wat')
+              })
+            }
+          })
+        })
+      })
+    ])
+
+    for (const x of ['/', '/d', '/d/wat']) {
+      s.route(x)
+      s.redraw.force()
+      t.is(x, w.x?.textContent)
+    }
   })
 )

@@ -25,7 +25,7 @@ function params(path, xs) {
 export default function router(s, root, rootContext, parent) {
   const location = route.location = rootContext.location
   const routed = s(({ key, route, ...attrs }, [view], context) => { // eslint-disable-line
-    context.route = router(s, key.replace(/\/$/, ''), rootContext, route)
+    context.route = router(s, key.replace(/[/*?]$/, ''), rootContext, route)
     route.key = key
     return () => resolve(view, attrs, context)
   })
@@ -105,7 +105,7 @@ export default function router(s, root, rootContext, parent) {
     const path = getPath(location, root.length)
         , pathTokens = tokenizePath(path)
         , { match, view } = matchRoutes(routes, pathTokens)
-        , key = root + (match ? match.map((x, i) => x === '/*' ? '' : x === '/?' ? '?' : pathTokens[i]).join('') : '?')
+        , key = root + (match ? match.map((x, i) => x === '/*' ? '*' : x === '/?' ? '?' : pathTokens[i]).join('') : '?')
 
     if (view === undefined || match[0] === '/?')
       rootContext.doc.status(404)

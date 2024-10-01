@@ -5,7 +5,6 @@ const ips = {}
 const open = {}
 const empty = Buffer.alloc(0)
 const highWaterMark = 128 * 1024
-const noop = () => { /* noop */ }
 
 export async function cacheDns(host) {
   return ips[host] = (await dns.lookup(host)).address
@@ -18,13 +17,13 @@ export function destroy() {
   }
 }
 
-export async function fetch(host, pathname, headers = {}, ondata = noop) {
+export async function fetch(host, pathname, headers = {}) {
   const hosts = open[host]
   const socket = hosts && hosts.pop() || (await create(host))
   const body = await new Promise((resolve, reject) => {
     socket.resolve = resolve
     socket.reject = reject
-    socket.handler = handler(resolve, reject, ondata, host, pathname)
+    socket.handler = handler(resolve, reject, host, pathname)
     socket.write('GET ' + pathname + ' HTTP/1.1\nHost: ' + host + '\n' + setHeaders(headers) + 'User-Agent: sin/0.0.1\n\n')
   })
   socket.done()
@@ -76,7 +75,7 @@ async function create(host) {
   }
 }
 
-function handler(resolve, reject, ondata, host, pathname) {
+function handler(resolve, reject, host, pathname) {
   let l = -1
     , n = 1
     , c = 0
@@ -177,7 +176,6 @@ function handler(resolve, reject, ondata, host, pathname) {
   function read(xs, start, end) {
     xs.copy(body, body.byteLength - l, start, end)
     l -= end - start
-    ondata(xs, start, end)
     if (l <= 0)
       done(body, xs, end)
   }

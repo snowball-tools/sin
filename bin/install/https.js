@@ -7,7 +7,7 @@ const empty = Buffer.alloc(0)
 const highWaterMark = 128 * 1024
 
 export async function cacheDns(host) {
-  return ips[host] = (await dns.lookup(host)).address
+  return ips[host] = (await dns.lookup(host).catch(() => dns.lookup(host)).catch(() => dns.lookup(host))).address
 }
 
 export function destroy() {

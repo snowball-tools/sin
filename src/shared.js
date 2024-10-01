@@ -9,7 +9,7 @@ export function cleanSlash(x) {
 }
 
 export function cleanHref(x) {
-  return cleanSlash(x).replace('/?', '?')
+  return x && cleanSlash(x).replace('/?', '?')
 }
 
 export function notValue(x) {

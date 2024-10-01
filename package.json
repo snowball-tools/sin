@@ -18,6 +18,7 @@
   },
   "exports": {
     ".": "./src/index.js",
+    "./bin/color": "./bin/color.js",
     "./env": "./bin/env.js",
     "./build": "./shared/build/index.js",
     "./server": "./shared/server/index.js",

@@ -257,7 +257,7 @@ function getChromePath(x, xs) {
 
 export async function resolve() {
   const cwd = process.cwd()
-      , hasExport = config.entry && exportsDefault(await fsp.readFile(config.entry, 'utf8'))
+      , hasExport = config.entry && exportsDefault('\n' + await fsp.readFile(config.entry, 'utf8'))
       , main = hasExport && (globalThis.window = (await import('../ssr/window.js')).default, await import(config.entry))
       , http = main && typeof main.default === 'function' && main
       , src = !http && !config.noscript && path.relative(config.cwd, config.entry)

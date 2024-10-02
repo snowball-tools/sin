@@ -1,6 +1,8 @@
 import path from 'node:path'
 import fs from 'node:fs'
 
+Object.assign(process.env, load())
+
 export default function load(env = path.join(process.cwd(), '.env')) {
   const xs = {}
   try {

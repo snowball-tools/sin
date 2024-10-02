@@ -4,7 +4,6 @@ import cp from 'node:child_process'
 import fsp from 'node:fs/promises'
 import url from 'node:url'
 import path from 'node:path'
-import loadEnv from './env.js'
 import { getLocal, getTSConfigRaw, getPkgs, getSucrase, isScript, extensionless, canRead } from './shared.js'
 
 import args from './args.js'
@@ -59,7 +58,6 @@ async function fromArgs() {
       install   : 0
     },
     parameters: {
-      env         : getEnv,
       publicDir   : '+public',
       outputDir   : '+build',
       entry       : getEntry,
@@ -167,15 +165,9 @@ export function error(x) {
   process.exit(1)
 }
 
-function getEnv(x, xs) {
-  x = x || env.SIN_ENV
-  if (!xs.acme || x && !env.SIN_ENV) {
-    Object.assign(process.env, loadEnv(x || undefined))
-  }
-  return x
-}
-
-async function getCWD() {
+async function getCWD(x, xs) {
+  if (!xs.acme)
+    await import('./env.js')
   return process.cwd()
 }
 

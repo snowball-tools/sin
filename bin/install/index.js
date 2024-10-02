@@ -5,7 +5,7 @@ import path from 'node:path'
 import prexit from '../prexit.js'
 
 import '../favicon.js'
-import '../config.js'
+import env from '../env.js'
 import Proxy from './proxy.js'
 
 const cwd = process.cwd()

@@ -1,5 +1,6 @@
 import path from 'path'
 import ESBuild from 'esbuild'
+import 'sin/env'
 import { extensionless, getLocal } from '../../bin/shared.js'
 
 export default async function(x = {}) {

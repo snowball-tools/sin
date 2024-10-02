@@ -3,7 +3,6 @@ import path from 'path'
 import config from '../config.js'
 import { isScript } from '../shared.js'
 
-config.develop = true
 await import('../develop/index.js')
 
 async function run(root) {

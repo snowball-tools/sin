@@ -129,6 +129,7 @@ function needsEntry(config) {
 }
 
 export function getEntry(x, config) {
+  config.test && (config.develop = true)
   x = x || config._[0] || (config.test ? 'tests/index.js' : '')
   x = path.isAbsolute(x) ? x : path.join(process.cwd(), x)
   let file = isScript(x) && path.basename(x)

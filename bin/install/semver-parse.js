@@ -89,7 +89,7 @@ function parseFusion(x, pi = x.indexOf('-'), bi = x.indexOf('+')) {
     prerelease: prerelease ? prerelease[0] : undefined,
     prereleaseVersion: prerelease ? ~~(prerelease[1] || 0) : undefined,
     build: build ? build[0] : undefined,
-    buildVersion: build ? ~~(build[1] || 0) : undefined,
+    buildVersion: build ? ~~(build[1] || 0) : undefined
   }
 }
 

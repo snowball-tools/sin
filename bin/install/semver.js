@@ -32,7 +32,7 @@ function lowerCombo(av, bv, an, ai, bn, bi) {
 function upperCombo(av, bv, an, ai, bn, bi) {
   return av < bv || !an || (!an && !bn) || (
     av === bv &&
-    (an < bn || (an === bn && ai < bi))
+    (an < bn || (an === bn && ai < bi))
   )
 }
 
@@ -201,7 +201,7 @@ export function parseVersion(x) {
     } else if (c === 43) { // +
       parts()
       bi = i + 1
-    } else if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122)) { // A Z a z
+    } else if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122)) { // A Z a z
       pi === -1 && (parts(), pi = i)
     }
     i++

@@ -11,8 +11,7 @@ import * as https from './https.js'
 import c from '../color.js'
 
 let lockChanged = false
-let cleaned = false
-let ani = -1
+let clear = false
 let getVersionRequests = 0
 let findVersionRequests = 0
 let cachedVersionRequests = 0
@@ -32,8 +31,8 @@ const set = (xs, id, x) => (xs.set(id, x), x)
 const noop = () => { /* noop */ }
 const host = 'registry.npmjs.org'
 const overwrite = () => process.stdout.write('\x1B[F\x1B[2K')
-const p = (...xs) => (ani >= 0 && overwrite(), ani = -1, console.log(...xs), xs[xs.length - 1])
-const progress = (...x) => (ani >= 0 && overwrite(), ani++, console.log(...x))
+const p = (...xs) => (clear && overwrite(), clear = false, console.log(...xs), xs[xs.length - 1]) // eslint-disable-line
+const progress = (...x) => (clear && overwrite(), clear = true, console.log(...x)) // eslint-disable-line
 
 const bins = []
 const leafs = []
@@ -135,6 +134,7 @@ function supported(pkg) {
 }
 
 async function install([name, version], parent, force) {
+  version.charCodeAt(0) === 118 && (version = version.slice(1)) // v
   const id = name + '@' + version
   if (packages.has(id))
     return leafs.push(then(packages.get(id), x => finished(x, parent)))
@@ -244,9 +244,9 @@ async function finished(pkg, parent) {
 function setDependency(pkg, parent) {
   pkg.name + '@' + pkg.version in lock.packages || (lock.packages[pkg.name + '@' + pkg.version] = {
     resolved: pkg.resolved,
+    sha512: pkg.sha512,
     cpu: pkg.cpu,
     os: pkg.os,
-    sha512: pkg.sha512
   })
 
   if (!parent)
@@ -353,6 +353,7 @@ async function resolveNpm(name, version) {
     pathname: '/' + pkg.name + '/-/' + (pkg.name.split('/')[1] || pkg.name) + '-' + pkg.version.split('+')[0] + '.tgz'
   }
   pkg.resolved = 'https://' + pkg.url.host + pkg.url.pathname
+  pkg.sha512 = pkg.dist.integrity.slice(7)
   addPaths(pkg)
   return pkg
 }
@@ -425,7 +426,7 @@ async function resolveGit(x) {
         const sha = (await $('git', ['rev-parse', ref], { cwd, stdio: 'pipe' })).toString().trim()
         await $('git', ['fetch', '-q', '--depth=1', 'origin', sha], { cwd })
         await $('git', ['checkout', '-q', sha], { cwd })
-        await $('git', ['archive', '--format=tar', '--prefix=package/', '-o', temp + '.tar', 'HEAD'], { cwd })
+        await $('git', ['archive', '--format=tar', '--prefix=package/', '-o', temp + '.tgz', 'HEAD'], { cwd })
 
         const pkg = JSON.parse(await $('git', ['--no-pager', 'show', 'HEAD:package.json'], { cwd }))
 
@@ -434,7 +435,7 @@ async function resolveGit(x) {
 
         addPaths(pkg)
 
-        fsp.rename(temp + '.tar', pkg.global)
+        fsp.rename(temp + '.tgz', pkg.global)
 
         return set(resolved, x, pkg)
       } finally {
@@ -548,10 +549,10 @@ async function cleanup() {
     (i = x.indexOf('@', 1), x ? safeId({ name: x.slice(0, i), version: x.slice(i + 1) }) : [])
   ))
 
-  for (const x of await fsp.readdir(Path.join('node_modules', '.sin')))
+  for (const x of await fsp.readdir(Path.join('node_modules', '.sin')).catch(() => []))
     all.has(x) || allRemove.push(Path.join('node_modules', '.sin', x))
 
-  for (const x of await fsp.readdir(Path.join('node_modules', '.bin')))
+  for (const x of await fsp.readdir(Path.join('node_modules', '.bin')).catch(() => []))
     x in bins || binRemove.push(Path.join('node_modules', '.bin', x))
 
   for (const x of await fsp.readdir('node_modules').catch(() => [])) {
@@ -715,6 +716,14 @@ async function jsonRead(x) {
     return JSON.parse(await fsp.readFile(x))
   } catch (e) {
     return
+  }
+}
+
+function defaultPackage() {
+  return {
+    name: path.basename(process.cwd()),
+    version: '0.0.1',
+    type: 'module'
   }
 }
 

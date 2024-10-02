@@ -19,7 +19,7 @@
   "exports": {
     ".": "./src/index.js",
     "./bin/color": "./bin/color.js",
-    "./env": "./bin/env.js",
+    "./config": "./bin/config.js",
     "./build": "./shared/build/index.js",
     "./server": "./shared/server/index.js",
     "./server/window": "./ssr/window.js",

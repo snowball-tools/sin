@@ -11,10 +11,14 @@ const log = console.log // eslint-disable-line
 await ({ create, list, renew, delete: del })[config.$[1] || 'create']()
 
 async function create() {
-  config.acme.domains.push(...config._)
+  const domains = config.acme.domains
+  if (domains.length && config._.length)
+    throw new Error(`[sin acme] Cannot mix domains in config (${domains.join(',')}) and cli (${config._.join(',')})`)
+
+  domains.push(...config._)
   fs.mkdirSync(config.acme.dir, { recursive: true })
   const caPath = path.join(config.acme.dir, config.acme.ca + '.json')
-  const dir = path.join(config.acme.dir, config.acme.ca + (config.acme.rsa ? '-rsa' + config.acme.rsa : '') + '_' + config.acme.domains.join(',').replace(/\*/g, '_'))
+  const dir = path.join(config.acme.dir, config.acme.ca + (config.acme.rsa ? '-rsa' + config.acme.rsa : '') + '_' + domains.join(',').replace(/\*/g, '_'))
   const jsonPath = path.join(dir, 'cert.json')
   const certPath = config.ssl.cert || path.join(dir, 'cert.pem')
   const keyPath = config.ssl.key || path.join(dir, 'key.pem')

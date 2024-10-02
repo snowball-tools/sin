@@ -70,8 +70,8 @@ export function resolveEntry(n, force = false) {
   const { name, version, pathname, query } = parsePackage(n)
 
   const urlPath = 'node_modules/' + name
-  const modulePath = path.join(config.cwd, 'node_modules', ...name.splt('/'))
-  const fullPath = path.join(modulePath, ...rest.split('/'))
+  const modulePath = path.join(config.cwd, 'node_modules', ...name.split('/'))
+  const fullPath = path.join(modulePath, ...pathname.split('/'))
   const pkgPath = path.join(modulePath, 'package.json')
   const entry = canRead(fullPath)
     ? urlPath + rest

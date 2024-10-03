@@ -45,7 +45,8 @@ const child = cp.spawn(c, [
 
 prexit.last(() => child.killed || child.kill('SIGINT'))
 
-proxy && child.on('close', proxy.unlisten)
+await new Promise((r, e) => child.on('close', (code) => code ? e(code) : r()))
+proxy && proxy.unlisten()
 
 function client() {
   let dir = cwd

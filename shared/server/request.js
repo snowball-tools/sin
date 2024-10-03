@@ -40,10 +40,10 @@ export default class Request {
   constructor(res, req, options) {
     this.options = options
     this.method = req.getMethod()
+    this.url = req.getUrl()
     try {
-      this.url = decodeURIComponent(req.getUrl())
+      decodeURIComponent(this.url)
     } catch (error) {
-      this.url = req.getUrl()
       this[$.error] = error
     }
     this.pathname = this.url

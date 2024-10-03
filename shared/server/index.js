@@ -33,12 +33,22 @@ export default function Server({
   router.listen = listen(o)
   router.publish = (...xs) => uws ? uws.publish(...xs) : false
   router.subscribers = (...xs) => uws ? uws.numSubscribers(...xs) : 0
-  router.addServerName = (...xs) => (uws ? uws.addServerName(...xs) : asn.add(xs), router)
+  router.addServerName = (...xs) => (uws ? addServerName(...xs) : asn.add(xs), router)
+  router.removeServerName = (...xs) => (uws ? removeServerName(...xs) : rsn.add(xs), router)
   router.missingServerName = (...xs) => (uws ? uws.missingServerName(...xs) : msn.add(xs), router)
-  router.removeServerName = (...xs) => (uws ? uws.removeServerName(...xs) : rsn.add(xs), router)
   router.close = () => uws && uws.close()
 
   return router
+
+  function addServerName(name, options) {
+    uws.addServerName(name, options)
+    uws.domain(name).any('/*', wrap)
+  }
+
+  function removeServerName(name) {
+    uws.removeServerName(name)
+    uws.domain(name).any('/*', null)
+  }
 
   async function router(r) {
     if (r.handled)
@@ -116,9 +126,9 @@ export default function Server({
         uws = o.cert
           ? uWS.SSLApp({ cert_file_name: o.cert, key_file_name: o.key, ...o })
           : uWS.App(o)
-        asn.forEach(xs => uws.addServerName(...xs))
+        asn.forEach(xs => addServerName(...xs))
+        rsn.forEach(xs => removeServerName(...xs))
         msn.forEach(xs => uws.missingServerName(...xs))
-        rsn.forEach(xs => uws.removeServerName(...xs))
         connects.forEach((xs) => uws.connect(...xs))
         wss.forEach(([pattern, handlers]) =>
           uws.ws(

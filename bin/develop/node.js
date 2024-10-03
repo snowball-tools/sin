@@ -20,9 +20,10 @@ let node
   , scripts = new Map()
   , startPerf
   , closed
-  , closing = new Promise(r => closed = r)
 
-prexit(() => {
+export const closing = new Promise(r => closed = r)
+
+prexit((x, y) => {
   close()
   closed()
 })
@@ -36,8 +37,6 @@ config.script
 Watcher(() => api.node.restart('reload')).add('.env')
 api.node.restart.observe(restart)
 api.node.hotload.observe(hotload)
-
-config.script && await closing
 
 async function hotload(x) {
   if (!node)

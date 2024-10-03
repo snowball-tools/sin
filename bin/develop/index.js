@@ -11,4 +11,7 @@ const node = await import('./node.js')
 
 !config.script && config.live && await import('./live.js')
 
-config.script || config.nochrome || node.onlyServer || await import('./chrome.js')
+await Promise.all([
+  config.script || config.nochrome || node.onlyServer || import('./chrome.js'),
+  node.closing
+])

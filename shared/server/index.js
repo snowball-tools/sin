@@ -13,6 +13,7 @@ export default function Server({
 } = {}) {
   let uws
     , handle
+    , wrapper
 
   const handlers = new Map()
       , connects = new Set()
@@ -42,7 +43,7 @@ export default function Server({
 
   function addServerName(name, options) {
     uws.addServerName(name, options)
-    uws.domain(name).any('/*', wrap)
+    uws.domain(name).any('/*', wrapper)
   }
 
   function removeServerName(name) {
@@ -123,6 +124,7 @@ export default function Server({
         o.cert && fs.accessSync(o.cert, fs.constants.R_OK) && fs.accessSync(o.key || 'private.key', fs.constants.R_OK)
 
         port = parseInt(port)
+        wrapper = wrap
         uws = o.cert
           ? uWS.SSLApp({ cert_file_name: o.cert, key_file_name: o.key, ...o })
           : uWS.App(o)

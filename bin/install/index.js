@@ -605,7 +605,7 @@ async function symlink(target, path) {
         await fsp.unlink(path)
 
       await mkdir(Path.dirname(path))
-      await fsp.symlink(target, path).catch(() => fsp.rm(path, { recursive: true }).then(() => fsp.symlink(target, path)))
+      await fsp.symlink(target, path, 'junction').catch(() => fsp.rm(path, { recursive: true }).then(() => fsp.symlink(target, path)))
       set(symlinked, id, true)
     })()
   )

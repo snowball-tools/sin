@@ -74,8 +74,8 @@ export function resolveEntry(n, force = false) {
   const fullPath = path.join(modulePath, ...pathname.split('/'))
   const pkgPath = path.join(modulePath, 'package.json')
   const entry = canRead(fullPath)
-    ? urlPath + rest
-    : pkgLookup(name, version, rest, pkgPath, urlPath, force)
+    ? urlPath + pathname
+    : pkgLookup(name, version, pathname, pkgPath, urlPath, force)
 
   return entry && (resolveCache[force + n] = entry + query)
 }
@@ -84,7 +84,7 @@ function removeRelativePrefix(x) {
   return x.replace(/^\.\//, '')
 }
 
-function pkgLookup(name, version, rest, pkgPath, urlPath, force) {
+function pkgLookup(name, version, pathname, pkgPath, urlPath, force) {
   if (!force && config.bundleNodeModules && name !== 'sin') // never bundle sin
     return urlPath
 
@@ -93,7 +93,7 @@ function pkgLookup(name, version, rest, pkgPath, urlPath, force) {
   if (!pkg)
     return
 
-  const entry = resolveExports(pkg, '.' + rest) || resolveLegacy(pkg)
+  const entry = resolveExports(pkg, '.' + pathname) || resolveLegacy(pkg)
 
   if (!entry)
     return urlPath

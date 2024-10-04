@@ -531,7 +531,7 @@ function stream(r, type, { handle, stat, compressor }, options) {
       , start = parseInt(range.slice(6, range.indexOf('-')) || size - end - 1)
       , total = end - start + 1
 
-  if (end >= size)
+  if (end >= size || total <= 0)
     return r.header(416, { 'Content-Range': 'bytes */' + (size - 1) }).end('Range Not Satisfiable')
 
   r.header(range ? 206 : 200, {

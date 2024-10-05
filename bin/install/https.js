@@ -6,8 +6,11 @@ const open = {}
 const empty = Buffer.alloc(0)
 const highWaterMark = 128 * 1024
 
-export async function cacheDns(host) {
-  return ips[host] = (await dns.lookup(host).catch(() => dns.lookup(host)).catch(() => dns.lookup(host))).address
+export async function getIp(host) {
+  if (host in ips)
+    return ips[host]
+
+  return ips[host] = dns.lookup(host).catch(() => dns.lookup(host)).catch(() => dns.lookup(host)).then(x => x.address)
 }
 
 export function destroy() {
@@ -49,7 +52,7 @@ async function create(host) {
 
   const socket = tls.connect({
     port: 443,
-    host: ips[host] || (await cacheDns(host)),
+    host: await getIp(host),
     servername: host,
     highWaterMark,
     onread: {

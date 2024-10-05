@@ -27,6 +27,7 @@ export async function fetch(host, pathname, headers = {}) {
     socket.resolve = resolve
     socket.reject = reject
     socket.handler = handler(resolve, reject, host, pathname)
+    socket.pathname = pathname
     socket.write('GET ' + pathname + ' HTTP/1.1\r\nHost: ' + host + '\r\n' + setHeaders(headers) + 'User-Agent: sin/0.0.1\r\n\r\n')
   })
   socket.done()
@@ -63,7 +64,8 @@ async function create(host) {
 
   socket.done = done
   socket.on('error', x => socket.reject(x))
-  socket.on('close', () => {
+  socket.on('close', (x) => {
+    socket.reject(new Error('Premature close for ' + host + socket.pathname))
     xs.splice(xs.indexOf(socket), 1)
     xs.count--
   })
@@ -71,7 +73,7 @@ async function create(host) {
   return socket
 
   function done() {
-    socket.handler = null
+    socket.handler = socket.pathname = null
     xs.queue.length
       ? xs.queue.pop()(socket)
       : xs.unshift(socket)
@@ -99,7 +101,7 @@ function handler(resolve, reject, host, pathname) {
         n === 1 ? checkStatus(xs, end)    && (n = 2)
       : n === 2 ? getContentLength(xs[i])
       : n === 3 ? xs[i] === 10            && (n = 4)
-      : n === 4 ? n = startBody(xs[i], xs, end)
+      : n === 4 ? n = findBody(xs[i], xs, end)
       : n === 5 ? (read(xs, i, end), n = 0, i = end)
       : n === 6 &&(chunked(xs, i, end), i = end)
     }
@@ -154,7 +156,7 @@ function handler(resolve, reject, host, pathname) {
     }
   }
 
-  function startBody(x, xs, end) {
+  function findBody(x, xs, end) {
     if (x === 13) // carraige
       return 4
 

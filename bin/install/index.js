@@ -10,47 +10,35 @@ import * as semver from './semver.js'
 import * as https from './https.js'
 import c from '../color.js'
 
-let lockChanged = false
-let clear = false
-let getVersionRequests = 0
-let findVersionRequests = 0
-let cachedVersionRequests = 0
-let tgzRequests = 0
 let allPeers = []
-
-let tgzDownloadTime = 0
-let tgzUnzipTime = 0
-let tarTime = 0
-let getVersionTime = 0
-let findVersionFetchTime = 0
-let findVersionParseTime = 0
-let getInfoTime = 0
+  , lockChanged = false
+  , clear = false
 
 const then = (x, fn) => x && typeof x.then === 'function' ? x.then(fn) : fn(x)
-const set = (xs, id, x) => (xs.set(id, x), x)
-const noop = () => { /* noop */ }
-const overwrite = () => process.stdout.write('\x1B[F\x1B[2K')
-const p = (...xs) => (clear && overwrite(), clear = false, console.log(...xs), xs[xs.length - 1]) // eslint-disable-line
-const progress = (...x) => (clear && overwrite(), clear = true, console.log(...x)) // eslint-disable-line
+    , set = (xs, id, x) => (xs.set(id, x), x)
+    , noop = () => { /* noop */ }
+    , overwrite = () => process.stdout.write('\x1B[F\x1B[2K')
+    , p = (...xs) => (clear && overwrite(), clear = false, console.log(...xs), xs[xs.length - 1]) // eslint-disable-line
+    , progress = (...x) => (clear && overwrite(), clear = true, console.log(...x)) // eslint-disable-line
 
 const bins = []
-const leafs = []
-const dirs = new Map()
-const packages = new Map()
-const postInstalls = []
-const symlinked = new Map()
-const resolved = new Map()
-const versions = new Map()
+    , leafs = []
+    , dirs = new Map()
+    , packages = new Map()
+    , postInstalls = []
+    , symlinked = new Map()
+    , resolved = new Map()
+    , versions = new Map()
 
 const registries = getScopes()
-const defaultRegistry = getDefaultRegistry()
-const packageJson = await jsonRead('package.json') || defaultPackage()
-const oldLock = (await jsonRead('package-lock.json')) || (await jsonRead(Path.join('node_modules', '.package-lock.json'))) || defaultLock(packageJson)
-const lock = defaultLock(packageJson)
+    , defaultRegistry = getDefaultRegistry()
+    , packageJson = await jsonRead('package.json') || defaultPackage()
+    , oldLock = (await jsonRead('package-lock.json')) || (await jsonRead(Path.join('node_modules', '.package-lock.json'))) || defaultLock(packageJson)
+    , lock = defaultLock(packageJson)
 
 await mkdir(config.globalPath)
-const added = await fromCLI()
 
+const added = await fromCLI()
 const pkgDependencies = {
   ...packageJson.optionalDependencies,
   ...packageJson.dependencies,
@@ -58,15 +46,7 @@ const pkgDependencies = {
 }
 
 await installDependencies(pkgDependencies)
-
-while (allPeers.length) {
-  const xs = allPeers.slice()
-  allPeers = []
-  await Promise.all(xs.map(({ peers, parent, force }) =>
-    installDependencies(peers, parent, force)
-  ))
-}
-
+await installPeers()
 await Promise.all(leafs)
 
 https.destroy()
@@ -81,9 +61,17 @@ if (!config.ci) {
   added.forEach(x => p(c.green('- ' + x.name), c.gray(x.version)))
 }
 
-p('requests', { findVersionRequests, tgzRequests, getVersionRequests, cachedVersionRequests })
-p('times', { tgzDownloadTime, tgzUnzipTime, tarTime })
-p('more times', { getVersionTime, findVersionFetchTime, findVersionParseTime, getInfoTime })
+p('Finished in', (process.uptime() * 1000).toFixed(2) + 'ms')
+
+async function installPeers() {
+  while (allPeers.length) {
+    const xs = allPeers.slice()
+    allPeers = []
+    await Promise.all(xs.map(({ peers, parent, force }) =>
+      installDependencies(peers, parent, force)
+    ))
+  }
+}
 
 async function addBins() {
   await Promise.all(Object.values(bins).map(({ target, path }) => symlink(target, path)))
@@ -144,7 +132,7 @@ async function install([name, version], parent, force) {
     packages,
     id,
     (async() => {
-      progress('⏳ ' + name + c.gray(' @ ' + version))
+      progress('📦 ' + name + c.gray(' @ ' + version))
 
       if (!force && (parent || oldLock.dependencies[name] === pkgDependencies[name])) {
         const parentLock = oldLock.packages[parent ? parent.name + '@' + parent.version : '']
@@ -176,12 +164,12 @@ async function install([name, version], parent, force) {
 
       const t = resolveType(version)
       const pkg = await (
-          t === 'local'  ? addLocal('file:' + Path.resolve(version[0]))
+          t === 'local'  ? resolveLocal('file:' + Path.resolve(version[0]))
         : t === 'git'    ? resolveGit(version)
-        : t === 'https'  ? addUrl(version)
-        : t === 'tar'    ? addLocalTarball(version)
+        : t === 'https'  ? resolveUrl(version)
+        : t === 'tar'    ? resolveLocalTarball(version)
         : t === 'github' ? resolveGithub(version)
-        : t === 'alias'  ? addAlias()
+        : t === 'alias'  ? resolveAlias(name, version)
         : t === 'npm'    ? resolveNpm(name, version)
         : Promise.reject('Unknown type')
       )
@@ -197,14 +185,9 @@ async function install([name, version], parent, force) {
       if (global[0])
         return (pkg.sha512 = global[1], set(packages, id, await installed(await untar(pkg, global[0]), parent, force)))
 
-      tgzRequests++
-      let start = performance.now()
       const body = await https.fetch(pkg.tgz.hostname, pkg.tgz.pathname, pkg.tgz.headers)
       const [tar, sha512] = await gunzip(body)
       pkg.sha512 = sha512
-      tgzDownloadTime += performance.now() - start
-      start = performance.now()
-      tgzUnzipTime += performance.now() - start
       await Promise.all([
         then(mkdir(Path.dirname(pkg.global)), () => fsp.writeFile(pkg.global, body)),
         untar(pkg, tar).then(() => installed(pkg, parent, force))
@@ -289,7 +272,7 @@ function postInstall() {
           ...process.env,
           INIT_CWD: process.cwd()
         }
-      }, (err, stdout, stderr) => err ? reject(err) : resolve())
+      }, err => err ? reject(err) : resolve())
     )
   ))
 }
@@ -305,11 +288,9 @@ async function writeLock() {
     return
 
   lock.dependencies = pkgDependencies
-  const start = performance.now()
   sort(lock, 'dependencies')
   sort(lock, 'packages')
   Object.values(lock.packages).forEach(x => sort(x, 'dependencies'))
-  p('lock sort', performance.now() - start)
   fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2))
   fs.writeFileSync(Path.join('node_modules', '.package-lock.json'), JSON.stringify(lock, null, 2))
 
@@ -350,7 +331,6 @@ async function writePackage(xs) {
 async function resolveNpm(name, version) {
   const registry = name[0] === '@' && registries[name.slice(0, name.indexOf('/'))] || defaultRegistry
   const pkg = await fetchVersion(parsePackage(name + '@' + version), registry)
-  p(pkg)
   pkg.tgz = {
     port: registry.port || 443,
     protocol: registry.protocol || 'https',
@@ -399,19 +379,19 @@ function resolveType(x) {
 }
 
 async function resolveAlias() {
-  throw 'support for npm: alias not implemented'
+  throw new Error('support for npm: alias not implemented')
 }
 
 async function resolveLocal() {
-  throw 'support for local paths not implemented'
+  throw new Error('support for local paths not implemented')
 }
 
 async function resolveLocalTarball() {
-  throw 'support for local tarballs not implemented'
+  throw new Error('support for local tarballs not implemented')
 }
 
 async function resolveUrl() {
-  throw 'support for url tarballs not implemented'
+  throw new Error('support for url tarballs not implemented')
 }
 
 async function resolveGit(x) {
@@ -502,7 +482,6 @@ async function resolveGithub(x) {
 }
 
 async function untar(pkg, x, write = true) {
-  const start = performance.now()
   const writeFile = write ? fsp.writeFile : noop
   const writeDir = write ? mkdir : noop
   let size = 0
@@ -539,7 +518,6 @@ async function untar(pkg, x, write = true) {
       n += 512 + Math.ceil(size / 512) * 512
     }
   }
-  tarTime += performance.now() - start
   return pkg
 }
 
@@ -581,7 +559,8 @@ async function cleanup() {
     ...binRemove
   ].map(rm))
 
-  topRemove.length && p('Removed', topRemove.length, 'unused module' + (topRemove.length === 1 ? '' : 's') + ' and', allRemove.length - topRemove.length, 'subdependencies')
+  const subs = allRemove.length - topRemove.length
+  topRemove.length && p('Removed', topRemove.length, 'unused module' + (topRemove.length === 1 ? '' : 's') + ' and', subs, 'subdependenc' + (subs === 1 ? 'y' : 'ies'))
   topRemove.forEach(x => p(c.red('- ' + x.slice(13))))
 }
 
@@ -633,22 +612,16 @@ async function getVersion({ name, version }, registry) {
     versions,
     id,
     (async() => {
-      const start = performance.now()
       version || (version = 'latest')
 
-      progress('🔎 ' + name + '@' + version)
+      progress('🔎 ' + name + c.gray(' @ ' + version))
 
       const cachedPath = globalPath({ name, version }) + '.json'
       const cached = await fsp.readFile(cachedPath).catch(() => 0)
       const headers = registry.password ? { Authorization: 'Bearer ' + registry.password } : {}
-      const x = cached || (
-        getVersionRequests++,
-        await https.fetch(registry.hostname, registry.pathname + name + '/' + version, headers)
-      )
-      cached && cachedVersionRequests++
+      const x = cached || await https.fetch(registry.hostname, registry.pathname + name + '/' + version, headers)
       const json = JSON.parse(x)
       cached || await fsp.writeFile(cachedPath, x)
-      getVersionTime += performance.now() - start
       json.version || (json.version = version)
       return json
     })()
@@ -657,7 +630,7 @@ async function getVersion({ name, version }, registry) {
 
 async function findVersion({ name, version }, registry) {
   version || (version = 'latest')
-  progress('🔎 ' + name + '@' + version)
+  progress('🔎 ' + name + c.gray(' @ ' + version))
 
   const { body, versions } = await findVersions(name, registry)
   version = semver.best(version, versions) || version
@@ -673,23 +646,15 @@ async function findVersions(name, registry) {
     versions,
     name,
     (async() => {
-      let start = performance.now()
-      findVersionRequests++
       const headers = registry.password ? { Authorization: 'Bearer ' + registry.password } : {}
-      const x = (await https.fetch(registry.hostname, registry.pathname + name, headers)).toString('utf8')
-      findVersionFetchTime += performance.now() - start
-
-      start = performance.now()
-      const xs = (x.match(/(:{|},)"\d+\.\d+\.\d+[^"]*":{"/g) || []).map(x => x.slice(3, -4))
-      findVersionParseTime += performance.now() - start
-
-      return { body: x, versions: xs }
+      const body = (await https.fetch(registry.hostname, registry.pathname + name, headers)).toString('utf8')
+      const versions = (body.match(/(:{|},)"\d+\.\d+\.\d+[^"]*":{"/g) || []).map(x => x.slice(3, -4))
+      return { body, versions }
     })()
   )
 }
 
 function getInfo(version, x) {
-  const starto = performance.now()
   try {
     const lookup = '"' + version + '":{'
     let end = -1
@@ -715,9 +680,7 @@ function getInfo(version, x) {
       l = c
     }
 
-    const json = JSON.parse(x.slice(start - 1, end))
-    getInfoTime += performance.now() - starto
-    return json
+    return JSON.parse(x.slice(start - 1, end))
   } catch (err) {
     return
   }

@@ -233,15 +233,15 @@ export function parseVersion(x) {
   }
 }
 
-function otob({ major, minor, patch }) {
+export function otob({ major, minor, patch }) {
   return vtob(major, minor, patch)
 }
 
-function vtob(major, minor, patch) {
+export function vtob(major, minor, patch) {
   return (BigInt(major) << (2n * 53n)) | (BigInt(minor) << 53n) | BigInt(patch)
 }
 
-function btov(x) {
+export function btov(x) {
   const max = (1n << 53n) - 1n
   return {
     major: (x >> (2n * 53n)) & max,

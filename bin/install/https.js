@@ -64,7 +64,7 @@ async function create(host) {
 
   socket.done = done
   socket.on('error', x => socket.reject(x))
-  socket.on('close', (x) => {
+  socket.on('close', () => {
     socket.reject(new Error('Premature close for ' + host + socket.pathname))
     xs.splice(xs.indexOf(socket), 1)
     xs.count--
@@ -107,7 +107,7 @@ function handler(resolve, reject, host, pathname) {
     }
   }
 
-  function done(x, xs, end) {
+  function done(x, xs) {
     if (!redirect)
       return resolve(x)
 
@@ -170,7 +170,7 @@ function handler(resolve, reject, host, pathname) {
     return 5
   }
 
-  function checkStatus(xs, end) {
+  function checkStatus(xs) {
     return xs[9] === 50 && xs[10] === 48 && xs[11] === 48 // 2 0 0
       ? true
       : xs[9] === 51 && xs[10] === 48 && xs[11] === 50 // 3 0 2
@@ -185,7 +185,7 @@ function handler(resolve, reject, host, pathname) {
       done(body, xs, end)
   }
 
-  function getContentLength(x, last) {
+  function getContentLength(x) {
       c ===  0 ?  (x === 10              ) ? (c =  1) : c = 0        // newline
     : c ===  1 ?  (x === 67 || x === 99  ) ? (c =  2)
                :  (x === 13              ) ? (c =  1)

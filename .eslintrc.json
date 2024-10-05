@@ -105,7 +105,8 @@
       1,
       {
         "vars": "all",
-        "args": "none"
+        "args": "after-used",
+        "varsIgnorePattern": "^_$"
       }
     ],
     "no-use-before-define": [

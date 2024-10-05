@@ -24,7 +24,7 @@ export async function fetch(host, pathname, headers = {}) {
     socket.resolve = resolve
     socket.reject = reject
     socket.handler = handler(resolve, reject, host, pathname)
-    socket.write('GET ' + pathname + ' HTTP/1.1\nHost: ' + host + '\n' + setHeaders(headers) + 'User-Agent: sin/0.0.1\n\n')
+    socket.write('GET ' + pathname + ' HTTP/1.1\r\nHost: ' + host + '\r\n' + setHeaders(headers) + 'User-Agent: sin/0.0.1\r\n\r\n')
   })
   socket.done()
   return body
@@ -33,7 +33,7 @@ export async function fetch(host, pathname, headers = {}) {
 function setHeaders(xs) {
   let x = ''
   for (const h in xs)
-    x += h + ': ' + xs[h] + '\n'
+    x += h + ': ' + xs[h] + '\r\n'
   return x
 }
 

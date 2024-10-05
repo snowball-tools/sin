@@ -29,7 +29,6 @@ let getInfoTime = 0
 const then = (x, fn) => x && typeof x.then === 'function' ? x.then(fn) : fn(x)
 const set = (xs, id, x) => (xs.set(id, x), x)
 const noop = () => { /* noop */ }
-const host = 'registry.npmjs.org'
 const overwrite = () => process.stdout.write('\x1B[F\x1B[2K')
 const p = (...xs) => (clear && overwrite(), clear = false, console.log(...xs), xs[xs.length - 1]) // eslint-disable-line
 const progress = (...x) => (clear && overwrite(), clear = true, console.log(...x)) // eslint-disable-line
@@ -43,6 +42,8 @@ const symlinked = new Map()
 const resolved = new Map()
 const versions = new Map()
 
+const registries = getScopes()
+const defaultRegistry = getDefaultRegistry()
 const packageJson = await jsonRead('package.json') || defaultPackage()
 const oldLock = (await jsonRead('package-lock.json')) || (await jsonRead(Path.join('node_modules', '.package-lock.json'))) || defaultLock(packageJson)
 const lock = defaultLock(packageJson)
@@ -117,7 +118,7 @@ function fromCLI() {
   })).then(xs => xs.filter(x => x))
 }
 
-async function installDependencies(dependencies, parent, force = config.force || config.ci) {
+async function installDependencies(dependencies, parent, force = config.force || config.ci) {
   return Promise.all(Object.entries(dependencies).map(x =>
     install(x, parent, force || oldLock.dependencies[x.name] !== x.version)
   ))
@@ -142,7 +143,7 @@ async function install([name, version], parent, force) {
   return set(
     packages,
     id,
-    (async () => {
+    (async() => {
       progress('⏳ ' + name + c.gray(' @ ' + version))
 
       if (!force && (parent || oldLock.dependencies[name] === pkgDependencies[name])) {
@@ -198,7 +199,7 @@ async function install([name, version], parent, force) {
 
       tgzRequests++
       let start = performance.now()
-      const body = await https.fetch(pkg.url.host, pkg.url.pathname, pkg.url.headers)
+      const body = await https.fetch(pkg.tgz.hostname, pkg.tgz.pathname, pkg.tgz.headers)
       const [tar, sha512] = await gunzip(body)
       pkg.sha512 = sha512
       tgzDownloadTime += performance.now() - start
@@ -246,7 +247,7 @@ function setDependency(pkg, parent) {
     resolved: pkg.resolved,
     sha512: pkg.sha512,
     cpu: pkg.cpu,
-    os: pkg.os,
+    os: pkg.os
   })
 
   if (!parent)
@@ -347,13 +348,19 @@ async function writePackage(xs) {
 }
 
 async function resolveNpm(name, version) {
-  const pkg = await fetchVersion(parsePackage(name + '@' + version))
-  pkg.url = {
-    host: 'registry.npmjs.org',
-    pathname: '/' + pkg.name + '/-/' + (pkg.name.split('/')[1] || pkg.name) + '-' + pkg.version.split('+')[0] + '.tgz'
+  const registry = name[0] === '@' && registries[name.slice(0, name.indexOf('/'))] || defaultRegistry
+  const pkg = await fetchVersion(parsePackage(name + '@' + version), registry)
+  p(pkg)
+  pkg.tgz = {
+    port: registry.port || 443,
+    protocol: registry.protocol || 'https',
+    hostname: registry.hostname,
+    pathname: registry.pathname + pkg.name + '/-/' + (pkg.name.split('/')[1] || pkg.name) + '-' + pkg.version.split('+')[0] + '.tgz',
+    headers: registry.password ? { Authorization: 'Bearer ' + registry.password } : {}
   }
-  pkg.resolved = 'https://' + pkg.url.host + pkg.url.pathname
-  pkg.sha512 = pkg.dist.integrity.slice(7)
+
+  pkg.resolved = 'https://' + pkg.tgz.hostname + pkg.tgz.pathname
+  pkg.sha512 = pkg.dist?.integrity?.slice(7)
   addPaths(pkg)
   return pkg
 }
@@ -482,10 +489,10 @@ async function resolveGithub(x) {
         : await https.fetch('raw.githubusercontent.com', '/' + pathname + '/' + sha + '/package.json').then(x => JSON.parse(x))
 
       pkg.version = 'github:' + pathname + '#' + sha
-      pkg.url = auth
-        ? { host: 'api.github.com', pathname: '/repos/' + pathname + '/tarball/' + sha, headers: auth }
-        : { host: 'codeload.github.com', pathname: '/' + pathname + '/tar.gz/' + sha }
-      pkg.resolved = 'https://' + pkg.url.host + pkg.url.pathname
+      pkg.tgz = auth
+        ? { hostname: 'api.github.com', pathname: '/repos/' + pathname + '/tarball/' + sha, headers: auth }
+        : { hostname: 'codeload.github.com', pathname: '/' + pathname + '/tar.gz/' + sha }
+      pkg.resolved = 'https://' + pkg.tgz.hostname + pkg.tgz.pathname
 
       addPaths(pkg)
 
@@ -611,13 +618,13 @@ async function symlink(target, path) {
   )
 }
 
-function fetchVersion(x) {
+function fetchVersion(x, registry) {
   return !x.version || semver.isVersion(x.version) || semver.isDistTag(x.version)
-    ? getVersion(x)
-    : findVersion(x)
+    ? getVersion(x, registry)
+    : findVersion(x, registry)
 }
 
-async function getVersion({ name, version }) {
+async function getVersion({ name, version }, registry) {
   const id = name + '@' + version
   if (versions.has(id))
     return versions.get(id)
@@ -628,33 +635,37 @@ async function getVersion({ name, version }) {
     (async() => {
       const start = performance.now()
       version || (version = 'latest')
-      const pathname = '/' + name + '/' + version
 
       progress('🔎 ' + name + '@' + version)
 
       const cachedPath = globalPath({ name, version }) + '.json'
       const cached = await fsp.readFile(cachedPath).catch(() => 0)
-      const x = cached || (getVersionRequests++, await https.fetch(host, pathname))
+      const headers = registry.password ? { Authorization: 'Bearer ' + registry.password } : {}
+      const x = cached || (
+        getVersionRequests++,
+        await https.fetch(registry.hostname, registry.pathname + name + '/' + version, headers)
+      )
       cached && cachedVersionRequests++
       const json = JSON.parse(x)
       cached || await fsp.writeFile(cachedPath, x)
       getVersionTime += performance.now() - start
+      json.version || (json.version = version)
       return json
     })()
   )
 }
 
-async function findVersion({ name, version }) {
+async function findVersion({ name, version }, registry) {
   version || (version = 'latest')
   progress('🔎 ' + name + '@' + version)
 
-  const { body, versions } = await findVersions(name)
+  const { body, versions } = await findVersions(name, registry)
   version = semver.best(version, versions) || version
   const json = getInfo(version, body)
-  return json || getVersion({ name, version })
+  return json || getVersion({ name, version }, registry)
 }
 
-async function findVersions(name) {
+async function findVersions(name, registry) {
   if (versions.has(name))
     return versions.get(name)
 
@@ -664,7 +675,8 @@ async function findVersions(name) {
     (async() => {
       let start = performance.now()
       findVersionRequests++
-      const x = (await https.fetch(host, '/' + name)).toString('utf8')
+      const headers = registry.password ? { Authorization: 'Bearer ' + registry.password } : {}
+      const x = (await https.fetch(registry.hostname, registry.pathname + name, headers)).toString('utf8')
       findVersionFetchTime += performance.now() - start
 
       start = performance.now()
@@ -711,17 +723,15 @@ function getInfo(version, x) {
   }
 }
 
-async function jsonRead(x) {
-  try {
-    return JSON.parse(await fsp.readFile(x))
-  } catch (e) {
-    return
-  }
+function jsonRead(x) {
+  return fsp.readFile(x)
+    .catch(e => e.code === 'ENOENT' ? null : Promise.reject(e))
+    .then(x => x === null ? x : JSON.parse(x))
 }
 
 function defaultPackage() {
   return {
-    name: path.basename(process.cwd()),
+    name: Path.basename(process.cwd()),
     version: '0.0.1',
     type: 'module'
   }
@@ -739,4 +749,21 @@ function defaultLock(x) {
       }
     }
   }
+}
+
+function getScopes() {
+  const registries = {}
+  for (const [k, v] of Object.entries(process.env)) {
+    const [_, registry] = k.match(/^NPM_CONFIG_([^:]+):registry$/) || []
+    if (registry) {
+      const url = registries[registry] = new URL(v)
+      url.pathname.endsWith('/') || (url.pathname += '/')
+      url.password || (url.password = process.env['NPM_CONFIG_//' + url.host + url.pathname + ':_authToken'] || '')
+    }
+  }
+  return registries
+}
+
+function getDefaultRegistry() {
+  return new URL(process.env.npm_config_registry || 'https://registry.npmjs.org')
 }

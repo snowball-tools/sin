@@ -599,7 +599,7 @@ async function symlink(target, path) {
   )
 }
 
-function fetchVersion(x, registry) {
+function fetchVersion(x, registry = defaultRegistry) {
   return !x.version || semver.isVersion(x.version) || semver.isDistTag(x.version)
     ? getVersion(x, registry)
     : findVersion(x, registry)

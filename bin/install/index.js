@@ -45,6 +45,8 @@ const pkgDependencies = {
   ...packageJson.devDependencies
 }
 
+!oldLock.dependencies && (oldLock.dependencies = {})
+
 await installDependencies(pkgDependencies)
 await installPeers()
 await Promise.all(leafs)

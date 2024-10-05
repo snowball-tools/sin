@@ -206,7 +206,7 @@ function handler(resolve, reject, host, pathname) {
     : c = 0
 
     return n = c === -1
-      ? 3
+      ? 4
       : c === -2
       ? (l = 0, body = Buffer.allocUnsafe(64 * 1024), 6)
       : 2

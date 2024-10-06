@@ -13,13 +13,18 @@ import c from '../color.js'
 let peers = []
   , lockChanged = false
   , clear = false
+  , log = ''
+  , clock = ''
 
 const then = (x, fn) => x && typeof x.then === 'function' ? x.then(fn) : fn(x)
     , set = (xs, id, x) => (xs.set(id, x), x)
     , noop = () => { /* noop */ }
     , overwrite = () => process.stdout.write('\x1B[F\x1B[2K')
-    , p = (...xs) => (clear && overwrite(), clear = false, console.log(...xs), xs[xs.length - 1]) // eslint-disable-line
-    , progress = (...x) => (clear && overwrite(), clear = true, console.log(...x)) // eslint-disable-line
+    , p = (...xs) => (clear && overwrite(), clear = log = false, console.log(...xs), xs[xs.length - 1]) // eslint-disable-line
+    , clocks = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', ]
+    , progress = x => log = x // eslint-disable-line
+
+const animation = setInterval(() => log && (clear && overwrite(), console.log(clock = clocks[(clocks.indexOf(clock) + 1) % clocks.length], log), clear = true), 67).unref()
 
 const bins = []
     , leafs = []
@@ -164,7 +169,7 @@ async function install([name, version], parent, force) {
     packages,
     id,
     (async() => {
-      progress('📦 ' + name + c.gray(' @ ' + version))
+      progress(name + c.gray(' ' + version))
 
       if (!force && (parent || oldLock.dependencies[name] === pkgDependencies[name])) {
         const parentLock = oldLock.packages[parent ? parent.name + '@' + parent.version : '']
@@ -649,7 +654,7 @@ async function getVersion({ name, version }) {
       const registry = getRegistry(name)
       const cachedPath = globalPath({ name, version }) + '.json'
       const cached = await fsp.readFile(cachedPath).catch(() => 0)
-      cached || progress('🔎 ' + name + c.gray(' @ ' + version))
+      cached || progress(name + c.gray(' ' + version))
       const headers = registry.password ? { Authorization: 'Bearer ' + registry.password } : {}
       const x = cached || await https.fetch(registry.hostname, registry.pathname + name + '/' + version, headers)
       const json = JSON.parse(x)
@@ -671,7 +676,7 @@ async function findVersion({ name, range }) {
     versions,
     id,
     (async () => {
-      progress('🔎 ' + name + c.gray(' @ ' + range))
+      progress(name + c.gray(' ' + (range.length > 30 ? range.slice(0,27) + '...' : range)))
 
       let { body, versions: xs } = await findVersions(name)
       let pkg = null

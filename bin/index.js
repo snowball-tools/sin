@@ -1,11 +1,12 @@
 #! /usr/bin/env node
 
-import path from 'node:path'
 import URL from 'node:url'
+import path from 'node:path'
+import process from 'node:process'
+import cp from 'node:child_process'
 
 import prexit from './prexit.js'
 import config, { error } from './config.js'
-import cp from 'child_process'
 
 const [major, minor] = process.versions.node.split('.').map(Number)
 

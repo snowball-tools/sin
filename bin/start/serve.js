@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import { isMainThread, parentPort } from 'node:worker_threads'
 
-import Server from '#server'
+import Server from 'sin/server'
 import '../favicon.js'
 
 import ssr, { wrap } from '../../ssr/index.js'

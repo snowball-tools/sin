@@ -1,6 +1,7 @@
-import { symbols as $ } from './shared.js'
 import net from 'node:net'
 import tls from 'node:tls'
+import process from 'node:process'
+import { symbols as $ } from './shared.js'
 
 const nets = new Map()
 const tlss = new Map()

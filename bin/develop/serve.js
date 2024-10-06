@@ -1,9 +1,8 @@
 /* eslint no-console:0 */
 
 import path from 'node:path'
-
-import Server from '#server'
 import esbuild from 'esbuild'
+import Server from 'sin/server'
 
 import favicon from '../favicon.js'
 import config, { resolve } from './config.js'

@@ -1,8 +1,9 @@
-import url from 'url'
-import path from 'node:path'
 import fs from 'node:fs'
-import { fileURLToPath, pathToFileURL } from 'node:url'
 import esbuild from 'esbuild'
+import path from 'node:path'
+import process from 'node:process'
+import { createRequire } from 'node:module'
+import url, { fileURLToPath, pathToFileURL } from 'node:url'
 
 export function isScript(x) {
   return /\.[mc]?[jt]sx?$/i.test(x)

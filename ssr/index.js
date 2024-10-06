@@ -1,4 +1,13 @@
+import process from 'node:process'
+
 import window from './window.js'
+
+import s from '../src/index.js'
+import query from '../src/query.js'
+import router from '../src/router.js'
+import mimes from '../shared/server/mimes.js'
+import { asLocation, wrap } from './shared.js'
+import { formatValue, cssRules } from '../src/style.js'
 import {
   cleanHref,
   className,
@@ -15,14 +24,6 @@ import {
   mergeTag,
   noop
 } from '../src/shared.js'
-import { asLocation, wrap } from './shared.js'
-import { formatValue, cssRules } from '../src/style.js'
-import router from '../src/router.js'
-import s from '../src/index.js'
-import mimes from '../shared/server/mimes.js'
-import query from '../src/query.js'
-
-export { wrap }
 
 class TimeoutError extends Error {}
 
@@ -55,6 +56,7 @@ const voidTags = new Set([
   'wbr'
 ])
 
+export { wrap }
 export default function(mount, serverAttrs = {}, serverContext = {}) {
   if (!mount)
     return {}
@@ -122,7 +124,7 @@ export default function(mount, serverAttrs = {}, serverContext = {}) {
     })
   )
 
-  return tryPromise(result, (x, was) => {
+  return tryPromise(result, x => {
     const css = '<style class=sin>' + cssRules().join('') + '</style>'
 
     return {

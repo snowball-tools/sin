@@ -1,3 +1,5 @@
+import process from 'node:process'
+
 const handlers = {}
     , last = []
 

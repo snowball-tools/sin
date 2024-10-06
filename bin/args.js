@@ -1,3 +1,5 @@
+import process from 'node:process'
+
 export default async function(x, options) {
   if (!options) {
     options = x

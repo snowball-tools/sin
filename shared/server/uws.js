@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import https from 'node:https'
+import process from 'node:process'
 import { pipeline } from 'node:stream/promises'
 import { createRequire } from 'node:module'
 

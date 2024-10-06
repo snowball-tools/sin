@@ -1,3 +1,4 @@
+import process from 'node:process'
 import { createRequire } from 'node:module'
 import { P3toOKLCH, sRGBtoOKLCH } from './color.js'
 

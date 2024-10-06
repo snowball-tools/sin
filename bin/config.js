@@ -1,9 +1,10 @@
 import os from 'node:os'
 import fs from 'node:fs'
-import cp from 'node:child_process'
-import fsp from 'node:fs/promises'
 import url from 'node:url'
 import path from 'node:path'
+import process from 'node:process'
+import fsp from 'node:fs/promises'
+import cp from 'node:child_process'
 import { getLocal, getTSConfigRaw, getPkgs, getSucrase, isScript, extensionless, canRead } from './shared.js'
 
 import args from './args.js'

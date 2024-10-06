@@ -27,9 +27,6 @@
     "./test": "./bin/test/test.js",
     "./mimes": "./shared/server/mimes.js"
   },
-  "imports": {
-    "#server": "./shared/server/index.js"
-  },
   "bin": {
     "sin": "./bin/index.js"
   },

@@ -1,4 +1,5 @@
 import Url from 'node:url'
+import process from 'node:process'
 
 import prexit from '../prexit.js'
 import p from './log.js'

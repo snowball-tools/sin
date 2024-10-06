@@ -1,4 +1,4 @@
-import Server from '#server'
+import Server from 'sin/server'
 
 import api from '../api.js'
 import editor from './editor.js'

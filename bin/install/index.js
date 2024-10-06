@@ -10,7 +10,7 @@ import * as semver from './semver.js'
 import * as https from './https.js'
 import c from '../color.js'
 
-let allPeers = []
+let peers = []
   , lockChanged = false
   , clear = false
 
@@ -66,12 +66,42 @@ if (!config.ci) {
 p('Finished in', (process.uptime() * 1000).toFixed(2) + 'ms')
 
 async function installPeers() {
-  while (allPeers.length) {
-    const xs = allPeers.slice()
-    allPeers = []
-    await Promise.all(xs.map(({ peers, parent, force }) =>
-      installDependencies(peers, parent, force)
-    ))
+  const choosen = { ...lock.packages[''].dependencies }
+  while (peers.length) {
+    const besties = {}
+    await Promise.all(peers.map(async (x) => {
+      let { name, range, parent, force, optional, lookup } = x
+      if (name in choosen) {
+        if (semver.satisfies(choosen[name], range))
+          return optional || install([name, choosen[name]], parent, force)
+        else
+          throw new Error(name + '@' + range + ' does not satisfy choosen version of ' + choosen[name])
+      }
+      const best = name in besties && besties[name]
+      if (best && semver.satisfies(best.pkg.version, range))
+        return best.packages.push(x)
+
+      const pkg = await lookup
+      if (!pkg)
+        throw new Error('Could not find version for ' + pkg.name + ' exp ' + range)
+
+      if (!best)
+        return besties[name] = { pkg, range, packages: [x] }
+
+      if (!semver.satisfies(pkg.version, best.range))
+        throw new Error(pkg.name + '@' + range + ' does not intersect with ' + best.pkg.range)
+
+      best.range = range
+      best.pkg = pkg
+      best.packages.push(x)
+    }))
+    peers = []
+    await Promise.all(Object.entries(besties).map(([name, { pkg, packages }]) => {
+      choosen[pkg.name] = pkg.version
+      return Promise.all(packages.map(({ parent, force, optional }) =>
+        optional || install([name, pkg.version], parent, force)
+      ))
+    }))
   }
 }
 
@@ -252,13 +282,9 @@ async function installed(pkg, parent, force) {
     installDependencies({ ...pkg.package.optionalDependencies, ...pkg.package.dependencies }, pkg, force)
   ])
 
-  const peers = pkg.package.peerDependencies
-  if (peers && pkg.package.peerDependenciesMeta) {
-    for (const key in pkg.package.peerDependenciesMeta)
-      pkg.package.peerDependenciesMeta[key]?.optional && delete peers[key]
-  }
+  for (const [name, range] of Object.entries(pkg.package.peerDependencies || {}))
+    peers.push({ name, range, parent: pkg, force, lookup: findVersion({ name, range }), optional: pkg.package.peerDependenciesMeta?.[name]?.optional || false })
 
-  peers && allPeers.push({ peers, parent: pkg, force })
   lockChanged = true
 
   return pkg
@@ -330,8 +356,8 @@ async function writePackage(xs) {
 }
 
 async function resolveNpm(name, version) {
-  const registry = name[0] === '@' && registries[name.slice(0, name.indexOf('/'))] || defaultRegistry
-  const pkg = await fetchVersion(parsePackage(name + '@' + version), registry)
+  const pkg = await fetchVersion(parsePackage(name + '@' + version))
+  const registry = getRegistry(name)
   pkg.tgz = {
     port: registry.port || 443,
     protocol: registry.protocol || 'https',
@@ -575,7 +601,7 @@ async function rm(x) {
 function mkdir(x) {
   return dirs.has(x)
     ? dirs.get(x)
-    : then(set(dirs, x, fsp.mkdir(x, { recursive: true }), () => set(dirs, x, true)))
+    : then(set(dirs, x, fsp.mkdir(x, { recursive: true })), () => set(dirs, x, true))
 }
 
 async function symlink(target, path) {
@@ -595,18 +621,22 @@ async function symlink(target, path) {
 
       await mkdir(Path.dirname(path))
       await fsp.symlink(target, path, 'junction').catch(() => fsp.rm(path, { recursive: true }).then(() => fsp.symlink(target, path)))
-      set(symlinked, id, true)
+      return set(symlinked, id, true)
     })()
   )
 }
 
-function fetchVersion(x, registry = defaultRegistry) {
-  return !x.version || semver.isVersion(x.version) || semver.isDistTag(x.version)
-    ? getVersion(x, registry)
-    : findVersion(x, registry)
+function fetchVersion({ name, version }) {
+  return !version || semver.isVersion(version) || semver.isDistTag(version)
+    ? getVersion({ name, version })
+    : findVersion({ name, range: version })
 }
 
-async function getVersion({ name, version }, registry) {
+function getRegistry(name) {
+  return name[0] === '@' && registries[name.slice(0, name.indexOf('/'))] || defaultRegistry
+}
+
+async function getVersion({ name, version }) {
   const id = name + '@' + version
   if (versions.has(id))
     return versions.get(id)
@@ -616,32 +646,58 @@ async function getVersion({ name, version }, registry) {
     id,
     (async() => {
       version || (version = 'latest')
-
-      progress('🔎 ' + name + c.gray(' @ ' + version))
-
+      const registry = getRegistry(name)
       const cachedPath = globalPath({ name, version }) + '.json'
       const cached = await fsp.readFile(cachedPath).catch(() => 0)
+      cached || progress('🔎 ' + name + c.gray(' @ ' + version))
       const headers = registry.password ? { Authorization: 'Bearer ' + registry.password } : {}
       const x = cached || await https.fetch(registry.hostname, registry.pathname + name + '/' + version, headers)
       const json = JSON.parse(x)
       cached || await fsp.writeFile(cachedPath, x)
       json.version || (json.version = version)
-      return json
+      return set(versions, id, json)
     })()
   )
 }
 
-async function findVersion({ name, version }, registry) {
-  version || (version = 'latest')
-  progress('🔎 ' + name + c.gray(' @ ' + version))
+async function findVersion({ name, range }) {
+  range || (range = 'latest')
 
-  const { body, versions } = await findVersions(name, registry)
-  version = semver.best(version, versions) || version
-  const json = getInfo(version, body)
-  return json || getVersion({ name, version }, registry)
+  const id = name + '@' + range
+  if (versions.has(id))
+    return versions.get(id)
+
+  return set(
+    versions,
+    id,
+    (async () => {
+      progress('🔎 ' + name + c.gray(' @ ' + range))
+
+      let { body, versions: xs } = await findVersions(name)
+      let pkg = null
+      let fallback = null
+      while (!pkg) {
+        const version = semver.best(range, xs)
+        if (!version) {
+          if (fallback)
+            return set(versions, id, fallback)
+          throw new Error('No version found for ' + name + ' @ ' + range)
+        }
+        pkg = getInfo(version, body) || await getVersion({ name, version })
+        if (pkg.deprecated) {
+          fallback || (fallback = pkg, xs = xs.slice())
+          xs.splice(1, xs.indexOf(version))
+          pkg = null
+          if (!xs.length)
+            return set(versions, id, fallback)
+        }
+      }
+      return set(versions, id, pkg)
+    })()
+  )
 }
 
-async function findVersions(name, registry) {
+async function findVersions(name) {
   if (versions.has(name))
     return versions.get(name)
 
@@ -649,10 +705,13 @@ async function findVersions(name, registry) {
     versions,
     name,
     (async() => {
+      const registry = getRegistry(name)
       const headers = registry.password ? { Authorization: 'Bearer ' + registry.password } : {}
       const body = (await https.fetch(registry.hostname, registry.pathname + name, headers)).toString('utf8')
-      const versions = (body.match(/(:{|},)"\d+\.\d+\.\d+[^"]*":{"/g) || []).map(x => x.slice(3, -4))
-      return { body, versions }
+      return set(versions, name, {
+        body,
+        versions: (body.match(/(:{|},)"\d+\.\d+\.\d+[^"]*":{"/g) || []).map(x => x.slice(3, -4))
+      })
     })()
   )
 }

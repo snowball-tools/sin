@@ -4,7 +4,7 @@ import dns from 'node:dns/promises'
 const ips = {}
 const open = {}
 const empty = Buffer.alloc(0)
-const highWaterMark = 128 * 1024
+const highWaterMark = 64 * 1024
 
 export async function getIp(host) {
   if (host in ips)
@@ -44,18 +44,20 @@ function setHeaders(xs) {
 async function create(host) {
   const xs = host in open
     ? open[host]
-    : open[host] = Object.assign([], { count: 1, queue: [] })
+    : open[host] = Object.assign([], { count: 1, queue: [], secureContext: tls.createSecureContext() })
 
-  if (xs.count > 100)
+  if (xs.count > 200)
     return new Promise(r => xs.queue.unshift(r))
 
   xs.count++
-
   const socket = tls.connect({
     port: 443,
     host: await getIp(host),
     servername: host,
     highWaterMark,
+    ALPNProtocols: ['http/1.1'],
+    secureContext: xs.secureContext,
+    noDelay: true,
     onread: {
       buffer: Buffer.allocUnsafe(highWaterMark),
       callback: (end, buffer) => socket.handler(buffer, end)

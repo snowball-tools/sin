@@ -61,7 +61,7 @@
     "not-vue"
   ],
   "dependencies": {
-    "esbuild": "0.23.0"
+    "esbuild": "0.24.0"
   },
   "engines": {
     "node": ">=20.11"

@@ -710,6 +710,7 @@ function defaultLock(x) {
     dependencies: {},
     packages: {
       '': {
+        name: x.name,
         version: x.version,
         dependencies: {}
       }

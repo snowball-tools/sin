@@ -550,7 +550,7 @@ async function cleanup() {
           top.has(Path.join(x, name)) || topRemove.push(Path.join('node_modules', x, name))
       }
     } else {
-      topRemove.push(Path.join('node_modules', x))
+      x[0] !== '.' && topRemove.push(Path.join('node_modules', x))
     }
   }
 
@@ -560,8 +560,10 @@ async function cleanup() {
     ...binRemove
   ].map(rm))
 
-  const subs = allRemove.length - topRemove.length
-  topRemove.length && p('Removed', topRemove.length, 'unused module' + (topRemove.length === 1 ? '' : 's') + ' and', subs, 'subdependenc' + (subs === 1 ? 'y' : 'ies'))
+  const s = allRemove.length - topRemove.length
+      , l = topRemove.length
+
+  l && p('Removed', l, 'unused module folder' + (l === 1 ? '' : 's') + (s > 0 ? ' and ' + s + ' subdependenc' + (s === 1 ? 'y' : 'ies') : ''))
   topRemove.forEach(x => p(c.red('- ' + x.slice(13))))
 }
 

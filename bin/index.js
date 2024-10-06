@@ -14,7 +14,7 @@ if (major < 20 || major === 20 && minor <= 10)
   throw error('Sins minimum Node.js support is 20.11, please upgrade')
 
 try {
-  if (config.develop && major < 22 && !process.execArgv.includes('--experimental-websocket')) {
+  if (config.develop && major < 22 && typeof WebSocket === 'undefined') {
     const x = cp.spawnSync(process.argv[0], ['--experimental-websocket', '--no-warnings', ...process.argv.slice(1)], { stdio: 'inherit' })
     process.exitCode = x.status
   } else {

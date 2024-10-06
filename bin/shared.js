@@ -1,9 +1,13 @@
 import fs from 'node:fs'
-import esbuild from 'esbuild'
 import path from 'node:path'
 import process from 'node:process'
 import { createRequire } from 'node:module'
 import url, { fileURLToPath, pathToFileURL } from 'node:url'
+
+let _esbuild
+function esbuild() {
+  return _esbuild || (_esbuild = createRequire(import.meta.url)('esbuild'))
+}
 
 export function isScript(x) {
   return /\.[mc]?[jt]sx?$/i.test(x)
@@ -42,7 +46,7 @@ export function canRead(x) {
 
 export function getTSConfigRaw(x, config) {
   const xs = config.tsconfig && fs.existsSync(config.tsconfig)
-    ? JSON.parse(esbuild.transformSync('export default ' + fs.readFileSync(config.tsconfig), { minify: true }).code.slice(14, -2).replace(/:/g, '":').replace(/([{,])/g, '$1"').replace(/!0/g, 'true').replace(/!1/g, 'false').replace(/""/g, '"'))
+    ? JSON.parse(esbuild().transformSync('export default ' + fs.readFileSync(config.tsconfig), { minify: true }).code.slice(14, -2).replace(/:/g, '":').replace(/([{,])/g, '$1"').replace(/!0/g, 'true').replace(/!1/g, 'false').replace(/""/g, '"'))
     : {}
 
   return {
@@ -113,7 +117,7 @@ function sucraseTS(sucrase, x, debug, tsx, tsconfigRaw, file) {
 }
 
 function esbuildTS(x, debug, tsx, tsconfigRaw, file) {
-  return esbuild.transformSync(x, {
+  return esbuild().transformSync(x, {
     ...(debug ? { logLevel: 'debug' } : {}),
     jsx: 'transform',
     jsxFactory: 's',

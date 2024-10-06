@@ -33,7 +33,7 @@ const bins = []
 const registries = getScopes()
     , defaultRegistry = getDefaultRegistry()
     , packageJson = await jsonRead('package.json') || defaultPackage()
-    , oldLock = (await jsonRead('package-lock.json')) || (await jsonRead(Path.join('node_modules', '.package-lock.json'))) || defaultLock(packageJson)
+    , oldLock = (await jsonRead('package-sins.json')) || (await jsonRead(Path.join('node_modules', '.package-sins.json'))) || defaultLock(packageJson)
     , lock = defaultLock(packageJson)
 
 await mkdir(config.globalPath)
@@ -281,7 +281,7 @@ function postInstall() {
 
 async function writeLock() {
   if (Object.keys(lock.packages).length === 0) {
-    await rm('package-lock.json')
+    await rm('package-sins.json')
     await rm('node_modules')
     return
   }
@@ -293,8 +293,7 @@ async function writeLock() {
   sort(lock, 'dependencies')
   sort(lock, 'packages')
   Object.values(lock.packages).forEach(x => sort(x, 'dependencies'))
-  fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2))
-  fs.writeFileSync(Path.join('node_modules', '.package-lock.json'), JSON.stringify(lock, null, 2))
+  fs.writeFileSync('package-sins.json', JSON.stringify(lock, null, 2))
 
   function sort(x, k) {
     x[k] && (x[k] = Object.fromEntries(Object.entries(x[k]).sort(([a], [b]) => a > b ? 1 : a < b ? -1 : 0)))
@@ -543,7 +542,7 @@ async function cleanup() {
     x in bins || binRemove.push(Path.join('node_modules', '.bin', x))
 
   for (const x of await fsp.readdir('node_modules').catch(() => [])) {
-    if (x === '.bin' || x === '.sin' || x === '.package-lock.json')
+    if (x === '.bin' || x === '.sin' || x === '.package-sins.json')
       continue
     if (top.has(x)) {
       if (x.charCodeAt(0) === 64) { // @

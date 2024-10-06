@@ -158,7 +158,7 @@ async function install([name, version], parent, force) {
 
           const [tar, sha512] = await fsp.readFile(pkg.global).then(gunzip).catch(() => [])
           if (tar)
-            return (pkg.sha512 = sha512, set(packages, id, await installed(await untar(pkg, tar), parent, force)))
+            return (pkg.integrity = 'sha512-' + sha512, set(packages, id, await installed(await untar(pkg, tar), parent, force)))
 
           version = lockVersion
         }
@@ -185,11 +185,11 @@ async function install([name, version], parent, force) {
 
       const global = await fsp.readFile(pkg.global).then(gunzip).catch(() => [])
       if (global[0])
-        return (pkg.sha512 = global[1], set(packages, id, await installed(await untar(pkg, global[0]), parent, force)))
+        return (pkg.integrity = 'sha512-' + global[1], set(packages, id, await installed(await untar(pkg, global[0]), parent, force)))
 
       const body = await https.fetch(pkg.tgz.hostname, pkg.tgz.pathname, pkg.tgz.headers)
       const [tar, sha512] = await gunzip(body)
-      pkg.sha512 = sha512
+      pkg.integrity = 'sha512-' + sha512
       await Promise.all([
         then(mkdir(Path.dirname(pkg.global)), () => fsp.writeFile(pkg.global, body)),
         untar(pkg, tar).then(() => installed(pkg, parent, force))
@@ -230,7 +230,7 @@ async function finished(pkg, parent) {
 function setDependency(pkg, parent) {
   pkg.name + '@' + pkg.version in lock.packages || (lock.packages[pkg.name + '@' + pkg.version] = {
     resolved: pkg.resolved,
-    sha512: pkg.sha512,
+    integrity: pkg.integrity,
     cpu: pkg.cpu,
     os: pkg.os
   })
@@ -342,7 +342,7 @@ async function resolveNpm(name, version) {
   }
 
   pkg.resolved = 'https://' + pkg.tgz.hostname + pkg.tgz.pathname
-  pkg.sha512 = pkg.dist?.integrity?.slice(7)
+  pkg.integrity = pkg.dist?.integrity
   addPaths(pkg)
   return pkg
 }

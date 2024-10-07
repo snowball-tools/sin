@@ -8,25 +8,44 @@ import config from '../config.js'
 import c from '../color.js'
 
 const log = console.log // eslint-disable-line
-await ({ create, list, renew, delete: del })[config.$[1] || 'create']()
+await ({ create, list, renew, delete: del })[config.$[1]]?.()
+
+export { Acme }
 
 async function create() {
   const domains = config.acme.domains
   if (domains.length && config._.length)
     throw new Error(`[sin acme] Cannot mix domains in config (${domains.join(',')}) and cli (${config._.join(',')})`)
-
   domains.push(...config._)
-  fs.mkdirSync(config.acme.dir, { recursive: true })
-  const caPath = path.join(config.acme.dir, config.acme.ca + '.json')
-  const dir = path.join(config.acme.dir, config.acme.ca + (config.acme.rsa ? '-rsa' + config.acme.rsa : '') + '_' + domains.join(',').replace(/\*/g, '_'))
-  const jsonPath = path.join(dir, 'cert.json')
-  const certPath = config.ssl.cert || path.join(dir, 'cert.pem')
-  const keyPath = config.ssl.key || path.join(dir, 'key.pem')
+  await createCert(config)
+}
 
-  fs.mkdirSync(dir, { recursive: true })
+export function getCertPaths({ acme, ssl }) {
+  const ca = acme.ca || 'letsencrypt'
+  const acmeDir = acme.dir || config.acme.dir
+
+  const dir = path.join(acmeDir, ca + (acme.rsa ? '-rsa' + acme.rsa : '') + '_' + acme.domains.join(',').replace(/\*/g, '_'))
+  return {
+    caPath: path.join(acmeDir, ca + '.json'),
+    certDir: dir,
+    jsonPath: path.join(dir, 'cert.json'),
+    certPath: ssl?.cert || path.join(dir, 'cert.pem'),
+    keyPath: ssl?.key || path.join(dir, 'key.pem'),
+  }
+}
+
+export async function createCert(options) {
+  const opts = structuredClone(options)
+  opts.acme.ca ||= 'letsencrypt'
+  opts.acme.dir ||= config.acme.dir
+
+  fs.mkdirSync(opts.acme.dir, { recursive: true })
+  const { certDir, caPath, jsonPath, certPath, keyPath } = getCertPaths(opts)
+
+  fs.mkdirSync(certDir, { recursive: true })
 
   const account = JSON.parse(await readOrNull(caPath))
-  const acme = await Acme({ ...account, ...(Object.fromEntries(Object.entries(config.acme).filter(([k, v]) => v !== undefined))) })
+  const acme = await Acme({ ...account, ...(Object.fromEntries(Object.entries(opts.acme).filter(([k, v]) => v !== undefined))) })
   await fsp.writeFile(caPath, JSON.stringify(acme, null, 2))
   if (account && !acme.kid && acme.ca !== 'zerossl') {
     await acme.rotate()
@@ -36,9 +55,10 @@ async function create() {
   }
 
   const x = await acme.create({
-    ...config.acme,
-    key: config.ssl.key && (fs.existsSync(keyPath) ? fs.readFileSync(keyPath, 'utf8') : null),
-    passphrase: config.ssl.passphrase
+    ...opts.acme,
+    key: opts.ssl?.key && (fs.existsSync(keyPath) ? fs.readFileSync(keyPath, 'utf8') : null),
+    passphrase: opts.ssl?.passphrase,
+    auth: opts.auth,
   })
 
   await Promise.all([

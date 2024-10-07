@@ -332,7 +332,7 @@ async function writeLock() {
 }
 
 async function writePackage(xs) {
-  const pkg = await jsonRead('package.json')
+  const pkg = await jsonRead('package.json') || defaultPackage()
   let needsWrite = false
   for (const { name, version } of xs) {
     const x = config.saveDev

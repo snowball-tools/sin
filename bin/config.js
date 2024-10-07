@@ -114,6 +114,7 @@ async function fromArgs() {
     alias: {
       development: 'develop',
       production: 'start',
+      uninstall: 'rm',
       prod: 'start',
       '-D': '--save-dev',
       '-O': '--save-optional',

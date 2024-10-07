@@ -71,22 +71,21 @@ if (!config.ci) {
 p('Finished in', (process.uptime() * 1000).toFixed(2) + 'ms')
 
 async function installPeers() {
-  const choosen = { ...lock.packages[''].dependencies }
+  const chosen = { ...lock.packages[''].dependencies }
   while (peers.length) {
     const besties = {}
-    await Promise.all(peers.map(async (x) => {
-      let { name, range, parent, force, optional, lookup } = x
-      if (name in choosen) {
-        if (semver.satisfies(choosen[name], range))
-          return optional || install([name, choosen[name]], parent, force)
+    await Promise.all(peers.map(x => {
+      let { name, range, parent, force, optional, pkg } = x
+      if (name in chosen) {
+        if (semver.satisfies(chosen[name], range))
+          return optional || install([name, chosen[name]], parent, force)
         else
-          throw new Error(name + '@' + range + ' does not satisfy choosen version of ' + choosen[name])
+          throw new Error(name + '@' + range + ' does not satisfy chosen version of ' + chosen[name])
       }
       const best = name in besties && besties[name]
       if (best && semver.satisfies(best.pkg.version, range))
         return best.packages.push(x)
 
-      const pkg = await lookup
       if (!pkg)
         throw new Error('Could not find version for ' + pkg.name + ' exp ' + range)
 
@@ -102,7 +101,7 @@ async function installPeers() {
     }))
     peers = []
     await Promise.all(Object.entries(besties).map(([name, { pkg, packages }]) => {
-      choosen[pkg.name] = pkg.version
+      chosen[name] = pkg.version
       return Promise.all(packages.map(({ parent, force, optional }) =>
         optional || install([name, pkg.version], parent, force)
       ))
@@ -287,8 +286,9 @@ async function installed(pkg, parent, force) {
     installDependencies({ ...pkg.package.optionalDependencies, ...pkg.package.dependencies }, pkg, force)
   ])
 
-  for (const [name, range] of Object.entries(pkg.package.peerDependencies || {}))
-    peers.push({ name, range, parent: pkg, force, lookup: findVersion({ name, range }), optional: pkg.package.peerDependenciesMeta?.[name]?.optional || false })
+  peers.push(...(await Promise.all(Object.entries(pkg.package.peerDependencies || {}).map(async([name, range]) => ({
+    name, range, parent: pkg, force, pkg: await findVersion({ name, range }), optional: pkg.package.peerDependenciesMeta?.[name]?.optional || false
+  })))))
 
   lockChanged = true
 

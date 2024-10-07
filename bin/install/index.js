@@ -691,7 +691,7 @@ async function findVersion({ name, range }) {
         pkg = getInfo(version, body) || await getVersion({ name, version })
         if (pkg.deprecated) {
           fallback || (fallback = pkg, xs = xs.slice())
-          xs.splice(1, xs.indexOf(version))
+          xs.splice(xs.indexOf(version), 1)
           pkg = null
           if (!xs.length)
             return set(versions, id, fallback)

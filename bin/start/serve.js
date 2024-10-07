@@ -39,7 +39,7 @@ if (config.httpPort)
 if (config.secure) {
   await listenHttps()
   let certChangeThrottle
-  fs.watch(config.ssl.cert, () => {
+  config.ssl.cert && fs.watch(config.ssl.cert, () => {
     console.log('SSL certificate file changed - reload in 5 seconds') // eslint-disable-line
     clearTimeout(certChangeThrottle)
     certChangeThrottle = setTimeout(() => {
@@ -64,6 +64,9 @@ async function listenHttp() {
     })
     await redirect.listen(config.httpPort, config.address)
     console.log('HTTP Redirecting to HTTPS on', config.httpPort) // eslint-disable-line
+  } else if (config.secure && config.ssl.mode === 'optional') {
+    await router.listen(config.httpPort, config.address)
+    console.log('HTTP (optional) listening on', config.httpPort) // eslint-disable-line
   } else {
     await router.listen(config.httpPort, config.address)
     console.log('HTTP Listening on', config.httpPort) // eslint-disable-line

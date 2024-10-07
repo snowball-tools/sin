@@ -79,7 +79,7 @@ async function fromArgs() {
       },
       acme,
       title       : (x, xs) => x || path.basename(xs.cwd),
-      secure      : (x, xs) => !!(xs.ssl.cert || xs.acme.domains.length),
+      secure      : (x, xs) => !!(xs.ssl.cert || xs.acme.domains.length || xs.ssl.mode === 'optional'),
       httpsPort   : (x, xs) => x || (xs.secure ? (x ? parseInt(x) : (xs.port || 443)) : null),
       httpPort    : (x, xs) => xs.secure && xs.ssl.mode === 'only' ? null : (xs.secure ? 80 : x ? parseInt(x) : (xs.port || 80)),
       address     : x => x || env.ADDRESS || '0.0.0.0',

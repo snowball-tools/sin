@@ -205,7 +205,7 @@ async function Acme({
       ca
     }
 
-    function getAuth(auth, oldAuth) {
+    function getAuth(auth, oldAuth={}) {
       return Object.entries(auth).reduce((acc, [key, value]) => {
         acc[key] = process.env[value] || oldAuth[key]
         if (!acc[key])

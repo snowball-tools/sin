@@ -24,7 +24,7 @@ const then = (x, fn) => x && typeof x.then === 'function' ? x.then(fn) : fn(x)
     , clocks = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', ]
     , progress = x => log = x // eslint-disable-line
 
-const animation = setInterval(() => log && (clear && overwrite(), console.log(clock = clocks[(clocks.indexOf(clock) + 1) % clocks.length], log), clear = true), 67).unref()
+const animation = setInterval(() => log && (console.log((clear ? '\x1B[F\x1B[2K' : '') + (clock = clocks[(clocks.indexOf(clock) + 1) % clocks.length]), log), clear = true), 67).unref()
 
 const bins = []
     , leafs = []
@@ -68,7 +68,7 @@ if (!config.ci) {
   added.forEach(x => p(c.green('- ' + x.name), c.gray(x.version)))
 }
 
-p('Finished in', (process.uptime() * 1000).toFixed(2) + 'ms')
+p('🔥 Finished in', (process.uptime() * 1000).toFixed(2) + 'ms')
 
 async function installPeers() {
   const chosen = { ...lock.packages[''].dependencies }

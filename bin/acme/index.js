@@ -40,7 +40,8 @@ export async function createCert(options) {
   opts.acme.dir ||= config.acme.dir
 
   fs.mkdirSync(opts.acme.dir, { recursive: true })
-  const { certDir, caPath, jsonPath, certPath, keyPath } = getCertPaths(opts)
+  const paths = getCertPaths(opts)
+  const { certDir, caPath, jsonPath, certPath, keyPath } = paths
 
   fs.mkdirSync(certDir, { recursive: true })
 
@@ -66,6 +67,7 @@ export async function createCert(options) {
     fsp.writeFile(certPath, x.cert),
     fsp.writeFile(keyPath, x.key)
   ])
+  return paths
 }
 
 function list() {

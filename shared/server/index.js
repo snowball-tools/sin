@@ -153,7 +153,7 @@ export default function Server({
 
         function callback(x) {
           if (!x)
-            return reject(new Error('Could not listen on', port))
+            return reject(new Error('Could not listen on ' + port))
 
           handle = x
           resolve({ port: uWS.us_socket_local_port(handle), handle, unlisten })

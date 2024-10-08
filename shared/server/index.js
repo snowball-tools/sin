@@ -127,7 +127,7 @@ export default function Server({
 
         port = parseInt(port)
         wrapper = wrap
-        isSsl = !!(o.cert || o.mode === 'optional')
+        isSsl = !!(o.cert || o.mode === 'manual')
         uws = isSsl
           ? uWS.SSLApp({ cert_file_name: o.cert, key_file_name: o.key, ...o })
           : uWS.App(o)

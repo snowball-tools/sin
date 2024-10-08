@@ -146,7 +146,7 @@ export default class Request {
   }
 
   get protocol() {
-    return this.options.cert || this.options.mode === 'optional'
+    return this.options.cert || this.options.mode === 'manual'
       ? 'https'
       : header(this, 'x-forwarded-proto') || 'http'
   }

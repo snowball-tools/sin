@@ -79,7 +79,7 @@ async function fromArgs() {
       },
       acme,
       title       : (x, xs) => x || path.basename(xs.cwd),
-      secure      : (x, xs) => !!(xs.ssl.cert || xs.acme.domains.length || xs.ssl.mode === 'optional'),
+      secure      : (x, xs) => !!(xs.ssl.cert || xs.acme.domains.length || xs.ssl.mode === 'manual'),
       httpsPort   : (x, xs) => x || (xs.secure ? (x ? parseInt(x) : (xs.port || 443)) : null),
       httpPort    : (x, xs) => xs.secure && xs.ssl.mode === 'only' ? null : (xs.secure ? 80 : x ? parseInt(x) : (xs.port || 80)),
       address     : x => x || env.ADDRESS || '0.0.0.0',
@@ -208,8 +208,8 @@ function getPort(x, config) {
 
 function getMode(x) {
   x = x || env.SSL_MODE || 'redirect'
-  if (!'only redirect optional'.includes(x))
-    throw new Error('SSL Mode must be: only | redirect | optional')
+  if (!'only redirect manual'.includes(x))
+    throw new Error('SSL Mode must be: only | redirect | manual')
   return x
 }
 

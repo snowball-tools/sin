@@ -64,9 +64,9 @@ async function listenHttp() {
     })
     await redirect.listen(config.httpPort, config.address)
     console.log('HTTP Redirecting to HTTPS on', config.httpPort) // eslint-disable-line
-  } else if (config.secure && config.ssl.mode === 'optional') {
+  } else if (config.secure && config.ssl.mode === 'manual') {
     await router.listen(config.httpPort, config.address)
-    console.log('HTTP (optional) listening on', config.httpPort) // eslint-disable-line
+    console.log('HTTP (manual ssl) listening on', config.httpPort) // eslint-disable-line
   } else {
     await router.listen(config.httpPort, config.address)
     console.log('HTTP Listening on', config.httpPort) // eslint-disable-line

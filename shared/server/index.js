@@ -12,7 +12,6 @@ export default function Server({
   ...o
 } = {}) {
   let uws
-    , isSsl
     , handle
     , wrapper
 
@@ -43,7 +42,6 @@ export default function Server({
   return router
 
   function addServerName(name, options) {
-    if (!isSsl) return
     uws.addServerName(name, options)
     uws.domain(name).any('/*', wrapper)
   }
@@ -127,8 +125,7 @@ export default function Server({
 
         port = parseInt(port)
         wrapper = wrap
-        isSsl = !!(o.cert || o.mode === 'manual')
-        uws = isSsl
+        uws = !!(o.cert || o.mode === 'manual')
           ? uWS.SSLApp({ cert_file_name: o.cert, key_file_name: o.key, ...o })
           : uWS.App(o)
         asn.forEach(xs => addServerName(...xs))

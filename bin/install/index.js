@@ -24,7 +24,7 @@ const then = (x, fn) => x && typeof x.then === 'function' ? x.then(fn) : fn(x)
     , clocks = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', ]
     , progress = x => log = x // eslint-disable-line
 
-const animation = setInterval(() => log && (console.log((clear ? '\x1B[F\x1B[2K' : '') + (clock = clocks[(clocks.indexOf(clock) + 1) % clocks.length]), log), clear = true), 67).unref()
+const animation = setInterval(() => log && (console.log((clear ? '\x1B[F\x1B[2K' : '') + (clock = clocks[(clocks.indexOf(clock) + 1) % clocks.length]), log), clear = true), 50).unref()
 
 const bins = []
     , leafs = []
@@ -39,18 +39,13 @@ const registries = getScopes()
     , defaultRegistry = getDefaultRegistry()
     , packageJson = await jsonRead('package.json') || defaultPackage()
     , oldLock = (await jsonRead('package-sins.json')) || (await jsonRead(Path.join('node_modules', '.package-sins.json'))) || defaultLock(packageJson)
+    , oldLockDependencies = { ...oldLock.optionalDependencies, ...oldLock.dependencies, ...oldLock.devDependencies }
     , lock = defaultLock(packageJson)
 
 await mkdir(config.globalPath)
 
 const added = await fromCLI()
-const pkgDependencies = {
-  ...packageJson.optionalDependencies,
-  ...packageJson.dependencies,
-  ...packageJson.devDependencies
-}
-
-!oldLock.dependencies && (oldLock.dependencies = {})
+const pkgDependencies = { ...packageJson.optionalDependencies, ...packageJson.dependencies, ...packageJson.devDependencies }
 
 await installDependencies(pkgDependencies)
 await installPeers()
@@ -71,7 +66,7 @@ if (!config.ci) {
 p('🔥 Finished in', (process.uptime() * 1000).toFixed(2) + 'ms')
 
 async function installPeers() {
-  const chosen = { ...lock.packages[''].dependencies }
+  const chosen = { ...lock.packages[''].optionalDependencies, ...lock.packages[''].dependencies }
   while (peers.length) {
     const besties = {}
     await Promise.all(peers.map(x => {
@@ -144,7 +139,7 @@ function fromCLI() {
 
 async function installDependencies(dependencies, parent, force = config.force || config.ci) {
   return Promise.all(Object.entries(dependencies).map(x =>
-    install(x, parent, force || oldLock.dependencies[x.name] !== x.version)
+    install(x, parent, force || oldLockDependencies[x.name] !== x.version)
   ))
 }
 
@@ -169,37 +164,39 @@ async function install([name, version], parent, force) {
     id,
     (async() => {
       progress(name + c.gray(' ' + version))
+      let pkg
 
-      if (!force && (parent || oldLock.dependencies[name] === pkgDependencies[name])) {
+      if (parent || oldLockDependencies[name] === pkgDependencies[name]) {
         const parentLock = oldLock.packages[parent ? parent.name + '@' + parent.version : '']
-        const lockVersion = parentLock?.dependencies?.[name]
-        const id = name + '@' + lockVersion
-        const locked = oldLock.packages[id]
+        const lockVersion = parentLock?.dependencies?.[name] || parentLock?.optionalDependencies?.[name] || parentLock?.peerDependencies?.[name]
         if (lockVersion) {
-          const pkg = { name, version: lockVersion, ...locked }
+          const lockedId = name + '@' + lockVersion
+          const locked = oldLock.packages[lockedId]
+          pkg = { name, version: lockVersion, ...locked }
           addPaths(pkg)
           if (locked && !supported(pkg)) {
             setDependency(pkg, parent)
-            return set(packages, id, pkg)
+            return set(packages, lockedId, pkg)
           }
 
-          pkg.package = pkg.local && await jsonRead(Path.join(pkg.local, 'package.json'))
-          if (pkg.package && lockVersion === pkg.package.version) {
-            await finished(pkg, parent, force)
-            await installDependencies({ ...pkg.package.optionalDependencies, ...pkg.package.dependencies }, pkg, force)
-            return set(packages, id, pkg)
+          if (!force) {
+            pkg.package = pkg.local && await jsonRead(Path.join(pkg.local, 'package.json'))
+            if (pkg.package && lockVersion === pkg.package.version) {
+              await finished(pkg, parent, force)
+              await installDependencies({ ...pkg.optionalDependencies, ...pkg.dependencies }, pkg, force)
+              return set(packages, lockedId, pkg)
+            }
+
+            const [tar, sha512] = await fsp.readFile(pkg.global).then(gunzip).catch(() => [])
+            if (tar)
+              return (pkg.integrity = 'sha512-' + sha512, set(packages, lockedId, await installed(await untar(pkg, tar), parent, force)))
           }
-
-          const [tar, sha512] = await fsp.readFile(pkg.global).then(gunzip).catch(() => [])
-          if (tar)
-            return (pkg.integrity = 'sha512-' + sha512, set(packages, id, await installed(await untar(pkg, tar), parent, force)))
-
           version = lockVersion
         }
       }
 
       const t = resolveType(version)
-      const pkg = await (
+      pkg = pkg || await (
           t === 'local'  ? resolveLocal('file:' + Path.resolve(version[0]))
         : t === 'git'    ? resolveGit(version)
         : t === 'https'  ? resolveUrl(version)
@@ -209,10 +206,9 @@ async function install([name, version], parent, force) {
         : t === 'npm'    ? resolveNpm(name, version)
         : Promise.reject('Unknown type')
       )
-      pkg.package = pkg
 
       if (!supported(pkg))
-        return set(packages, id, await installed(pkg, parent, force))
+        return set(packages, id, await finished(pkg, parent))
 
       if (!pkg.version)
         throw new Error('Could not find version for ' + pkg.name + ' exp ' + version)
@@ -262,6 +258,12 @@ async function finished(pkg, parent) {
 }
 
 function setDependency(pkg, parent) {
+  const type = parent?.optionalDependencies?.[pkg.name]
+    ? 'optionalDependencies'
+    : parent?.peerDependencies?.[pkg.name]
+    ? 'peerDependencies'
+    : 'dependencies'
+
   pkg.name + '@' + pkg.version in lock.packages || (lock.packages[pkg.name + '@' + pkg.version] = {
     resolved: pkg.resolved,
     integrity: pkg.integrity,
@@ -270,12 +272,12 @@ function setDependency(pkg, parent) {
   })
 
   if (!parent)
-    return lock.packages[''].dependencies[pkg.name] = pkg.version
+    return lock.packages[''][type][pkg.name] = pkg.version
 
   const id = parent.name + '@' + parent.version
-  'dependencies' in lock.packages[id]
-    ? lock.packages[id].dependencies[pkg.name] = pkg.version
-    : lock.packages[id].dependencies = { [pkg.name]: pkg.version }
+  type in lock.packages[id]
+    ? lock.packages[id][type][pkg.name] = pkg.version
+    : lock.packages[id][type] = { [pkg.name]: pkg.version }
 }
 
 async function installed(pkg, parent, force) {
@@ -283,16 +285,23 @@ async function installed(pkg, parent, force) {
 
   await Promise.all([
     finished(pkg, parent),
-    installDependencies({ ...pkg.package.optionalDependencies, ...pkg.package.dependencies }, pkg, force)
+    installDependencies({ ...pkg.optionalDependencies, ...pkg.dependencies }, pkg, force)
   ])
 
-  peers.push(...(await Promise.all(Object.entries(pkg.package.peerDependencies || {}).map(async([name, range]) => ({
-    name, range, parent: pkg, force, pkg: await findVersion({ name, range }), optional: pkg.package.peerDependenciesMeta?.[name]?.optional || false
+  peers.push(...(await Promise.all(Object.entries(pkg.peerDependencies || {}).map(async([name, range]) => ({
+    name, range, parent: pkg, force, pkg: await peerPkg(name, range), optional: pkg.package.peerDependenciesMeta?.[name]?.optional || false
   })))))
 
   lockChanged = true
 
   return pkg
+}
+
+function peerPkg(name, range) {
+  const id = name + '@' + range
+  return id in oldLock.packages
+    ? { name, version: range, ...oldLock.packages[id] }
+    : findVersion({ name, range })
 }
 
 function postInstall() {
@@ -311,6 +320,9 @@ function postInstall() {
 }
 
 async function writeLock() {
+  if (config.ci)
+    return
+
   if (Object.keys(lock.packages).length === 0) {
     await rm('package-sins.json')
     await rm('node_modules')
@@ -320,8 +332,12 @@ async function writeLock() {
   if (!lockChanged) // perhaps just deep equal?
     return
 
-  lock.dependencies = pkgDependencies
+  lock.dependencies = packageJson.dependencies
+  lock.optionalDependencies = packageJson.optionalDependencies
+  lock.devDependencies = packageJson.devDependencies
   sort(lock, 'dependencies')
+  sort(lock, 'optionalDependencies')
+  sort(lock, 'devDependencies')
   sort(lock, 'packages')
   Object.values(lock.packages).forEach(x => sort(x, 'dependencies'))
   fs.writeFileSync('package-sins.json', JSON.stringify(lock, null, 2))
@@ -677,7 +693,6 @@ async function findVersion({ name, range }) {
     id,
     (async () => {
       progress(name + c.gray(' ' + (range.length > 30 ? range.slice(0,27) + '...' : range)))
-
       let { body, versions: xs } = await findVersions(name)
       let pkg = null
       let fallback = null
@@ -771,7 +786,6 @@ function defaultLock(x) {
   return {
     name: x.name,
     version: x.version,
-    dependencies: {},
     packages: {
       '': {
         name: x.name,

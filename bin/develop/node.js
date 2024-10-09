@@ -125,15 +125,19 @@ async function start() {
   )
 
   node.stdout.setEncoding('utf8')
-  node.stdout.on('data', data => api.log({ from: 'node', type: 'stdout', args: data }))
+  node.stdout.on('data', x => {
+    config.debug && console.error('Node stdout: ' + x)
+    api.log({ from: 'node', type: 'stdout', args: x })
+  })
   node.stderr.setEncoding('utf8')
-  node.stderr.on('data', async(data) => {
-    data.includes('Debugger listening on ws://127.0.0.1:' + config.nodePort)
-      ? ws = connect(data.slice(22).split('\n')[0].trim())
-      : data.includes('Waiting for the debugger to disconnect...')
+  node.stderr.on('data', async x => {
+    config.debug && console.error('Node stderr: ' + x)
+    x.includes('Debugger listening on ws://127.0.0.1:' + config.nodePort)
+      ? ws = connect(x.slice(22).split('\n')[0].trim())
+      : x.includes('Waiting for the debugger to disconnect...')
       ? ws && setTimeout(() => ws.close(), 200)
-      : data.trim() !== 'Debugger attached.'
-      ? api.log({ from: 'node', type: 'stderr', args: data })
+      : x.trim() !== 'Debugger attached.'
+      ? api.log({ from: 'node', type: 'stderr', args: x })
       : null
   })
 

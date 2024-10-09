@@ -18,7 +18,8 @@ let sslListener
 const { server, mount, src, modified } = await resolve(config.entry)
 const router = Server()
 
-config.acme.domains.length && router.route(Acme.route(isMainThread ? {} : { get: getFromParent }))
+if (config.acme.domains.length || config.ssl.mode === 'manual')
+  router.route(Acme.route(isMainThread ? {} : { get: getFromParent }))
 
 if (server) {
   server.esbuild && (await import('../../build/index.js')).default(server.esbuild)
@@ -65,7 +66,6 @@ async function listenHttp() {
     await redirect.listen(config.httpPort, config.address)
     console.log('HTTP Redirecting to HTTPS on', config.httpPort) // eslint-disable-line
   } else if (config.secure && config.ssl.mode === 'manual') {
-    router.route(Acme.route(isMainThread ? {} : { get: getFromParent }))
     await router.listen(config.httpPort, config.address)
     console.log('HTTP (manual ssl) listening on', config.httpPort) // eslint-disable-line
   } else {

@@ -5,7 +5,6 @@ import zlib from 'node:zlib'
 import cp from 'child_process'
 import { webcrypto } from 'crypto'
 import config from '../config.js'
-import { parsePackage } from '../shared.js'
 import * as semver from './semver.js'
 import * as https from './https.js'
 import c from '../color.js'
@@ -17,6 +16,7 @@ let peers = []
   , clock = ''
 
 const then = (x, fn) => x && typeof x.then === 'function' ? x.then(fn) : fn(x)
+    , splitNameVersion = x => (x.match(/(?:(^@?[a-z0-9-/]+)@)?(.+)/i) || []).slice(1)
     , set = (xs, id, x) => (xs.set(id, x), x)
     , noop = () => { /* noop */ }
     , overwrite = () => process.stdout.write('\x1B[F\x1B[2K')
@@ -59,10 +59,10 @@ if (!config.ci) {
   await writePackage(added)
   await writeLock()
   await cleanup()
-  added.length && p('Added', added.length, 'module' + (added.length === 1 ? ':' : 's:'))
+  added.length && p('Added', added.length, ' new module' + (added.length === 1 ? ':' : 's:'))
   added.forEach(x => p(c.green('- ' + x.name), c.gray(x.version)))
 }
-
+p('Installed ', Object.keys(lock.packages).length - 1)
 p('🔥 Finished in', (process.uptime() * 1000).toFixed(2) + 'ms')
 
 async function installPeers() {
@@ -88,7 +88,7 @@ async function installPeers() {
         return besties[name] = { pkg, range, packages: [x] }
 
       if (!semver.satisfies(pkg.version, best.range))
-        throw new Error(pkg.name + '@' + range + ' does not intersect with ' + best.pkg.range)
+        throw new Error(pkg.name + '@' + range + ' does not intersect with ' + best.range)
 
       best.range = range
       best.pkg = pkg
@@ -110,18 +110,10 @@ async function addBins() {
 
 function fromCLI() {
   return Promise.all(config._.map(async x => {
-    const t = resolveType(x)
-    const pkg = await (
-        t === 'local'  ? resolveLocal('file:' + Path.resolve(x[0]))
-      : t === 'git'    ? resolveGit(x)
-      : t === 'https'  ? resolveUrl(x)
-      : t === 'tar'    ? resolveLocalTarball(x)
-      : t === 'github' ? resolveGithub(x)
-      : t === 'alias'  ? resolveAlias(x)
-      : fetchVersion(parsePackage(x))
-    )
+    const pkg = await resolve(...splitNameVersion(x))
+    const name = pkg.alias || pkg.name
 
-    if (oldLock.packages[''].dependencies[pkg.name] === pkg.version)
+    if (oldLock.packages[''].dependencies[name] === pkg.version)
       return
 
     const deps = config.saveDev
@@ -130,8 +122,8 @@ function fromCLI() {
         ? packageJson.optionalDependencies || (packageJson.optionalDependencies = {})
         : packageJson.dependencies || (packageJson.dependencies = {})
 
-    if (deps[pkg.name] !== pkg.version)
-      deps[pkg.name] = pkg.version
+    if (deps[name] !== pkg.version)
+      deps[name] = pkg.version
 
     return pkg
   })).then(xs => xs.filter(x => x))
@@ -139,7 +131,7 @@ function fromCLI() {
 
 async function installDependencies(dependencies, parent, force = config.force || config.ci) {
   return Promise.all(Object.entries(dependencies).map(x =>
-    install(x, parent, force || oldLockDependencies[x.name] !== x.version)
+    install(x, parent, force || oldLockDependencies[x.alias || x.name] !== x.version)
   ))
 }
 
@@ -167,12 +159,12 @@ async function install([name, version], parent, force) {
       let pkg
 
       if (parent || oldLockDependencies[name] === pkgDependencies[name]) {
-        const parentLock = oldLock.packages[parent ? parent.name + '@' + parent.version : '']
+        const parentLock = oldLock.packages[parent ? (parent.alias || parent.name) + '@' + parent.version : '']
         const lockVersion = parentLock?.dependencies?.[name] || parentLock?.optionalDependencies?.[name] || parentLock?.peerDependencies?.[name]
         if (lockVersion) {
           const lockedId = name + '@' + lockVersion
           const locked = oldLock.packages[lockedId]
-          pkg = { name, version: lockVersion, ...locked }
+          pkg = { name, alias: name, version: lockVersion, ...locked }
           addPaths(pkg)
           if (locked && !supported(pkg)) {
             setDependency(pkg, parent)
@@ -195,17 +187,7 @@ async function install([name, version], parent, force) {
         }
       }
 
-      const t = resolveType(version)
-      pkg = pkg || await (
-          t === 'local'  ? resolveLocal('file:' + Path.resolve(version[0]))
-        : t === 'git'    ? resolveGit(version)
-        : t === 'https'  ? resolveUrl(version)
-        : t === 'tar'    ? resolveLocalTarball(version)
-        : t === 'github' ? resolveGithub(version)
-        : t === 'alias'  ? resolveAlias(name, version)
-        : t === 'npm'    ? resolveNpm(name, version)
-        : Promise.reject('Unknown type')
-      )
+      pkg || (pkg = await resolve(name, version))
 
       if (!supported(pkg))
         return set(packages, id, await finished(pkg, parent))
@@ -213,7 +195,7 @@ async function install([name, version], parent, force) {
       if (!pkg.version)
         throw new Error('Could not find version for ' + pkg.name + ' exp ' + version)
 
-      const global = await fsp.readFile(pkg.global).then(gunzip).catch(() => [])
+      const global = await fsp.readFile(pkg.global).then(gunzip).catch(e => pkg.forceGlobal ? Promise.reject(new Error(e)) : [])
       if (global[0])
         return (pkg.integrity = 'sha512-' + global[1], set(packages, id, await installed(await untar(pkg, global[0]), parent, force)))
 
@@ -238,33 +220,37 @@ function gunzip(x) {
 
 async function finished(pkg, parent) {
   setDependency(pkg, parent)
+  const name = pkg.alias || pkg.name
 
   if (!parent) {
     Object.entries(
       typeof pkg.package.bin === 'string'
-      ? { [pkg.name.split('/').pop()]: pkg.package.bin }
+      ? { [name.split('/').pop()]: pkg.package.bin }
       : pkg.package.bin || {}
     ).forEach(([name, file]) => bins[name] = {
       target: Path.join('..', pkg.local.split('node_modules/').pop(), file),
       path: Path.join('node_modules', '.bin', name)
     })
 
-    return symlink(Path.join(pkg.name[0] === '@' ? '..' : '', pkg.local.slice(13)), Path.join('node_modules', ...pkg.name.split('/')))
+    return symlink(Path.join(name[0] === '@' ? '..' : '', pkg.local.slice(13)), Path.join('node_modules', ...name.split('/')))
   }
 
-  const path = Path.join(parent.local.slice(0, parent.local.lastIndexOf('node_modules') + 12), ...pkg.name.split('/'))
+  const path = Path.join(parent.local.slice(0, parent.local.lastIndexOf('node_modules') + 12), ...name.split('/'))
   await symlink(Path.relative(path, pkg.local).slice(3), path)
   return pkg
 }
 
 function setDependency(pkg, parent) {
-  const type = parent?.optionalDependencies?.[pkg.name]
+  const name = (pkg.alias || pkg.name)
+  const type = parent?.optionalDependencies?.[name]
     ? 'optionalDependencies'
-    : parent?.peerDependencies?.[pkg.name]
+    : parent?.peerDependencies?.[name]
     ? 'peerDependencies'
     : 'dependencies'
 
-  pkg.name + '@' + pkg.version in lock.packages || (lock.packages[pkg.name + '@' + pkg.version] = {
+  const id = name + '@' + pkg.version
+  id in lock.packages || (lock.packages[id] = {
+    name: pkg.name,
     resolved: pkg.resolved,
     integrity: pkg.integrity,
     cpu: pkg.cpu,
@@ -272,12 +258,12 @@ function setDependency(pkg, parent) {
   })
 
   if (!parent)
-    return lock.packages[''][type][pkg.name] = pkg.version
+    return lock.packages[''][type][name] = pkg.version
 
-  const id = parent.name + '@' + parent.version
-  type in lock.packages[id]
-    ? lock.packages[id][type][pkg.name] = pkg.version
-    : lock.packages[id][type] = { [pkg.name]: pkg.version }
+  const parentId = (parent.alias || parent.name) + '@' + parent.version
+  type in lock.packages[parentId]
+    ? lock.packages[parentId][type][name] = pkg.version
+    : lock.packages[parentId][type] = { [name]: pkg.version }
 }
 
 async function installed(pkg, parent, force) {
@@ -305,6 +291,9 @@ function peerPkg(name, range) {
 }
 
 function postInstall() {
+  if (!config.trust && postInstalls.length)
+    return p(postInstalls.length + ' postinstall script' + (postInstalls.length === 1 ? '' : 's') + ' skipped - add --trust to install')
+
   return Promise.all(postInstalls.map(x =>
     new Promise((resolve, reject) =>
       cp.exec(x.package.scripts.postinstall, {
@@ -377,7 +366,7 @@ async function writePackage(xs) {
 }
 
 async function resolveNpm(name, version) {
-  const pkg = await fetchVersion(parsePackage(name + '@' + version))
+  const pkg = await fetchVersion({ name, version })
   const registry = getRegistry(name)
   pkg.tgz = {
     port: registry.port || 443,
@@ -407,27 +396,37 @@ function localPath({ name, version }) {
 }
 
 function safeId({ name, version }) {
-  return name.replace(/[#@!:/]/g, '+') + '@' + version.replace(/[#@!:/]/g, '+')
+  return name.replace(/[#@!:/]+/g, '+') + '@' + version.replace(/[#@!:/]+/g, '+')
 }
 
-function resolveType(x) {
-  return x.startsWith('file:') || x.startsWith('~/') || x.startsWith('/') || x.startsWith('./') || x.slice(1, 3) === ':\\' || x.startsWith('.\\')
-    ? 'local'
-    : x.startsWith('git+ssh:') || x.startsWith('git+https:') || x.startsWith('git:') || x.startsWith('git@')
-    ? 'git'
-    : x.startsWith('https:')
-    ? 'https'
-    : x.endsWith('.tgz') || x.endsWith('.tar') || x.endsWith('.tar.gz')
-    ? 'tar'
-    : x.startsWith('github:') || (x[0] !== '@' && x.indexOf('/') > 1)
-    ? 'github'
-    : x.startsWith('npm:')
-    ? 'alias'
-    : 'npm'
-}
+async function resolve(name, v) {
+  const id = name + '@' + v
+  if (resolved.has(id))
+    return resolved.get(id)
 
-async function resolveAlias() {
-  throw new Error('support for npm: alias not implemented')
+  return set(
+    resolved,
+    id,
+    (async() => {
+      const pkg = await (
+        v.startsWith('file:') || v.startsWith('~/') || v.startsWith('/') || v.startsWith('./') || v.slice(1, 3) === ':\\' || v.startsWith('.\\')
+        ? resolveLocal(name, v)
+        : v.startsWith('git+ssh:') || v.startsWith('git+https:') || v.startsWith('git:') || v.startsWith('git@')
+        ? resolveGit(v)
+        : v.startsWith('https:')
+        ? resolveUrl(v)
+        : v.endsWith('.tgz') || v.endsWith('.tar') || v.endsWith('.tar.gz')
+        ? resolveLocalTarball(name, v)
+        : v.startsWith('github:') || (v[0] !== '@' && v.indexOf('/') > 1)
+        ? resolveGithub(v)
+        : v.startsWith('npm:')
+        ? resolveNpm(...splitNameVersion(v.slice(4)))
+        : resolveNpm(name, v)
+      )
+      name && (pkg.alias = name)
+      return set(resolved, id, pkg)
+    })()
+  )
 }
 
 async function resolveLocal() {
@@ -438,46 +437,62 @@ async function resolveLocalTarball() {
   throw new Error('support for local tarballs not implemented')
 }
 
-async function resolveUrl() {
-  throw new Error('support for url tarballs not implemented')
+async function resolveUrl(version) {
+  const pkg = {
+    version,
+    resolved: version,
+    tgz: new URL(version)
+  }
+  const [tar, sha512] = await gunzip(await https.fetch(pkg.tgz.hostname, pkg.tgz.pathname, pkg.tgz.headers))
+  await untar(pkg, tar, false)
+  pkg.name = pkg.package.name
+  pkg.integrity = 'sha512-' + sha512
+  addPaths(pkg)
+  return pkg
 }
 
 async function resolveGit(x) {
-  if (resolved.has(x))
-    return resolved.get(x)
+  x = x.replace(/^git\+/, '').replace(/^git:/, 'https:')
+  x.match(/^ssh:\/\/[^:]+:[^/]/) && (x = x.replace(/^ssh:\/\//, ''))
 
-  return set(
-    resolved,
-    x,
-    (async() => {
-      let [pathname, ref = 'HEAD'] = x.split('#')
-        , temp = Path.join(config.home, '.temp', Math.random().toString(36).slice(2))
+  const [repo, ref = 'HEAD'] = x.split('#')
+      , temp = Path.join(config.home, '.temp', Math.random().toString(36).slice(2))
 
-      try {
-        await mkdir(temp)
-        await $('git', ['clone', '-q', '--tags', '--depth=1', pathname.replace(/^git\+/, ''), 'x'], { cwd: temp })
-        const cwd = Path.join(temp, 'x')
-        await $('git', ['fetch', '-q', '--depth=1', '--tags'], { cwd })
-        const sha = (await $('git', ['rev-parse', ref], { cwd, stdio: 'pipe' })).toString().trim()
-        await $('git', ['fetch', '-q', '--depth=1', 'origin', sha], { cwd })
-        await $('git', ['checkout', '-q', sha], { cwd })
-        await $('git', ['archive', '--format=tar', '--prefix=package/', '-o', temp + '.tgz', 'HEAD'], { cwd })
+  try {
+    await mkdir(temp)
+    const sha = (await $('git', ['ls-remote', '-q', repo, ref], { stdio: 'pipe' })).toString().split(/[ \t]/, 1)[0]
+    await $('git', ['clone', '-q', '--filter=blob:none', '--no-checkout', repo, 'x'], { cwd: temp })
+    const cwd = Path.join(temp, 'x')
+    await $('git', ['checkout', '-q', sha], { cwd })
 
-        const pkg = JSON.parse(await $('git', ['--no-pager', 'show', 'HEAD:package.json'], { cwd }))
+    const pkg = JSON.parse(await $('git', ['--no-pager', 'show', 'HEAD:package.json'], { cwd }))
+    const files = pkg.files
+          ? pkg.files.map(x => x.replace(/^\//, '')).concat((await fsp.readdir(cwd)).filter(x => x === 'package.json' || x.match(/^(readme|license|licence|copying)/i)))
+          : []
 
-        pkg.version = pathname
-        pkg.resolved = pathname + '#' + sha
+    await fsp.writeFile(
+      Path.join(cwd, '.git', 'info', 'attributes'),
+      (await $('git', ['--no-pager', 'show', 'HEAD:.npmignore'], { cwd }).catch(() => '')).toString().split('\n').reduce((a, x) => {
+        x = x.trim()
+        x && !x.startsWith('#') && !pkg.files.includes(x) && (a += x + ' export-ignore\n')
+        return a
+      }, '')
+    )
 
-        addPaths(pkg)
+    await $('git', ['archive', '--format=tgz', '--prefix=package/', '-o', temp + '.tgz', sha, ...files], { cwd })
 
-        fsp.rename(temp + '.tgz', pkg.global)
+    pkg.version = repo
+    pkg.resolved = repo + '#' + sha
+    pkg.forceGlobal = true
 
-        return set(resolved, x, pkg)
-      } finally {
-        await fsp.rm(temp, { recursive: true })
-      }
-    })()
-  )
+    addPaths(pkg)
+
+    await fsp.rename(temp + '.tgz', pkg.global)
+
+    return pkg
+  } finally {
+    await fsp.rm(temp, { recursive: true })
+  }
 
   async function $(x, args, o) {
     return new Promise((resolve, reject) => {
@@ -486,7 +501,7 @@ async function resolveGit(x) {
       const child = cp.spawn(x, args, { stdio: 'pipe', ...o })
       child.stdout.on('data', x => xs.push(x))
       child.stderr.on('data', x => stderr += x)
-      child.on('close', () => stderr ? reject(stderr) : resolve(Buffer.concat(xs)))
+      child.on('close', code => stderr ? reject(stderr) : code ? reject('Exited with ' + code + ': ' + x + ' ' + args.join(' ')) : resolve(Buffer.concat(xs)))
       child.on('error', reject)
     })
   }
@@ -494,44 +509,29 @@ async function resolveGit(x) {
 
 async function resolveGithub(x) {
   x = x.replace(/^github:/, '')
-  if (resolved.has(x))
-    return resolved.get(x)
 
-  return set(
-    resolved,
-    x,
-    (async() => {
-      let pkg = parsePackage(x)
-        , pathname = pkg.name + pkg.pathname
+  const [repo, hash] = x.split('#')
+  const auth = process.env.GITHUB_TOKEN ? { Authorization: 'token ' + process.env.GITHUB_TOKEN } : undefined
+  const info = JSON.parse(await https.fetch('api.github.com', '/repos/' + repo, auth))
+  const ref = hash || info.default_branch
 
-      const auth = process.env.GITHUB_TOKEN ? { Authorization: 'token ' + process.env.GITHUB_TOKEN } : undefined
-      const info = JSON.parse(await https.fetch('api.github.com', '/repos/' + pathname, auth))
+  const { sha } = JSON.parse(await https.fetch('api.github.com', '/repos/' + repo + '/commits/' + ref, auth))
+  const pkg = auth
+    ? await https.fetch('api.github.com', '/repos/' + repo + '/contents/package.json?ref=' + sha, auth).then(x => JSON.parse(Buffer.from(JSON.parse(x).content, 'base64')))
+    : await https.fetch('raw.githubusercontent.com', '/' + repo + '/' + sha + '/package.json').then(x => JSON.parse(x))
 
-      const ref = pkg.hash
-        ? pkg.hash.slice(1)
-        : info.default_branch
+  pkg.version = 'github:' + repo + '#' + sha
+  pkg.tgz = auth
+    ? { hostname: 'api.github.com', pathname: '/repos/' + repo + '/tarball/' + sha, headers: auth }
+    : { hostname: 'codeload.github.com', pathname: '/' + repo + '/tar.gz/' + sha }
+  pkg.resolved = 'https://' + pkg.tgz.hostname + pkg.tgz.pathname
 
-      const { sha } = JSON.parse(await https.fetch('api.github.com', '/repos/' + pathname + '/commits/' + ref, auth))
-      pkg = auth
-        ? await https.fetch('api.github.com', '/repos/' + pathname + '/contents/package.json?ref=' + sha, auth).then(x => JSON.parse(Buffer.from(JSON.parse(x).content, 'base64')))
-        : await https.fetch('raw.githubusercontent.com', '/' + pathname + '/' + sha + '/package.json').then(x => JSON.parse(x))
+  addPaths(pkg)
 
-      pkg.version = 'github:' + pathname + '#' + sha
-      pkg.tgz = auth
-        ? { hostname: 'api.github.com', pathname: '/repos/' + pathname + '/tarball/' + sha, headers: auth }
-        : { hostname: 'codeload.github.com', pathname: '/' + pathname + '/tar.gz/' + sha }
-      pkg.resolved = 'https://' + pkg.tgz.hostname + pkg.tgz.pathname
-
-      addPaths(pkg)
-
-      return set(resolved, x, pkg)
-    })()
-  )
+  return pkg
 }
 
 async function untar(pkg, x, write = true) {
-  const writeFile = write ? fsp.writeFile : noop
-  const writeDir = write ? mkdir : noop
   let size = 0
     , target = ''
     , output = ''
@@ -548,20 +548,20 @@ async function untar(pkg, x, write = true) {
       break
 
     target = x[n + 345] === 0
-      ? x.toString('utf8', x.indexOf(47, n) + 1, h)
+      ? x.toString('utf8', x.indexOf(47, n) + 1, h) // /
       : x.toString('utf8', x.indexOf(47, n + 345) + 1, x.indexOf(0, n + 345)) + x.toString('utf8', n, h)
-    output = Path.join(pkg.local, target)
+    output = write && Path.join(pkg.local, target)
 
-    if (x[n + 156] === 53 || x[h - 1] === 47) { // /
-      await writeDir(output)
+    if (x[n + 156] === 53 || x[h - 1] === 47) { // 5 /
+      write && await mkdir(output)
       n += 512
     } else {
       size = parseInt(x.toString('utf8', n + 124, n + 136).trim(), 8)
-      if (x[n + 156] !== 103) {
+      if (x[n + 156] !== 103) { // g
         const file = x.subarray(n + 512, n + 512 + size)
         target === 'package.json' && (pkg.package = JSON.parse(file))
-        await writeDir(Path.dirname(output))
-        await writeFile(output, file, { mode: x[103] === 53 || x[103] === 55 ? 0o766 : 0o666 })
+        write && await mkdir(Path.dirname(output))
+        write && await fsp.writeFile(output, file, { mode: x[103] === 53 || x[103] === 55 ? 0o766 : 0o666 })
       }
       n += 512 + Math.ceil(size / 512) * 512
     }
@@ -578,8 +578,8 @@ async function cleanup() {
     x.charCodeAt(0) === 64 ? [x.slice(0, x.indexOf('/')), Path.normalize(x)] : x // @
   ))
 
-  const all = new Set(Object.keys(lock.packages).map((x, i) =>
-    (i = x.indexOf('@', 1), x ? safeId({ name: x.slice(0, i), version: x.slice(i + 1) }) : [])
+  const all = new Set(Object.entries(lock.packages).map(([id, x], i) =>
+    (i = id.indexOf('@', 1), id ? safeId({ name: x.name, version: id.slice(i + 1) }) : [])
   ))
 
   for (const x of await fsp.readdir(Path.join('node_modules', '.sin')).catch(() => []))

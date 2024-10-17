@@ -53,7 +53,6 @@ await Promise.all(leafs)
 
 https.destroy()
 await postInstall()
-await addBins()
 
 if (!config.ci) {
   await writePackage(added)
@@ -102,10 +101,6 @@ async function installPeers() {
       ))
     }))
   }
-}
-
-async function addBins() {
-  await Promise.all(Object.values(bins).map(({ target, path }) => symlink(target, path)))
 }
 
 function fromCLI() {
@@ -222,18 +217,21 @@ async function finished(pkg, parent) {
   setDependency(pkg, parent)
   const name = pkg.alias || pkg.name
 
-  if (!parent) {
-    Object.entries(
-      typeof pkg.package.bin === 'string'
-      ? { [name.split('/').pop()]: pkg.package.bin }
-      : pkg.package.bin || {}
-    ).forEach(([name, file]) => bins[name] = {
-      target: Path.join('..', pkg.local.split('node_modules/').pop(), file),
-      path: Path.join('node_modules', '.bin', name)
-    })
+  await Promise.all(Object.entries(
+    typeof pkg.package.bin === 'string'
+    ? { [name.split('/').pop()]: pkg.package.bin }
+    : pkg.package.bin || {}
+  ).map(([name, file]) => {
+    const target = Path.join(...(parent ? ['..', '..', '..'] : ['..']), pkg.local.split('node_modules/').pop(), file)
+    const path = Path.join(parent ? parent.local : bins[name] = '', 'node_modules', '.bin', name)
+    return symlink(
+      target,
+      path
+    )
+  }))
 
+  if (!parent)
     return symlink(Path.join(name[0] === '@' ? '..' : '', pkg.local.slice(13)), Path.join('node_modules', ...name.split('/')))
-  }
 
   const path = Path.join(parent.local.slice(0, parent.local.lastIndexOf('node_modules') + 12), ...name.split('/'))
   await symlink(Path.relative(path, pkg.local).slice(3), path)

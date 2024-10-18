@@ -94,7 +94,26 @@ async function build(r) {
     format: 'esm',
     write: false,
     platform: 'browser',
-    legalComments: 'none'
+    legalComments: 'none',
+    external: ['/node_modules/sin'], // never bundle sin
+    plugins: [
+      {
+        name: 'replace-sin-import',
+        setup(build) {
+          // Replace all imports of 'sin' with '/node_modules/sin' and mark them as external
+          build.onResolve({ filter: /^sin$/ }, args => ({
+            path: '/node_modules/sin/src/index.js',
+            external: true
+          }));
+
+          // Treat all imports starting with '/' as external to prevent esbuild from trying to resolve them
+          build.onResolve({ filter: /^\// }, args => ({
+            path: args.path,
+            external: true
+          }));
+        }
+      }
+    ]
   }).then(x => x.outputFiles[0].text)
 
   const exportsDefault = source.lastIndexOf('export default require_')

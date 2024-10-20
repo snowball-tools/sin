@@ -107,6 +107,7 @@ async function fromArgs() {
       production: false,
       saveDev   : false,
       saveOptional: false,
+      trust     : false,
       coverage  : (x, xs) => (xs.nojail = true, x || false),
       script    : (_, xs) => xs.$[1] === 'script',
       static    : (_, xs) => xs.$[1] === 'static'

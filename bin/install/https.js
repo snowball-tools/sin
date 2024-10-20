@@ -1,10 +1,13 @@
 import tls from 'node:tls'
+import zlib from 'node:zlib'
 import dns from 'node:dns/promises'
 
 const ips = {}
 const open = {}
 const empty = Buffer.alloc(0)
 const highWaterMark = 64 * 1024
+
+fetch.retried = []
 
 export async function getIp(host) {
   if (host in ips)
@@ -21,17 +24,29 @@ export function destroy() {
 }
 
 export async function fetch(host, pathname, headers = {}) {
-  const hosts = open[host]
-  const socket = hosts && hosts.pop() || (await create(host))
-  const body = await new Promise((resolve, reject) => {
-    socket.resolve = resolve
-    socket.reject = reject
-    socket.handler = handler(resolve, reject, host, pathname)
-    socket.pathname = pathname
-    socket.write('GET ' + pathname + ' HTTP/1.1\r\nHost: ' + host + '\r\n' + setHeaders(headers) + 'User-Agent: sin/0.0.1\r\n\r\n')
-  })
-  socket.done()
-  return body
+  let retries = 3
+  while (true) {
+    const hosts = open[host]
+    const socket = hosts && hosts.pop() || (await create(host))
+    try {
+      let body = await new Promise((resolve, reject) => {
+        socket.resolve = resolve
+        socket.reject = reject
+        socket.handler = handler(resolve, reject, host, pathname)
+        socket.gzip =
+        socket.pathname = pathname
+        socket.write('GET ' + pathname + ' HTTP/1.1\r\nHost: ' + host + '\r\n' + setHeaders(headers) + 'User-Agent: sin/0.0.1\r\n\r\n')
+      })
+      socket.done()
+      headers['Accept-Encoding'] === 'gzip' && (body = await new Promise((resolve, reject) => zlib.gunzip(body, (err, x) => err ? reject(err) : resolve(x))))
+      return body
+    } catch(err) {
+      socket.destroy()
+      fetch.retried.push(host + pathname)
+      if (retries-- === 0)
+        throw err
+    }
+  }
 }
 
 function setHeaders(xs) {
@@ -63,6 +78,9 @@ async function create(host) {
       callback: (end, buffer) => socket.handler(buffer, end)
     }
   })
+
+  socket.setTimeout(10000)
+  socket.on('timeout', () => socket.destroy(new Error('Timeout')))
 
   socket.done = done
   socket.on('error', x => socket.reject(x))

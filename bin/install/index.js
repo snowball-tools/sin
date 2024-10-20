@@ -10,13 +10,25 @@ import * as https from './https.js'
 import c from '../color.js'
 
 let peers = []
-  , lockChanged = false
+  , detached = []
+  , seen = new Set()
+  , lockChanges = new Set()
+  , deprecated = []
   , clear = false
   , log = ''
   , clock = ''
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason)
+  // Handle the rejection, log it, or exit the process if necessary
+})
+
+process.on('rejectionHandled', (promise) => {
+  console.log('Promise rejection was handled later:', promise)
+})
+
 const then = (x, fn) => x && typeof x.then === 'function' ? x.then(fn) : fn(x)
-    , splitNameVersion = x => (x.match(/(?:(^@?[a-z0-9-/]+)@)?(.+)/i) || []).slice(1)
+    , splitNameVersion = x => (x.match(/^(@[a-z0-9-/]+|[a-z0-9-]+)$/) || x.match(/(?:(^@?[a-z0-9-/]+)@)?(.+)/i) || []).slice(1, 3)
     , set = (xs, id, x) => (xs.set(id, x), x)
     , noop = () => { /* noop */ }
     , overwrite = () => process.stdout.write('\x1B[F\x1B[2K')
@@ -24,10 +36,10 @@ const then = (x, fn) => x && typeof x.then === 'function' ? x.then(fn) : fn(x)
     , clocks = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', ]
     , progress = x => log = x // eslint-disable-line
 
+https.fetch.p = p
 const animation = setInterval(() => log && (console.log((clear ? '\x1B[F\x1B[2K' : '') + (clock = clocks[(clocks.indexOf(clock) + 1) % clocks.length]), log), clear = true), 50).unref()
 
 const bins = []
-    , leafs = []
     , dirs = new Map()
     , packages = new Map()
     , postInstalls = []
@@ -38,6 +50,7 @@ const bins = []
 const registries = getScopes()
     , defaultRegistry = getDefaultRegistry()
     , packageJson = await jsonRead('package.json') || defaultPackage()
+    , overrides = packageJson.overrides || {}
     , oldLock = (await jsonRead('package-sins.json')) || (await jsonRead(Path.join('node_modules', '.package-sins.json'))) || defaultLock(packageJson)
     , oldLockDependencies = { ...oldLock.optionalDependencies, ...oldLock.dependencies, ...oldLock.devDependencies }
     , lock = defaultLock(packageJson)
@@ -47,9 +60,9 @@ await mkdir(config.globalPath)
 const added = await fromCLI()
 const pkgDependencies = { ...packageJson.optionalDependencies, ...packageJson.dependencies, ...packageJson.devDependencies }
 
-await installDependencies(pkgDependencies)
+await installDependencies(pkgDependencies, undefined, config.force || config.ci, [''])
+await detachedFinished()
 await installPeers()
-await Promise.all(leafs)
 
 https.destroy()
 await postInstall()
@@ -58,48 +71,100 @@ if (!config.ci) {
   await writePackage(added)
   await writeLock()
   await cleanup()
-  added.length && p('Added', added.length, ' new module' + (added.length === 1 ? ':' : 's:'))
-  added.forEach(x => p(c.green('- ' + x.name), c.gray(x.version)))
+  added.length && p('📦 Added', added.length, 'new dependency' + (added.length === 1 ? ':' : 's:'))
+  added.forEach(x => p(c.green(' - ' + x.name), c.gray('@ ' + x.version)))
+  const xs = deprecated
+    .map(x => [c.red(' - ' + x.name), c.gray('@ ' + x.version), x.deprecated].join(' '))
+    .filter((x, i, xs) => xs.indexOf(x) === i)
+    .sort((a, b) => a > b ? 1 : a < b ? -1 : 0)
+  xs.length && p('🚨', xs.length, 'deprecated package' + (xs.length === 1 ? ':' : 's:'))
+  xs.forEach(x => p(x))
 }
-p('Installed ', Object.keys(lock.packages).length - 1)
-p('🔥 Finished in', (process.uptime() * 1000).toFixed(2) + 'ms')
+
+p(
+  '🔥',
+  ...(lockChanges.size
+    ? ['Installed', lockChanges.size, 'package' + (lockChanges.size === 1 ? '' : 's')]
+    : ['Checked all']
+  ),
+  'in',
+  ...prettyTime(process.uptime())
+)
+
+function prettyTime(x) {
+  return x >= 60
+    ? [~~(x / 60), 'min and', ~~(x % 60 * 10) / 10, 'sec']
+    : x >= 1
+    ? [~~(x * 1000) / 1000, 'sec']
+    : [~~(x * 1000), 'ms']
+}
+
+async function detachedFinished() {
+  if (detached.length === 0)
+    return
+
+  const xs = detached
+  detached = []
+  await Promise.all(xs)
+  await detachedFinished()
+}
 
 async function installPeers() {
-  const chosen = { ...lock.packages[''].optionalDependencies, ...lock.packages[''].dependencies }
+  const installed = {}
   while (peers.length) {
-    const besties = {}
-    await Promise.all(peers.map(x => {
-      let { name, range, parent, force, optional, pkg } = x
-      if (name in chosen) {
-        if (semver.satisfies(chosen[name], range))
-          return optional || install([name, chosen[name]], parent, force)
-        else
-          throw new Error(name + '@' + range + ' does not satisfy chosen version of ' + chosen[name])
-      }
-      const best = name in besties && besties[name]
-      if (best && semver.satisfies(best.pkg.version, range))
-        return best.packages.push(x)
-
-      if (!pkg)
-        throw new Error('Could not find version for ' + pkg.name + ' exp ' + range)
-
-      if (!best)
-        return besties[name] = { pkg, range, packages: [x] }
-
-      if (!semver.satisfies(pkg.version, best.range))
-        throw new Error(pkg.name + '@' + range + ' does not intersect with ' + best.range)
-
-      best.range = range
-      best.pkg = pkg
-      best.packages.push(x)
-    }))
+    const xs = peers
     peers = []
-    await Promise.all(Object.entries(besties).map(([name, { pkg, packages }]) => {
-      chosen[name] = pkg.version
-      return Promise.all(packages.map(({ parent, force, optional }) =>
-        optional || install([name, pkg.version], parent, force)
-      ))
+    await Promise.all(xs.map(async peer => {
+      let version = null
+      let i = 0
+      let foundl
+      let found = null
+      for (; i < peer.route.length; i++) {
+        const x = peer.route[i]
+        const l = lock.packages[x]
+        version = l && (l.dependencies?.[peer.name] || l.optionalDependencies?.[peer.name])
+        if (version) {
+          found = i
+          foundl = l
+          break
+        }
+      }
+      if (version && !semver.satisfies(version, peer.range)) {
+        p(peer.route, peer.parent.name, i)
+        throw new Error(peer.name + '@' + peer.range + ' does not intersect with ' + version)
+      }
+
+      if (found === null && peer.optional)
+        return
+
+      if (semver.isVersion(peer.range))
+        version = peer.range
+
+      if (!version)
+        version = (await findVersion(peer)).version
+
+      peer.version = version
+      peer.i = i
+
+      if (peer.name in installed) {
+        for (const x of installed[peer.name]) {
+          const conflict = peer.name === x.parent.name
+                        && peer.parent.version === x.parent.version
+                        && peer.version === x.version
+
+          if (conflict) {
+            p(peer.name, 'in', x.parent.name, 'should be', x.version)
+            throw new Error('Sub modules with differing context for peer dependencies not supported yet')
+          }
+        }
+        installed[peer.name].push(peer)
+      } else {
+        installed[peer.name] = [peer]
+      }
+
+      await install([peer.name, version], peer.parent, peer.force, peer.route)
     }))
+    await detachedFinished()
   }
 }
 
@@ -124,9 +189,9 @@ function fromCLI() {
   })).then(xs => xs.filter(x => x))
 }
 
-async function installDependencies(dependencies, parent, force = config.force || config.ci) {
+function installDependencies(dependencies, parent, force, route) {
   return Promise.all(Object.entries(dependencies).map(x =>
-    install(x, parent, force || oldLockDependencies[x.alias || x.name] !== x.version)
+    install(x, parent, force || oldLockDependencies[x.alias || x.name] !== x.version, route)
   ))
 }
 
@@ -140,11 +205,12 @@ function supported(pkg) {
   return true
 }
 
-async function install([name, version], parent, force) {
+async function install([name, version], parent, force, route) {
+  name in overrides && (version = overrides[name])
   version.charCodeAt(0) === 118 && (version = version.slice(1)) // v
   const id = name + '@' + version
   if (packages.has(id))
-    return leafs.push(then(packages.get(id), x => finished(x, parent)))
+    return then(packages.get(id), x => finished(x, parent, force, route))
 
   return set(
     packages,
@@ -168,15 +234,15 @@ async function install([name, version], parent, force) {
 
           if (!force) {
             pkg.package = pkg.local && await jsonRead(Path.join(pkg.local, 'package.json'))
-            if (pkg.package && lockVersion === pkg.package.version) {
-              await finished(pkg, parent, force)
-              await installDependencies({ ...pkg.optionalDependencies, ...pkg.dependencies }, pkg, force)
+            if (pkg.package) {
+              await finished(pkg, parent, force, route)
+              detached.push(installDependencies({ ...pkg.optionalDependencies, ...pkg.dependencies }, pkg, force, route.concat(pkg.name + '@' + pkg.version)))
               return set(packages, lockedId, pkg)
             }
 
             const [tar, sha512] = await fsp.readFile(pkg.global).then(gunzip).catch(() => [])
             if (tar)
-              return (pkg.integrity = 'sha512-' + sha512, set(packages, lockedId, await installed(await untar(pkg, tar), parent, force)))
+              return (pkg.integrity = 'sha512-' + sha512, set(packages, lockedId, await installed(await untar(pkg, tar), parent, force, route)))
           }
           version = lockVersion
         }
@@ -184,23 +250,27 @@ async function install([name, version], parent, force) {
 
       pkg || (pkg = await resolve(name, version))
 
+      if (pkg.version.indexOf('file:') === 0)
+        return set(packages, id, await installed(pkg, parent, force, route))
+
       if (!supported(pkg))
-        return set(packages, id, await finished(pkg, parent))
+        return set(packages, id, await finished(pkg, parent, force, route))
 
       if (!pkg.version)
         throw new Error('Could not find version for ' + pkg.name + ' exp ' + version)
 
       const global = await fsp.readFile(pkg.global).then(gunzip).catch(e => pkg.forceGlobal ? Promise.reject(new Error(e)) : [])
       if (global[0])
-        return (pkg.integrity = 'sha512-' + global[1], set(packages, id, await installed(await untar(pkg, global[0]), parent, force)))
+        return (pkg.integrity = 'sha512-' + global[1], set(packages, id, await installed(await untar(pkg, global[0]), parent, force, route)))
 
       const body = await https.fetch(pkg.tgz.hostname, pkg.tgz.pathname, pkg.tgz.headers)
       const [tar, sha512] = await gunzip(body)
       pkg.integrity = 'sha512-' + sha512
       await Promise.all([
         then(mkdir(Path.dirname(pkg.global)), () => fsp.writeFile(pkg.global, body)),
-        untar(pkg, tar).then(() => installed(pkg, parent, force))
+        untar(pkg, tar).then(() => installed(pkg, parent, force, route))
       ])
+
       return set(packages, id, pkg)
     })()
   )
@@ -213,25 +283,36 @@ function gunzip(x) {
   ])
 }
 
-async function finished(pkg, parent) {
+async function finished(pkg, parent, force, route) {
+  peers.push(...Object.entries(pkg.peerDependencies || {}).map(([name, range]) => ({
+    name, range, parent: pkg, route, force, optional: pkg.peerDependenciesMeta?.[name]?.optional || false
+  })))
+
+  const uid = parent?.name + '@' +  parent?.version + '/' + pkg.name + '@'+  pkg.version
+  if (seen.has(uid))
+    return
+
+  seen.add(uid)
   setDependency(pkg, parent)
   const name = pkg.alias || pkg.name
 
+
   await Promise.all(Object.entries(
-    typeof pkg.package.bin === 'string'
-    ? { [name.split('/').pop()]: pkg.package.bin }
-    : pkg.package.bin || {}
-  ).map(([name, file]) => {
+    typeof pkg.bin === 'string'
+    ? { [name.split('/').pop()]: pkg.bin }
+    : pkg.bin || {}
+  ).map(async([name, file]) => {
     const target = Path.join(...(parent ? ['..', '..', '..'] : ['..']), pkg.local.split('node_modules/').pop(), file)
     const path = Path.join(parent ? parent.local : bins[name] = '', 'node_modules', '.bin', name)
-    return symlink(
-      target,
-      path
-    )
+    await symlink(target, path)
+    await fsp.chmod(Path.join(pkg.local, file), 0o766)
   }))
 
   if (!parent)
     return symlink(Path.join(name[0] === '@' ? '..' : '', pkg.local.slice(13)), Path.join('node_modules', ...name.split('/')))
+
+  // if (pkg.name.match(/eslint|prettier/))
+  //  symlink(Path.join(name[0] === '@' ? '..' : '', pkg.local.slice(13)), Path.join('node_modules', ...name.split('/')))
 
   const path = Path.join(parent.local.slice(0, parent.local.lastIndexOf('node_modules') + 12), ...name.split('/'))
   await symlink(Path.relative(path, pkg.local).slice(3), path)
@@ -252,45 +333,35 @@ function setDependency(pkg, parent) {
     resolved: pkg.resolved,
     integrity: pkg.integrity,
     cpu: pkg.cpu,
-    os: pkg.os
+    os: pkg.os,
+    dependencies: undefined,
+    optionalDependencies: undefined,
+    peerDependencies: undefined
   })
 
   if (!parent)
     return lock.packages[''][type][name] = pkg.version
 
   const parentId = (parent.alias || parent.name) + '@' + parent.version
-  type in lock.packages[parentId]
+  lock.packages[parentId][type]
     ? lock.packages[parentId][type][name] = pkg.version
     : lock.packages[parentId][type] = { [name]: pkg.version }
 }
 
-async function installed(pkg, parent, force) {
-  pkg.package.scripts?.postinstall && postInstalls.push(pkg)
+async function installed(pkg, parent, force, route) {
+  pkg.scripts?.postinstall && postInstalls.push(pkg)
 
-  await Promise.all([
-    finished(pkg, parent),
-    installDependencies({ ...pkg.optionalDependencies, ...pkg.dependencies }, pkg, force)
-  ])
+  await finished(pkg, parent, force, route)
+  detached.push(installDependencies({ ...pkg.optionalDependencies, ...pkg.dependencies }, pkg, force, route.concat(pkg.name + '@' + pkg.version)))
 
-  peers.push(...(await Promise.all(Object.entries(pkg.peerDependencies || {}).map(async([name, range]) => ({
-    name, range, parent: pkg, force, pkg: await peerPkg(name, range), optional: pkg.package.peerDependenciesMeta?.[name]?.optional || false
-  })))))
-
-  lockChanged = true
+  lockChanges.add(Date.now() + pkg.route + pkg.name + '@' + pkg.version + parent?.name + '@' + parent?.version)
 
   return pkg
 }
 
-function peerPkg(name, range) {
-  const id = name + '@' + range
-  return id in oldLock.packages
-    ? { name, version: range, ...oldLock.packages[id] }
-    : findVersion({ name, range })
-}
-
 function postInstall() {
   if (!config.trust && postInstalls.length)
-    return p(postInstalls.length + ' postinstall script' + (postInstalls.length === 1 ? '' : 's') + ' skipped - add --trust to install')
+    return p('⛔️', postInstalls.length + ' postinstall script' + (postInstalls.length === 1 ? '' : 's') + ' skipped - add --trust to install')
 
   return Promise.all(postInstalls.map(x =>
     new Promise((resolve, reject) =>
@@ -316,7 +387,7 @@ async function writeLock() {
     return
   }
 
-  if (!lockChanged) // perhaps just deep equal?
+  if (lockChanges.size === 0)
     return
 
   lock.dependencies = packageJson.dependencies
@@ -326,7 +397,15 @@ async function writeLock() {
   sort(lock, 'optionalDependencies')
   sort(lock, 'devDependencies')
   sort(lock, 'packages')
-  Object.values(lock.packages).forEach(x => sort(x, 'dependencies'))
+  Object.keys(lock.packages).forEach((k) => {
+    //sort(lock.packages, k)
+    const x = lock.packages[k]
+    sort(x, 'dependencies')
+    sort(x, 'optionalDependencies')
+    sort(x, 'devDependencies')
+    sort(x, 'peerDependencies')
+    sort(x, 'packages')
+  })
   fs.writeFileSync('package-sins.json', JSON.stringify(lock, null, 2))
 
   function sort(x, k) {
@@ -394,10 +473,10 @@ function localPath({ name, version }) {
 }
 
 function safeId({ name, version }) {
-  return name.replace(/[#@!:/]+/g, '+') + '@' + version.replace(/[#@!:/]+/g, '+')
+  return name[0] + name.slice(1).replace(/[#@!:/]+/g, '+') + '@' + version.replace(/[#@!:/]+/g, '+')
 }
 
-async function resolve(name, v) {
+async function resolve(name, v = '') {
   const id = name + '@' + v
   if (resolved.has(id))
     return resolved.get(id)
@@ -407,14 +486,14 @@ async function resolve(name, v) {
     id,
     (async() => {
       const pkg = await (
-        v.startsWith('file:') || v.startsWith('~/') || v.startsWith('/') || v.startsWith('./') || v.slice(1, 3) === ':\\' || v.startsWith('.\\')
+          v.startsWith('https:')
+        ? resolveUrl(v)
+        : v.endsWith('.tgz') || v.endsWith('.tar') || v.endsWith('.tar.gz')
+        ? resolveLocalTarball(v)
+        : v.startsWith('file:') || v.startsWith('~/') || v.startsWith('/') || v.startsWith('./') || v.slice(1, 3) === ':\\' || v.startsWith('.\\')
         ? resolveLocal(name, v)
         : v.startsWith('git+ssh:') || v.startsWith('git+https:') || v.startsWith('git:') || v.startsWith('git@')
         ? resolveGit(v)
-        : v.startsWith('https:')
-        ? resolveUrl(v)
-        : v.endsWith('.tgz') || v.endsWith('.tar') || v.endsWith('.tar.gz')
-        ? resolveLocalTarball(name, v)
         : v.startsWith('github:') || (v[0] !== '@' && v.indexOf('/') > 1)
         ? resolveGithub(v)
         : v.startsWith('npm:')
@@ -427,12 +506,41 @@ async function resolve(name, v) {
   )
 }
 
-async function resolveLocal() {
-  throw new Error('support for local paths not implemented')
+async function resolveLocal(name, version) {
+  const x = version.replace(/^file:/, '')
+  const packageJson = await jsonRead(Path.join(x, 'package.json'))
+  const pkg = {
+    name: packageJson.name,
+    package: packageJson,
+    version,
+    resolved: version
+  }
+  pkg.local = localPath(pkg)
+  await mkdir(pkg.local)
+  await fsp.cp(x, pkg.local, { recursive: true, filter: x => Path.basename(x) !== '.git' })
+  return pkg
 }
 
-async function resolveLocalTarball() {
-  throw new Error('support for local tarballs not implemented')
+
+async function resolveLocalTarball(version) {
+  const pkg = {
+    version,
+    resolved: version
+  }
+
+  const file = await (version.endsWith('.tar')
+    ? new Promise((resolve, reject) => fsp.readFile(version).then(x => zlib.gzip(x, (err, x) => err ? reject(err) : resolve(x))))
+    : fsp.readFile(version)
+  )
+
+  const [tar, sha512] = await gunzip(file)
+
+  await untar(pkg, tar, false)
+  pkg.name = pkg.package.name
+  pkg.integrity = 'sha512-' + sha512
+  addPaths(pkg)
+  await fsp.writeFile(pkg.global, file)
+  return pkg
 }
 
 async function resolveUrl(version) {
@@ -670,6 +778,7 @@ async function getVersion({ name, version }) {
       const cached = await fsp.readFile(cachedPath).catch(() => 0)
       cached || progress(name + c.gray(' ' + version))
       const headers = registry.password ? { Authorization: 'Bearer ' + registry.password } : {}
+      headers['Accept-Encoding'] = 'gzip'
       const x = cached || await https.fetch(registry.hostname, registry.pathname + name + '/' + version, headers)
       const json = JSON.parse(x)
       cached || await fsp.writeFile(cachedPath, x)
@@ -697,8 +806,10 @@ async function findVersion({ name, range }) {
       while (!pkg) {
         const version = semver.best(range, xs)
         if (!version) {
-          if (fallback)
+          if (fallback) {
+            deprecated.push(fallback)
             return set(versions, id, fallback)
+          }
           throw new Error('No version found for ' + name + ' @ ' + range)
         }
         pkg = getInfo(version, body) || await getVersion({ name, version })
@@ -706,8 +817,10 @@ async function findVersion({ name, range }) {
           fallback || (fallback = pkg, xs = xs.slice())
           xs.splice(xs.indexOf(version), 1)
           pkg = null
-          if (!xs.length)
+          if (!xs.length) {
+            deprecated.push(fallback)
             return set(versions, id, fallback)
+          }
         }
       }
       return set(versions, id, pkg)
@@ -725,6 +838,7 @@ async function findVersions(name) {
     (async() => {
       const registry = getRegistry(name)
       const headers = registry.password ? { Authorization: 'Bearer ' + registry.password } : {}
+      headers['Accept-Encoding'] = 'gzip'
       const body = (await https.fetch(registry.hostname, registry.pathname + name, headers)).toString('utf8')
       return set(versions, name, {
         body,

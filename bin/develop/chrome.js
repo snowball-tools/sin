@@ -114,6 +114,9 @@ async function updateTabs(launch) {
 
   await Promise.all(
     xs.map(async x => {
+      if (x.type !== 'page')
+        return
+
       if (x.url === 'about:blank')
         launch && await connect(x, api.url())
       if (x.url === 'chrome://newtab/')

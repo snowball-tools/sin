@@ -51,7 +51,7 @@ const registries = getScopes()
     , defaultRegistry = getDefaultRegistry()
     , packageJson = await jsonRead('package.json') || defaultPackage()
     , overrides = packageJson.overrides || {}
-    , oldLock = (await jsonRead('package-sins.json')) || (await jsonRead(Path.join('node_modules', '.package-sins.json'))) || defaultLock(packageJson)
+    , oldLock = (await jsonRead('sin.lock')) || defaultLock(packageJson)
     , oldLockDependencies = { ...oldLock.optionalDependencies, ...oldLock.dependencies, ...oldLock.devDependencies }
     , lock = defaultLock(packageJson)
 
@@ -130,7 +130,7 @@ async function installPeers() {
         }
       }
       if (version && !semver.satisfies(version, peer.range)) {
-        p(peer.route, peer.parent.name, i)
+        p(peer.route, peer.parent.name, i, version)
         throw new Error(peer.name + '@' + peer.range + ' does not intersect with ' + version)
       }
 
@@ -233,7 +233,7 @@ async function install([name, version], parent, force, route) {
           }
 
           if (!force) {
-            pkg.package = pkg.local && await jsonRead(Path.join(pkg.local, 'package.json'))
+            pkg.package = pkg.local && await jsonRead(Path.join(pkg.local, 'package.json')).catch(noop)
             if (pkg.package) {
               await finished(pkg, parent, force, route)
               detached.push(installDependencies({ ...pkg.optionalDependencies, ...pkg.dependencies }, pkg, force, route.concat(pkg.name + '@' + pkg.version)))
@@ -382,7 +382,7 @@ async function writeLock() {
     return
 
   if (Object.keys(lock.packages).length === 0) {
-    await rm('package-sins.json')
+    await rm('sin.lock')
     await rm('node_modules')
     return
   }
@@ -406,7 +406,7 @@ async function writeLock() {
     sort(x, 'peerDependencies')
     sort(x, 'packages')
   })
-  fs.writeFileSync('package-sins.json', JSON.stringify(lock, null, 2))
+  fs.writeFileSync('sin.lock', JSON.stringify(lock, null, 2))
 
   function sort(x, k) {
     x[k] && (x[k] = Object.fromEntries(Object.entries(x[k]).sort(([a], [b]) => a > b ? 1 : a < b ? -1 : 0)))
@@ -695,7 +695,7 @@ async function cleanup() {
     x in bins || binRemove.push(Path.join('node_modules', '.bin', x))
 
   for (const x of await fsp.readdir('node_modules').catch(() => [])) {
-    if (x === '.bin' || x === '.sin' || x === '.package-sins.json')
+    if (x === '.bin' || x === '.sin' || x === 'sin.lock')
       continue
     if (top.has(x)) {
       if (x.charCodeAt(0) === 64) { // @

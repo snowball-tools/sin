@@ -30,7 +30,7 @@ cliVersion && console.log('sin cli          v' + cliVersion)
 depVersion && console.log('sin dependency   v' + depVersion)
 
 const latestVersion = (await s.http('https://registry.npmjs.org/sin/latest', { timeout: 1000 }).catch(() => ({}))).version
-latestVersion && console.log('sin latest       v' + latestVersion)
+latestVersion && console.log(latestVersion)
 
 function pkg(x) {
   return fs.existsSync(x)

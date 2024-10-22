@@ -76,7 +76,7 @@ export function isVersion(x) {
 
 export function buildRanges(x) {
   if (isVersion(x))
-      return x
+    return x
 
   return x.replace(/\s-\s/g, '_').replace(/\s+([0-9])/g, '$1').split(/\s*\|\|\s*/).map(x =>
     x.split(/\s+/).map(buildRange)
@@ -103,7 +103,7 @@ export function serializeVersion(x) {
     + (x.build ? '+' + x.build + (x.buildVersion !== null ? '.' + x.buildVersion : '') : '')
 }
 
-function buildRange(x) {
+export function buildRange(x) {
   const c = x.charCodeAt(0)
   let $
     , lower = null
@@ -125,24 +125,24 @@ function buildRange(x) {
       : { major: lower.major + 1, minor: 0, patch: 0 }
   } else if (c === 60) { // <
     $ = x.charCodeAt(1) === 61
-    upper = parseVersion(x.slice($ ? 2 : 1))
+    upper = parseVersion(x.slice($ ? 2 : 1).replace(/\.[xX*]/g, ''))
     upper.patch === -1 && (upper.patch = 0)
     upper.minor === -1 && (upper.minor = 0)
     $ && (upper.patch++)
   } else if (c === 61) { // =
-    lower = parseVersion(x.slice(1))
+    lower = parseVersion(x.slice(1).replace(/\.[xX*]/g, ''))
     lower.patch === -1 && (lower.patch = 0)
     lower.minor === -1 && (lower.minor = 0)
     upper = { major: lower.major, minor: lower.minor, patch: lower.patch + 1 }
   } else if (c === 62) { // >
     $ = x.charCodeAt(1) === 61
-    lower = parseVersion(x.slice($ ? 2 : 1))
+    lower = parseVersion(x.slice($ ? 2 : 1).replace(/\.[xX*]/g, ''))
     lower.patch === -1 && (lower.patch = 0)
     lower.minor === -1 && (lower.minor = 0)
     $ || (lower.patch++)
   } else if (($ = x.indexOf('_')) > -1) {
-    lower = parseVersion(x.slice(0, $))
-    upper = parseVersion(x.slice($ + 1))
+    lower = parseVersion(x.slice(0, $).replace(/\.[xX*]/g, ''))
+    upper = parseVersion(x.slice($ + 1).replace(/\.[xX*]/g, ''))
     upper.minor === -1
       ? upper.major++
       : upper.patch === -1

@@ -22,8 +22,8 @@ try {
   error(e)
 }
 
-config.version && config.$[0] === 'version'
-config.help && config.$[0] === 'help'
+config.version && (config.$[0] = 'version')
+config.help && (config.$[0] = 'help')
 
 export default config
 

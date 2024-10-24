@@ -574,11 +574,12 @@ async function resolveGit(x) {
     await $('git', ['checkout', '-q', sha], { cwd })
 
     const pkg = JSON.parse(await $('git', ['--no-pager', 'show', 'HEAD:package.json'], { cwd }))
-    const files = pkg.files
-          ? pkg.files.map(x => x.replace(/^\//, '')).concat((await fsp.readdir(cwd)).filter(x => x === 'package.json' || x.match(/^(readme|license|licence|copying)/i)))
-          : []
 
-    await fsp.writeFile(
+    const files = config.leanGit && pkg.files
+      ? pkg.files.map(x => x.replace(/^\//, '')).concat((await fsp.readdir(cwd)).filter(x => x === 'package.json' || x.match(/^(readme|license|licence|copying)/i)))
+      : []
+
+    config.leanGit && await fsp.writeFile(
       Path.join(cwd, '.git', 'info', 'attributes'),
       (await $('git', ['--no-pager', 'show', 'HEAD:.npmignore'], { cwd }).catch(() => '')).toString().split('\n').reduce((a, x) => {
         x = x.trim()
@@ -609,7 +610,13 @@ async function resolveGit(x) {
       const child = cp.spawn(x, args, { stdio: 'pipe', ...o })
       child.stdout.on('data', x => xs.push(x))
       child.stderr.on('data', x => stderr += x)
-      child.on('close', code => stderr ? reject(stderr) : code ? reject('Exited with ' + code + ': ' + x + ' ' + args.join(' ')) : resolve(Buffer.concat(xs)))
+      child.on('close', code => {
+        args[0] === 'checkout' && p(Buffer.concat(xs).toString())
+        stderr ?
+          reject(stderr) : code
+          ? reject('Exited with ' + code + ': ' + x + ' ' + args.join(' '))
+          : resolve(Buffer.concat(xs))
+      })
       child.on('error', reject)
     })
   }

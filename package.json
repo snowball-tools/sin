@@ -32,13 +32,9 @@
   },
   "files": [
     "/bin",
-    "/build",
     "/shared",
     "/src",
-    "/ssr",
-    "/sin.js",
-    "/sin.min.js",
-    "/sin.svg"
+    "/ssr"
   ],
   "author": "Rasmus Porsager <rasmus@porsager.com> (https://www.porsager.com)",
   "funding": {

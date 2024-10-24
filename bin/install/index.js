@@ -566,7 +566,9 @@ async function resolveGit(x) {
 
   try {
     await mkdir(temp)
-    const sha = (await $('git', ['ls-remote', '-q', repo, ref], { stdio: 'pipe' })).toString().split(/[ \t]/, 1)[0]
+    const sha = ref.match(/[a-f0-9]{40}/i) ? ref
+              : (await $('git', ['ls-remote', '-q', repo, ref], { stdio: 'pipe' })).toString().split(/[ \t]/, 1)[0]
+
     await $('git', ['clone', '-q', '--filter=blob:none', '--no-checkout', repo, 'x'], { cwd: temp })
     const cwd = Path.join(temp, 'x')
     await $('git', ['checkout', '-q', sha], { cwd })

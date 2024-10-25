@@ -14,7 +14,7 @@ async function reservePort() {
   })
 }
 
-const project = path.join(config.home, config.port + '-' + path.basename(config.cwd))
+const project = path.join(config.projectsDir, config.port + '-' + path.basename(config.cwd))
 fs.mkdirSync(project, { recursive: true })
 
 const env        = process.env

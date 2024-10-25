@@ -57,7 +57,8 @@ async function fromArgs() {
       run       : 1,
       start     : { $: true, script: 1, static: 1 },
       version   : 1,
-      install   : 0
+      install   : 0,
+      link      : 0
     },
     parameters: {
       publicDir   : '+public',
@@ -67,10 +68,15 @@ async function fromArgs() {
       root        : getRoot,
       local       : getLocal,
       home        : getHome,
+      binDir      : (x, xs) => x || path.join(xs.home, 'bin'),
+      linkDir     : (x, xs) => x || path.join(xs.home, 'link'),
+      tempDir     : (x, xs) => x || path.join(xs.home, 'temp'),
+      cacheDir    : (x, xs) => x || path.join(xs.home, 'cache'),
+      globalDir   : (x, xs) => x || path.join(xs.home, 'global'),
+      projectsDir : (x, xs) => x || path.join(xs.home, 'projects'),
       port        : getPort,
       unsafe      : getUnsafe,
       sucrase     : getSucrase,
-      globalPath  : (x, xs) => path.join(xs.home, '.modules'),
       chromePath  : getChromePath,
       domain      : null,
       server      : null,
@@ -103,6 +109,7 @@ async function fromArgs() {
       bundleNodeModules : false,
       devtools  : false,
       config    : false,
+      global    : false,
       ci        : (x, xs) => x || argv[0] === 'ci' || false,
       production: false,
       saveDev   : false,
@@ -118,6 +125,7 @@ async function fromArgs() {
       uninstall: 'rm',
       prod: 'start',
       ci: 'install',
+      '-g': '--global',
       '-D': '--save-dev',
       '-O': '--save-optional',
       '-p': '--port',
@@ -147,7 +155,7 @@ export function getEntry(x, config) {
   const dir = file ? path.dirname(x) : x
 
   if (!needsEntry(config)) {
-    config.create || config.acme || config.static || config.install || config.rm || process.chdir(env.PWD = dir)
+    config.create || config.acme || config.static || config.link || config.install || config.rm || process.chdir(env.PWD = dir)
     return ''
   }
 
@@ -203,7 +211,7 @@ function getPort(x, config) {
   if (!config.develop && !config.purge)
     return
 
-  const file = path.join(config.home, '.ports')
+  const file = path.join(config.projectsDir, '.ports')
   const ports = fs.existsSync(file)
     ? JSON.parse(fs.readFileSync(file, 'utf8'))
     : {}

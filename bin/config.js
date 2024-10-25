@@ -68,12 +68,12 @@ async function fromArgs() {
       root        : getRoot,
       local       : getLocal,
       home        : getHome,
-      binDir      : (x, xs) => x || path.join(xs.home, 'bin'),
-      linkDir     : (x, xs) => x || path.join(xs.home, 'link'),
-      tempDir     : (x, xs) => x || path.join(xs.home, 'temp'),
-      cacheDir    : (x, xs) => x || path.join(xs.home, 'cache'),
-      globalDir   : (x, xs) => x || path.join(xs.home, 'global'),
-      projectsDir : (x, xs) => x || path.join(xs.home, 'projects'),
+      binDir      : (x, xs) => mkdir(x || path.join(xs.home, 'bin')),
+      linkDir     : (x, xs) => mkdir(x || path.join(xs.home, 'link')),
+      tempDir     : (x, xs) => mkdir(x || path.join(xs.home, 'temp')),
+      cacheDir    : (x, xs) => mkdir(x || path.join(xs.home, 'cache')),
+      globalDir   : (x, xs) => mkdir(x || path.join(xs.home, 'global')),
+      projectsDir : (x, xs) => mkdir(x || path.join(xs.home, 'projects')),
       port        : getPort,
       unsafe      : getUnsafe,
       sucrase     : getSucrase,
@@ -193,6 +193,11 @@ async function getCWD(x, xs) {
 
 function getRoot(x, xs) {
   return path.parse(xs.cwd).root
+}
+
+function mkdir(x) {
+  fs.mkdirSync(x, { recursive: true })
+  return x
 }
 
 function getHome(x) {

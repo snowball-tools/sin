@@ -217,7 +217,6 @@ async function install([name, version], parent, force, route) {
           const locked = oldLock.packages[lockedId]
           pkg = { name, alias: name, version: lockVersion, ...locked }
           addPaths(pkg)
-          p(name, version)
           if (locked && !supported(pkg)) {
             setDependency(pkg, parent)
             return set(packages, lockedId, pkg)

@@ -31,7 +31,7 @@ export default function(Server) {
     }
 
     async function file(r) {
-      return r.file(resolve(r.url), options)
+      return r.file(resolve(decodeURIComponent(r.url)), options)
     }
 
     function index(r) {
@@ -40,7 +40,7 @@ export default function(Server) {
     }
 
     async function tryHtml(r) {
-      let url = resolve(path.join(r.url, 'index.html'))
+      let url = resolve(path.join(decodeURIComponent(r.url), 'index.html'))
       try {
         await r.file(url)
         rewrites.set(trimSlash(r.pathname), url)
@@ -48,11 +48,11 @@ export default function(Server) {
         if (!options.fallthrough || !notFound(error))
           throw error
 
-        if (r.ended || !trimSlash(r.url))
+        if (r.ended || !trimSlash(decodeURIComponent(r.url)))
           return
 
         try {
-          await r.file(url = resolve(r.url + '.html'))
+          await r.file(url = resolve(decodeURIComponent(r.url) + '.html'))
           rewrites.set(trimSlash(r.pathname), url)
         } catch (error) {
           if (!options.fallthrough || !notFound(error))

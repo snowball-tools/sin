@@ -24,12 +24,12 @@ const then = (x, fn) => x && typeof x.then === 'function' ? x.then(fn) : fn(x)
     , noop = () => { /* noop */ }
     , overwrite = () => process.stdout.write('\x1B[F\x1B[2K')
     , p = (...xs) => (clear && overwrite(), clear = log = false, console.log(...xs), xs[xs.length - 1]) // eslint-disable-line
-    , clocks = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', ]
+    , clocks = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚']
     , progress = x => log = x // eslint-disable-line
     , root = config.global ? config.globalDir : config.cwd
 
 https.fetch.p = p
-const animation = setInterval(() => log && (console.log((clear ? '\x1B[F\x1B[2K' : '') + (clock = clocks[(clocks.indexOf(clock) + 1) % clocks.length]), log), clear = true), 50).unref()
+setInterval(() => log && (console.log((clear ? '\x1B[F\x1B[2K' : '') + (clock = clocks[(clocks.indexOf(clock) + 1) % clocks.length]), log), clear = true), 50).unref() // eslint-disable-line
 
 const bins = []
     , dirs = new Map()
@@ -121,7 +121,7 @@ async function installPeers() {
       }
       if (version && !semver.satisfies(version, peer.range)) {
         p(peer.route, peer.parent.name, i, version)
-        throw new Error(peer.name + '@' + peer.range + ' does not intersect with ' + version)
+        // throw new Error(peer.name + '@' + peer.range + ' does not intersect with ' + version +  ' in ' + peer.parent.name)
       }
 
       if (found === null && peer.optional)
@@ -192,6 +192,9 @@ function supported(pkg) {
   if (pkg.cpu && pkg.cpu.length && !pkg.cpu.some(x => x === process.arch))
     return false
 
+  if (pkg.engines && pkg.engines[process.release.name] && !semver.satisfies(process.versions[process.release.name], pkg.engines[process.release.name]))
+    return false
+
   return true
 }
 
@@ -223,8 +226,9 @@ async function install([name, version], parent, force, route) {
           }
 
           if (!force) {
-            pkg.package = pkg.local && await jsonRead(Path.join(pkg.local, 'package.json')).catch(noop)
-            if (pkg.package) {
+            const x = pkg.local && await jsonRead(Path.join(pkg.local, 'package.json')).catch(noop)
+            x && readFromPackage(pkg, x)
+            if (x) {
               await finished(pkg, parent, force, route)
               detached.push(installDependencies({ ...pkg.optionalDependencies, ...pkg.dependencies }, pkg, force, route.concat(pkg.name + '@' + pkg.version)))
               return set(packages, lockedId, pkg)
@@ -256,6 +260,7 @@ async function install([name, version], parent, force, route) {
       if (cached[0])
         return (pkg.integrity = 'sha512-' + cached[1], set(packages, id, await installed(await untar(pkg, cached[0]), parent, force, route)))
 
+      pkg.tgz || (pkg = await resolve(name, version))
       const body = await https.fetch(pkg.tgz.hostname, pkg.tgz.pathname, pkg.tgz.headers)
       const [tar, sha512] = await gunzip(body)
       pkg.integrity = 'sha512-' + sha512
@@ -276,7 +281,7 @@ function gunzip(x) {
   ])
 }
 
-async function finished(pkg, parent, force, route) {
+async function finished(pkg, parent) {
   const uid = parent?.name + '@' +  parent?.version + '/' + pkg.name + '@'+  pkg.version
   if (seen.has(uid))
     return
@@ -286,9 +291,9 @@ async function finished(pkg, parent, force, route) {
   const name = pkg.alias || pkg.name
 
   await Promise.all(Object.entries(
-    typeof pkg.package.bin === 'string'
-    ? { [name.split('/').pop()]: pkg.package.bin }
-    : pkg.package.bin || {}
+    typeof pkg.bin === 'string'
+    ? { [name.split('/').pop()]: pkg.bin }
+    : pkg.bin || {}
   ).map(async([name, file]) => {
     const target = Path.join(...(parent ? ['..', '..', '..'] : ['..']), pkg.local.split('node_modules/').pop(), file)
     const path = Path.join(parent ? parent.local : bins[name] = root, 'node_modules', '.bin', name)
@@ -323,6 +328,7 @@ function setDependency(pkg, parent) {
     integrity: pkg.integrity,
     cpu: pkg.cpu,
     os: pkg.os,
+    engines: pkg.engines,
     dependencies: undefined,
     optionalDependencies: undefined,
     peerDependencies: undefined
@@ -358,7 +364,7 @@ function postInstall() {
 
   return Promise.all(postInstalls.map(x =>
     new Promise((resolve, reject) =>
-      cp.exec(x.package.scripts.postinstall, {
+      cp.exec(x.scripts.postinstall, {
         stdio: 'inherit',
         cwd: x.local,
         env: {
@@ -435,13 +441,12 @@ async function writePackage(xs) {
 }
 
 async function resolveNpm(name, version) {
-  const packageJson = await fetchVersion({ name, version })
+  const x = await fetchVersion({ name, version })
   const registry = getRegistry(name)
-  const pkg = {
-    name: packageJson.name,
-    version: packageJson.version,
-    package: packageJson
-  }
+  const pkg = readFromPackage({
+    name: x.name,
+    version: x.version
+  }, x)
 
   pkg.tgz = {
     port: registry.port || 443,
@@ -452,7 +457,7 @@ async function resolveNpm(name, version) {
   }
 
   pkg.resolved = 'https://' + pkg.tgz.hostname + pkg.tgz.pathname
-  pkg.integrity = pkg.package.dist?.integrity
+  pkg.integrity = packageJson.dist?.integrity
   addPaths(pkg)
   return pkg
 }
@@ -508,12 +513,11 @@ async function resolve(name, v = '') {
 
 async function resolveLink(name) {
   const x = Path.join(config.linkDir, name)
-  const pkg = {
-    name,
-    package: await jsonRead(Path.join(x, 'package.json')),
+  const pkg = readFromPackage({
     version: 'link:' + name,
     resolved: 'link:' + name
-  }
+  }, await jsonRead(Path.join(x, 'package.json')))
+
   pkg.local = localPath(pkg)
   await symlink(x, pkg.local)
   return pkg
@@ -521,13 +525,11 @@ async function resolveLink(name) {
 
 async function resolveLocal(version) {
   const x = version.replace(/^file:/, '')
-  const packageJson = await jsonRead(Path.join(x, 'package.json'))
-  const pkg = {
-    name: packageJson.name,
-    package: packageJson,
+  const pkg = readFromPackage({
     version,
     resolved: version
-  }
+  }, await jsonRead(Path.join(x, 'package.json')))
+
   pkg.local = localPath(pkg)
   await mkdir(pkg.local)
   await fsp.cp(x, pkg.local, { recursive: true, filter: x => Path.basename(x) !== '.git' })
@@ -548,7 +550,6 @@ async function resolveLocalTarball(version) {
   const [tar, sha512] = await gunzip(file)
 
   await untar(pkg, tar, false)
-  pkg.name = pkg.package.name
   pkg.integrity = 'sha512-' + sha512
   addPaths(pkg)
   await fsp.writeFile(pkg.cache, file)
@@ -563,10 +564,19 @@ async function resolveUrl(version) {
   }
   const [tar, sha512] = await gunzip(await https.fetch(pkg.tgz.hostname, pkg.tgz.pathname, pkg.tgz.headers))
   await untar(pkg, tar, false)
-  pkg.name = pkg.package.name
   pkg.integrity = 'sha512-' + sha512
   addPaths(pkg)
   return pkg
+}
+
+function readFromPackage(
+    pkg,
+    { name, os, cpu, bin, scripts, engines, dependencies, peerDependencies, optionalDependencies, peerDependenciesMeta }
+) {
+  return Object.assign(
+    pkg,
+    { name, os, cpu, bin, scripts, engines, dependencies, peerDependencies, optionalDependencies, peerDependenciesMeta }
+  )
 }
 
 async function resolveGit(x) {
@@ -686,7 +696,7 @@ async function untar(pkg, x, write = true) {
       size = parseInt(x.toString('utf8', n + 124, n + 136).trim(), 8)
       if (x[n + 156] !== 103) { // g
         const file = x.subarray(n + 512, n + 512 + size)
-        target === 'package.json' && (pkg.package = JSON.parse(file))
+        target === 'package.json' && readFromPackage(pkg, JSON.parse(file))
         write && await mkdir(Path.dirname(output))
         write && await fsp.writeFile(output, file, { mode: x[103] === 53 || x[103] === 55 ? 0o766 : 0o666 })
       }
@@ -819,8 +829,8 @@ async function findVersion({ name, range }) {
   return set(
     versions,
     id,
-    (async () => {
-      progress(name + c.gray(' ' + (range.length > 30 ? range.slice(0,27) + '...' : range)))
+    (async() => {
+      progress(name + c.gray(' ' + (range.length > 30 ? range.slice(0, 27) + '...' : range)))
       let { body, versions: xs } = await findVersions(name)
       let pkg = null
       let fallback = null

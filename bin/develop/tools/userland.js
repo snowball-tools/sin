@@ -10,7 +10,7 @@ export default s
 
 export { stackTrace }
 
-api.redraw.observe(() => window.sindev.hmr ? s.redraw() : location.reload())
+api.redraw.observe(() => window.sindevhmr ? s.redraw() : location.reload())
 
 const unquoteFilename = window.sindev.platform === 'win32'
   ? /"([^<>:"/\\|?*]+)":/ig

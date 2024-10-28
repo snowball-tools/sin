@@ -19,7 +19,7 @@ if (!config.chromePath || !fs.existsSync(config.chromePath))
   throw new Error('Could not find a Chrome installation. Install Chrome or set a valid path using CHROME_PATH=')
 
 const root = 'http://127.0.0.1:' + config.chromePort
-    , hmr = 'if(window.sindev)window.sindev.hmr=1;'
+    , hmr = 'window.self===window.top&&(window.sindevhmr=1);'
     , replace = Math.random()
 
 api.log({ replace, from: 'browser', type: 'status', value: '⏳' })
@@ -185,7 +185,7 @@ async function connect(tab, url) {
       request('Debugger.setBlackboxPatterns', { patterns: api.blackbox }),
       request('Target.setDiscoverTargets', { discover: true }),
       request('Network.setCacheDisabled', { cacheDisabled: true }),
-      request('Page.addScriptToEvaluateOnLoad', { scriptSource: hmr })
+      request('Page.addScriptToEvaluateOnNewDocument', { source: hmr, runImmediately: true })
     ])
 
     if (config.coverage && config.coverage !== 'node') {

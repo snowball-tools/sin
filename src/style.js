@@ -528,7 +528,7 @@ function vendor(x) {
     if (vendorMap[x])
       return vendorMap[x]
 
-    x.indexOf('--') !== 0 && window.sinHMR && window.console.error(x, 'css property not found') // eslint-disable-line
+    x.indexOf('--') !== 0 && window.sindevhmr && window.console.error(x, 'css property not found') // eslint-disable-line
   }
   return x
 }

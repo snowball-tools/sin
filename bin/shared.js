@@ -9,6 +9,10 @@ function esbuild() {
   return _esbuild || (_esbuild = createRequire(import.meta.url)('esbuild'))
 }
 
+export function safeId({ name, version }) {
+  return name[0] + name.slice(1).replace(/[#@!:/]+/g, '+') + '@' + version.replace(/[#@!:/]+/g, '+')
+}
+
 export function isScript(x) {
   return /\.[mc]?[jt]sx?$/i.test(x)
 }

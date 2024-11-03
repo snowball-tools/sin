@@ -2,6 +2,7 @@ import Path from 'node:path'
 import fs from 'node:fs/promises'
 
 import config from '../config.js'
+import { safeId } from '../shared.js'
 
 if (config._.length) {
   const pkg = JSON.parse(await fs.readFile('package.json'))
@@ -40,8 +41,4 @@ async function symlink(target, path) {
 
 function sort(x) {
   return Object.fromEntries(Object.entries(x).sort(([a], [b]) => a > b ? 1 : a < b ? -1 : 0))
-}
-
-function safeId({ name, version }) {
-  return name[0] + name.slice(1).replace(/[#@!:/]+/g, '+') + '@' + version.replace(/[#@!:/]+/g, '+')
 }

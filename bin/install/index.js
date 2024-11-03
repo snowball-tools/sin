@@ -5,6 +5,7 @@ import zlib from 'node:zlib'
 import cp from 'child_process'
 import { webcrypto } from 'crypto'
 import config from '../config.js'
+import { safeId } from '../shared.js'
 import * as semver from './semver.js'
 import * as https from './https.js'
 import c from '../color.js'
@@ -473,10 +474,6 @@ function cache({ name, version }) {
 
 function localPath({ name, version }) {
   return Path.join(root, 'node_modules', '.sin/', safeId({ name, version }), 'node_modules', ...name.split('/'))
-}
-
-function safeId({ name, version }) {
-  return name[0] + name.slice(1).replace(/[#@!:/]+/g, '+') + '@' + version.replace(/[#@!:/]+/g, '+')
 }
 
 async function resolve(name, v = '') {

@@ -53,7 +53,7 @@ async function fromArgs() {
       test      : 1,
       help      : 1,
       purge     : 1,
-      rm        : 0,
+      remove    : 0,
       run       : 1,
       start     : { $: true, script: 1, static: 1 },
       version   : 1,
@@ -123,7 +123,8 @@ async function fromArgs() {
     alias: {
       development: 'develop',
       production: 'start',
-      uninstall: 'rm',
+      uninstall: 'remove',
+      rm: 'remove',
       prod: 'start',
       ci: 'install',
       '-g': '--global',
@@ -156,7 +157,7 @@ export function getEntry(x, config) {
   const dir = file ? path.dirname(x) : x
 
   if (!needsEntry(config)) {
-    config.create || config.acme || config.static || config.link || config.install || config.rm || config.run || process.chdir(env.PWD = dir)
+    config.create || config.acme || config.static || config.link || config.install || config.remove || config.run || process.chdir(env.PWD = dir)
     return ''
   }
 

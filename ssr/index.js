@@ -38,7 +38,7 @@ let lastWasText = false
   , wasText = false
 
 const noscript = process.env.SIN_NOSCRIPT
-const ignoredServerAttr = x => x !== 'href' && x !== 'type' && ignoredAttr(x)
+const ignoredServerAttr = x => x !== 'href' && x !== 'type' && x !== 'style' && ignoredAttr(x)
 const $uid = Symbol('uid')
 const defaultTimeout = 1000 * 60 * 2
 const voidTags = new Set([
@@ -184,14 +184,11 @@ function updateElement(view, context) {
     : tryPromise(updateChildren(view.children, context), x => elementString(view, tag, x))
 }
 
-function elementString(view, tag, content) {
+function elementString(view, tag, content = '') {
   return openingTag(view, tag)
     + (voidTags.has(tag)
       ? ''
-      : (view.children && view.children.length
-        ? content
-        : ''
-      ) + '</' + tag + '>'
+      : content + '</' + tag + '>'
     )
 }
 
@@ -200,22 +197,26 @@ function openingTag(view, tag) {
     + tag
     + getClassName(view)
     + Object.entries(view.attrs).reduce((acc, [k, v]) => acc += renderAttr(k, v), '')
-    + getCssVars(view)
+    + getStyle(view)
     + '>'
 }
 
-function getCssVars(view) {
-  if (!view.tag.args.length)
-    return ''
+function getStyle(view) {
+  let style = ''
 
-  return ' style="'
-    + escapeAttrValue(
-      Object.entries(view.tag.vars).reduce((acc, [k, v]) =>
-        acc += k + ': ' + formatValue(view.tag.args[v.index], v) + ';', ''
-      )
-      + (view.attrs.style || '')
-    )
-    + '"'
+  const a = view.tag.args
+  for (const [k, v] of Object.entries(view.tag.vars))
+    style += (style ? ';' : '') + k + ':' + formatValue(a[v.index], v)
+
+  const s = view.attrs.style
+  if (typeof s === 'string') {
+    style += (style ? ';' : '') + s
+  } else if (s !== null && typeof s === 'object') {
+    for (const [k, v] of Object.entries(view.tag.vars))
+      style += (style ? ';' : '') + styleProp(k) + ':' + formatValue(a[v.index], v)
+  }
+
+  return style && (' style="' + escapeAttrValue(style) + '"')
 }
 
 function renderAttr(k, v) {

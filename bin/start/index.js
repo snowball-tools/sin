@@ -8,7 +8,7 @@ cp.spawnSync(
     '--import',
       url.fileURLToPath(new URL('import.js', import.meta.url)),
     url.fileURLToPath(new URL('node.js', import.meta.url)),
-    process.argv.slice(2)
+    ...process.argv.slice(2)
   ], {
     stdio: 'inherit'
   }

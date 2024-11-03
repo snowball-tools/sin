@@ -155,7 +155,7 @@ async function start() {
       replace: 'nodeend',
       from: 'node',
       type: 'status',
-      right: color.gray(duration()),
+      right: color.dim(duration()),
       value: code
         ? '💥 (' + code + ')'
         : '🏁'

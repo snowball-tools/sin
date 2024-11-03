@@ -91,7 +91,7 @@ function mk(x, file, data = '') {
 }
 
 async function prompt(x) {
-  return yes || (await ask(x + c.gray(' (Y/n)'))).toLowerCase() !== 'n'
+  return yes || (await ask(x + c.dim(' (Y/n)'))).toLowerCase() !== 'n'
 }
 
 async function ask(x) {

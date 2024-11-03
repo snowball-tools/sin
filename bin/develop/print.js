@@ -88,7 +88,7 @@ function std(x) {
   }
 
   const write = repeat
-    ? (std.count > 1 ? '\x1B[F\x1B[G' : '') + time(x.timestamp) + c.gray`last line repeated ${ c.white(std.count) } times`
+    ? (std.count > 1 ? '\x1B[F\x1B[G' : '') + time(x.timestamp) + c.dim`last line repeated ${ c.white(std.count) } times`
     : time(x.timestamp) + output
 
   const out = x.right
@@ -180,13 +180,13 @@ function padBetween(a, b, prefix = 0) {
 }
 
 function logArg(x, max) {
-  return x.type === 'string' ? (x.value ? c.cyan(x.value) : c.gray('\'\''))
+  return x.type === 'string' ? (x.value ? c.cyan(x.value) : c.dim('\'\''))
     : x.type === 'number' ? c.blue(x.value)
-    : x.type === 'boolean' ? c.gray(x.value)
-    : x.type === 'undefined' ? c.gray('undefined')
-    : x.type === 'function' ? c.gray(x.className || 'Function')
+    : x.type === 'boolean' ? c.dim(x.value)
+    : x.type === 'undefined' ? c.dim('undefined')
+    : x.type === 'function' ? c.dim(x.className || 'Function')
     : x.type === 'object' ? (
-        x.subtype === 'null' ? c.gray('null')
+        x.subtype === 'null' ? c.dim('null')
       : x.subtype === 'date' && !Number.isNaN(Date.parse(x.description)) ? c.magenta(new Date(x.description).toISOString())
       : x.preview ? (
           x.subtype === 'array' ? logArray(x.preview.properties, max)
@@ -221,7 +221,7 @@ function logObject(xs, overflow, max = 32) {
   const x = '{ '
     + (single ? '' : '\n ' + '  '.repeat(indent))
     + args.slice(0, max).join(single ? ', ' : ',\n ' + '  '.repeat(indent))
-    + (overflow ? ',\n' + '  '.repeat(indent) + ' …' + c.gray('  // Press `i` to show more') : '')
+    + (overflow ? ',\n' + '  '.repeat(indent) + ' …' + c.dim('  // Press `i` to show more') : '')
     + (single ? ' }' : '\n ' + '  '.repeat(indent - 1) + '}')
   indent--
   return x
@@ -235,7 +235,7 @@ function logStack(stack, max = 10) {
     )
     .slice(0, max)
     .map(x =>
-      c.gray(
+      c.dim(
           (x.functionName || '') + ' @ '
         + [
           '.' + x.url.replace(config.origin, '').replace(Url.pathToFileURL(config.cwd), ''),
@@ -248,7 +248,7 @@ function logStack(stack, max = 10) {
 
 function time(d = Date.now()) {
   d = new Date(d)
-  return ' ' + c.gray(
+  return ' ' + c.dim(
       ('' + d.getHours()).padStart(2, '0') + ':'
     + ('' + d.getMinutes()).padStart(2, '0') + ':'
     + ('' + d.getSeconds()).padStart(2, '0') + '.'

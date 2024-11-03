@@ -64,9 +64,9 @@ if (!config.ci) {
   await writeLock()
   await cleanup()
   added.length && p('📦 Added', added.length, 'new dependency' + (added.length === 1 ? ':' : 's:'))
-  added.forEach(x => p(c.green(' - ' + x.name), c.gray('@ ' + x.version)))
+  added.forEach(x => p(c.green(' - ' + x.name), c.dim('@ ' + x.version)))
   const xs = deprecated
-    .map(x => [c.red(' - ' + x.name), c.gray('@ ' + x.version), x.deprecated].join(' '))
+    .map(x => [c.red(' - ' + x.name), c.dim('@ ' + x.version), x.deprecated].join(' '))
     .filter((x, i, xs) => xs.indexOf(x) === i)
     .sort((a, b) => a > b ? 1 : a < b ? -1 : 0)
   xs.length && p('🚨', xs.length, 'deprecated package' + (xs.length === 1 ? ':' : 's:'))
@@ -209,7 +209,7 @@ async function install([name, version], parent, force, route) {
     packages,
     id,
     (async() => {
-      progress(name + c.gray(' ' + version))
+      progress(name + c.dim(' ' + version))
       let pkg
 
       if ((parent || oldLockDependencies[name] === pkgDependencies[name]) && !version.startsWith('link:')) {
@@ -807,7 +807,7 @@ async function getVersion({ name, version }) {
       const registry = getRegistry(name)
       const cachedPath = cache({ name, version }) + '.json'
       const cached = await fsp.readFile(cachedPath).catch(() => 0)
-      cached || progress(name + c.gray(' ' + version))
+      cached || progress(name + c.dim(' ' + version))
       const headers = registry.password ? { Authorization: 'Bearer ' + registry.password } : {}
       headers['Accept-Encoding'] = 'gzip'
       const x = cached || await https.fetch(registry.hostname, registry.pathname + name + '/' + version, headers)
@@ -830,7 +830,7 @@ async function findVersion({ name, range }) {
     versions,
     id,
     (async() => {
-      progress(name + c.gray(' ' + (range.length > 30 ? range.slice(0, 27) + '...' : range)))
+      progress(name + c.dim(' ' + (range.length > 30 ? range.slice(0, 27) + '...' : range)))
       let { body, versions: xs } = await findVersions(name)
       let pkg = null
       let fallback = null

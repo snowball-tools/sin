@@ -9,7 +9,7 @@ const xs = config.all
   : [path.basename(config.project)]
 
 for (const x of xs) {
-  process.stdout.write('Clear ' + x + ' ' + c.gray('(' + path.join(config.projectsDir, x) + ')') + ' ...\n')
+  process.stdout.write('Clear ' + x + ' ' + c.dim('(' + path.join(config.projectsDir, x) + ')') + ' ...\n')
   fs.rmSync(path.join(config.projectsDir, x), { recursive: true, force: true })
   process.stdout.write('Done\n')
 }

@@ -245,6 +245,9 @@ async function install([name, version], parent, force, route) {
 
       pkg || (pkg = await resolve(name, version))
 
+      if (!pkg)
+        throw new Error('Could not find ' + name + (name in pkgDependencies ? ' (perhaps remove from package.json?)' : ''))
+
       if (pkg.version.indexOf('link:') === 0)
         return set(packages, id, await finished(pkg))
 
@@ -502,7 +505,7 @@ async function resolve(name, v = '') {
         ? resolveNpm(...splitNameVersion(v.slice(4)))
         : resolveNpm(name, v)
       )
-      name && (pkg.alias = name)
+      name && pkg && (pkg.alias = name)
       return set(resolved, id, pkg)
     })()
   )
@@ -510,10 +513,14 @@ async function resolve(name, v = '') {
 
 async function resolveLink(name) {
   const x = Path.join(config.linkDir, name)
+  const targetPkg = await jsonRead(Path.join(x, 'package.json'))
+  if (!targetPkg)
+    return
   const pkg = readFromPackage({
+    name,
     version: 'link:' + name,
     resolved: 'link:' + name
-  }, await jsonRead(Path.join(x, 'package.json')))
+  }, targetPkg)
 
   pkg.local = localPath(pkg)
   await symlink(x, pkg.local)

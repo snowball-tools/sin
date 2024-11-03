@@ -1,5 +1,6 @@
 import Path from 'node:path'
 import fs from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 
 import config from '../config.js'
 import { safeId } from '../shared.js'
@@ -7,8 +8,11 @@ import { safeId } from '../shared.js'
 if (config._.length) {
   const pkg = JSON.parse(await fs.readFile('package.json'))
   for (const name of config._) {
+    const target = Path.join(config.linkDir, name)
+    if (!existsSync(target))
+      throw new Error(name + ' not found - did you link it?')
     const path = Path.join('node_modules', '.sin', safeId({ name: name, version: 'link:' + name }), 'node_modules', name)
-    await symlink(Path.join(config.linkDir, name), path)
+    await symlink(target, path)
     await symlink(path.slice(13), Path.join('node_modules', name))
     console.log('🔥 Linked ' + name)
     name in (pkg.devDependencies || {})

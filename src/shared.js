@@ -1,5 +1,9 @@
 export const stackTrace = Symbol('stackTrace')
 
+export const emptyObject = Object.freeze({})
+
+export const emptyArray = Object.freeze([])
+
 export const resolved = Promise.resolve()
 
 export const hasOwn = {}.hasOwnProperty

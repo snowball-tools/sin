@@ -22,7 +22,9 @@ import {
   notValue,
   hasOwn,
   mergeTag,
-  noop
+  noop,
+  emptyObject,
+  emptyArray
 } from '../src/shared.js'
 
 class TimeoutError extends Error {}
@@ -168,16 +170,18 @@ function updateElement(view, context) {
     : (getName(view.tag) || 'div').toLowerCase()
   const internal = !String(view.attrs.href).match(/^[a-z]+:|\/\//)
   if (hasOwn.call(view.attrs, 'id') === false) {
+    view.attrs === emptyObject && (view.attrs = { })
     const id = getId(view.tag)
     id && (view.attrs.id = id)
   }
   if (getName(view.tag) === 'a' && hasOwn.call(view.attrs, 'href') && internal) {
+    view.attrs === emptyObject && (view.attrs = { })
     view.attrs.href = cleanHref(view.attrs.href)
     context.doc.links(view.attrs.href)
   }
-  return tryPromise(updateChildren(view.children, context), x =>
-    elementString(view, tag, x)
-  )
+  return view.children === emptyArray || view.children.length === 0
+    ? elementString(view, tag, '')
+    : tryPromise(updateChildren(view.children, context), x => elementString(view, tag, x))
 }
 
 function elementString(view, tag, content) {

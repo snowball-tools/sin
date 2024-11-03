@@ -1,8 +1,5 @@
 import window from './window.js'
-import { hasOwn, stackTrace } from './shared.js'
-
-const emptyObject = Object.freeze({})
-const emptyArray = Object.freeze([])
+import { hasOwn, stackTrace, emptyObject, emptyArray } from './shared.js'
 
 export default class View {
   constructor(inline, component, tag = null, nesting = 0, attrs = emptyObject, children = emptyArray) {

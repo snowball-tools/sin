@@ -58,7 +58,8 @@ async function fromArgs() {
       start     : { $: true, script: 1, static: 1 },
       version   : 1,
       install   : 0,
-      link      : 0
+      link      : 0,
+      run       : 0
     },
     parameters: {
       publicDir   : '+public',
@@ -155,7 +156,7 @@ export function getEntry(x, config) {
   const dir = file ? path.dirname(x) : x
 
   if (!needsEntry(config)) {
-    config.create || config.acme || config.static || config.link || config.install || config.rm || process.chdir(env.PWD = dir)
+    config.create || config.acme || config.static || config.link || config.install || config.rm || config.run || process.chdir(env.PWD = dir)
     return ''
   }
 

@@ -690,7 +690,7 @@ async function untar(pkg, x, write = true) {
 
     target = x[n + 345] === 0
       ? x.toString('utf8', x.indexOf(47, n) + 1, h) // /
-      : x.toString('utf8', x.indexOf(47, n + 345) + 1, x.indexOf(0, n + 345)) + x.toString('utf8', n, h)
+      : x.toString('utf8', x.indexOf(47, n + 345) + 1, x.indexOf(0, n + 345)) + '/' + x.toString('utf8', n, h)
     output = write && Path.join(pkg.local, target)
 
     if (x[n + 156] === 53 || x[h - 1] === 47) { // 5 /

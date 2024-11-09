@@ -83,7 +83,8 @@ async function connect(id, port, main) {
     }
 
     function open(client, data) {
-      const x = net.connect(port, () => x.write(data))
+      const x = net.connect(port)
+      x.write(data)
 
       x.on('data', x => send(0, client, x))
       x.on('close', () => (send(1, client), clients.delete(client)))

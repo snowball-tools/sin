@@ -186,15 +186,16 @@ export default function Server({
 
   function close(fn, ws, code, data) {
     ws[$.ws].open = false
-    fn(ws[$.ws], code, new Message(data, true))
+    fn && fn(ws[$.ws], code, new Message(data, true))
   }
 
   function open(fn, ws) {
-    fn(ws[$.ws] = new Websocket(ws))
+    ws[$.ws] = new Websocket(ws)
+    fn && fn(ws[$.ws])
   }
 
   function message(fn, ws, data, binary) {
-    fn(ws[$.ws], new Message(data, binary))
+    fn && fn(ws[$.ws], new Message(data, binary))
   }
 
   function catcher(name, handlers, fn) {

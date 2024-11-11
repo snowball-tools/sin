@@ -263,8 +263,9 @@ function mount(dom, view, attrs = {}, context = {}) {
 
   context.doc = doc
   context.route = router(s, '', { doc: context.doc, location: context.location, query: s.route.query })
-  mounts.set(dom, { view, attrs, context })
-  draw({ view, attrs, context }, dom)
+  const m = { view, attrs, context }
+  mounts.set(dom, m)
+  draw(m, dom)
 }
 
 function scrollRestoration(context) {

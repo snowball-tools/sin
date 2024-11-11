@@ -915,7 +915,7 @@ function getInfo(version, x) {
     for (let i = start; i < x.length; i++) {
       let c = x.charCodeAt(i)
       if (c === 34) { // "
-        l !== 92 && (quote = !quote)
+        l !== 92 && (quote = !quote) // \
       } else if (quote) {
         // noop
       } else if (c === 123) { // {
@@ -978,7 +978,7 @@ function getScopes() {
 }
 
 function getDefaultRegistry() {
-  return new URL(process.env.npm_config_registry || 'https://registry.npmjs.org')
+  return new URL(process.env.npm_config_registry || process.env.NPM_CONFIG_REGISTRY || process.env.NPM_CONFIG_registry || 'https://registry.npmjs.org')
 }
 
 function ensureIntegrity(pkg, integrity) {

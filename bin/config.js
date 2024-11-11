@@ -109,6 +109,7 @@ async function fromArgs() {
       noscript  : false,
       nojail    : false,
       bundleNodeModules : false,
+      showDeprecated : false,
       devtools  : false,
       config    : false,
       global    : false,

@@ -16,21 +16,22 @@ let peers = []
   , lockChanges = new Set()
   , deprecated = []
   , clear = false
-  , log = ''
+  , log = false
   , clock = ''
 
-const then = (x, fn) => x && typeof x.then === 'function' ? x.then(fn) : fn(x)
+const lockFields = 'name os cpu bin scripts engines deprecated dependencies peerDependencies optionalDependencies peerDependenciesMeta'.split(' ')
+    , then = (x, fn) => x && typeof x.then === 'function' ? x.then(fn) : fn(x)
     , splitNameVersion = x => (x.match(/^(@[a-z0-9-/]+|[a-z0-9-]+)$/) || x.match(/(?:(^@?[a-z0-9-/]+)@)?(.+)/i) || []).slice(1, 3)
     , set = (xs, id, x) => (xs.set(id, x), x)
     , noop = () => { /* noop */ }
     , overwrite = () => process.stdout.write('\x1B[F\x1B[2K')
     , p = (...xs) => (clear && overwrite(), clear = log = false, console.log(...xs), xs[xs.length - 1]) // eslint-disable-line
     , clocks = ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚']
-    , progress = x => log = x // eslint-disable-line
+    , progress = ['Installing...']
     , root = config.global ? config.globalDir : config.cwd
 
 https.fetch.p = p
-setInterval(() => log && (console.log((clear ? '\x1B[F\x1B[2K' : '') + (clock = clocks[(clocks.indexOf(clock) + 1) % clocks.length]), log), clear = true), 50).unref() // eslint-disable-line
+setInterval(() => log && (console.log((clear ? '\x1B[F\x1B[2K' : '') + (clock = clocks[(clocks.indexOf(clock) + 1) % clocks.length]), progress[0]), clear = true), 50).unref() // eslint-disable-line
 
 const bins = []
     , dirs = new Map()
@@ -70,8 +71,8 @@ if (!config.ci) {
     .map(x => [c.red(' - ' + x.name), c.dim('@ ' + x.version), x.deprecated].join(' '))
     .filter((x, i, xs) => xs.indexOf(x) === i)
     .sort((a, b) => a > b ? 1 : a < b ? -1 : 0)
-  xs.length && p('🚨', xs.length, 'deprecated package' + (xs.length === 1 ? ':' : 's:'))
-  xs.forEach(x => p(x))
+  xs.length && p('🚨', xs.length, 'deprecated package' + (xs.length === 1 ? ':' : 's') + (config.showDeprecated ? ':' : c.dim(' use --show-deprecated to see which')))
+  config.showDeprecated && xs.forEach(x => p(x))
 }
 
 p(
@@ -206,11 +207,14 @@ async function install([name, version], parent, force, route) {
   if (packages.has(id))
     return then(packages.get(id), x => finished(x, parent, force, route))
 
+  const logId = name + c.dim(' ' + version)
+  log = true
+  progress.unshift(logId)
+
   return set(
     packages,
     id,
     (async() => {
-      progress(name + c.dim(' ' + version))
       let pkg
 
       if ((parent || oldLockDependencies[name] === pkgDependencies[name]) && !version.startsWith('link:')) {
@@ -275,7 +279,10 @@ async function install([name, version], parent, force, route) {
 
       return set(packages, id, pkg)
     })()
-  )
+  ).then(x => {
+    progress.splice(progress.indexOf(logId), 1)
+    return x
+  })
 }
 
 function gunzip(x) {
@@ -318,6 +325,7 @@ async function finished(pkg, parent) {
 }
 
 function setDependency(pkg, parent) {
+  pkg.deprecated && deprecated.push(pkg)
   const name = (pkg.alias || pkg.name)
   const type = parent?.optionalDependencies?.[name]
     ? 'optionalDependencies'
@@ -333,9 +341,10 @@ function setDependency(pkg, parent) {
     cpu: pkg.cpu,
     os: pkg.os,
     engines: pkg.engines,
+    deprecated: pkg.deprecated,
     dependencies: undefined,
     optionalDependencies: undefined,
-    peerDependencies: undefined
+    peerDependencies: undefined,
   })
 
   if (!parent)
@@ -574,13 +583,12 @@ async function resolveUrl(version) {
 }
 
 function readFromPackage(
-    pkg,
-    { name, os, cpu, bin, scripts, engines, dependencies, peerDependencies, optionalDependencies, peerDependenciesMeta }
+  pkg,
+  from
 ) {
-  return Object.assign(
-    pkg,
-    { name, os, cpu, bin, scripts, engines, dependencies, peerDependencies, optionalDependencies, peerDependenciesMeta }
-  )
+  for (const x of lockFields)
+    from[x] === undefined || (pkg[x] = from[x])
+  return pkg
 }
 
 async function resolveGit(x) {
@@ -811,7 +819,6 @@ async function getVersion({ name, version }) {
       const registry = getRegistry(name)
       const cachedPath = cache({ name, version }) + '.json'
       const cached = await fsp.readFile(cachedPath).catch(() => 0)
-      cached || progress(name + c.dim(' ' + version))
       const headers = registry.password ? { Authorization: 'Bearer ' + registry.password } : {}
       headers['Accept-Encoding'] = 'gzip'
       const x = cached || await https.fetch(registry.hostname, registry.pathname + name + '/' + version, headers)
@@ -834,17 +841,14 @@ async function findVersion({ name, range }) {
     versions,
     id,
     (async() => {
-      progress(name + c.dim(' ' + (range.length > 30 ? range.slice(0, 27) + '...' : range)))
       let { body, versions: xs } = await findVersions(name)
       let pkg = null
       let fallback = null
       while (!pkg) {
         const version = semver.best(range, xs)
         if (!version) {
-          if (fallback) {
-            deprecated.push(fallback)
+          if (fallback)
             return set(versions, id, fallback)
-          }
           throw new Error('No version found for ' + name + ' @ ' + range)
         }
         pkg = getInfo(version, body) || await getVersion({ name, version })
@@ -852,10 +856,8 @@ async function findVersion({ name, range }) {
           fallback || (fallback = pkg, xs = xs.slice())
           xs.splice(xs.indexOf(version), 1)
           pkg = null
-          if (!xs.length) {
-            deprecated.push(fallback)
+          if (!xs.length)
             return set(versions, id, fallback)
-          }
         }
       }
       return set(versions, id, pkg)

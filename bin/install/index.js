@@ -19,7 +19,7 @@ let peers = []
   , log = false
   , clock = ''
 
-const lockFields = 'name os cpu bin scripts engines deprecated dependencies peerDependencies optionalDependencies peerDependenciesMeta'.split(' ')
+const lockFields = 'name os cpu bin postinstall engines deprecated dependencies peerDependencies optionalDependencies peerDependenciesMeta'.split(' ')
     , then = (x, fn) => x && typeof x.then === 'function' ? x.then(fn) : fn(x)
     , splitNameVersion = x => (x.match(/^(@[a-z0-9-/]+|[a-z0-9-]+)$/) || x.match(/(?:(^@?[a-z0-9-/]+)@)?(.+)/i) || []).slice(1, 3)
     , set = (xs, id, x) => (xs.set(id, x), x)
@@ -79,7 +79,7 @@ p(
   '🔥',
   ...(lockChanges.size
     ? ['Installed', lockChanges.size, 'package' + (lockChanges.size === 1 ? '' : 's')]
-    : ['Checked all']
+    : ['Checked', Object.keys(lock.packages).length, 'package' + (lockChanges.size === 1 ? '' : 's')]
   ),
   'in',
   ...prettyTime(process.uptime())
@@ -326,6 +326,7 @@ async function finished(pkg, parent) {
 
 function setDependency(pkg, parent) {
   pkg.deprecated && deprecated.push(pkg)
+  pkg.postinstall && postInstalls.push(pkg)
   const name = (pkg.alias || pkg.name)
   const type = parent?.optionalDependencies?.[name]
     ? 'optionalDependencies'
@@ -342,6 +343,7 @@ function setDependency(pkg, parent) {
     os: pkg.os,
     engines: pkg.engines,
     deprecated: pkg.deprecated,
+    postinstall: pkg.postinstall,
     dependencies: undefined,
     optionalDependencies: undefined,
     peerDependencies: undefined,
@@ -357,8 +359,6 @@ function setDependency(pkg, parent) {
 }
 
 async function installed(pkg, parent, force, route) {
-  pkg.scripts?.postinstall && postInstalls.push(pkg)
-
   await finished(pkg, parent, force, route)
   detached.push(installDependencies({ ...pkg.optionalDependencies, ...pkg.dependencies }, pkg, force, route.concat(pkg.name + '@' + pkg.version)))
 
@@ -371,22 +371,44 @@ async function installed(pkg, parent, force, route) {
   return pkg
 }
 
-function postInstall() {
-  if (!config.trust && postInstalls.length)
-    return p('⛔️', postInstalls.length + ' postinstall script' + (postInstalls.length === 1 ? '' : 's') + ' skipped - add --trust to install')
+async function postInstall() {
+  if (config.ignoreScripts)
+    return
 
-  return Promise.all(postInstalls.map(x =>
-    new Promise((resolve, reject) =>
-      cp.exec(x.scripts.postinstall, {
+  const skipped = []
+  for (const x of postInstalls) {
+    const installed = await fsp.readFile(Path.join(x.local, '.sinpostinstall'), 'utf8').catch(() => null)
+    if (installed)
+      continue
+
+    if (!config.trustPostinstall) {
+      skipped.push(x)
+      continue
+    }
+
+    const logId = x.name + c.dim(' ' + x.version) + c.yellow(' postinstall $ ') + (x.postinstall.length > 40 ? x.postinstall.slice(0, 37) + '...' : x.postinstall)
+    log = true
+    progress.unshift(logId)
+    await new Promise((resolve, reject) =>
+      cp.exec(x.postinstall, {
         stdio: 'inherit',
         cwd: x.local,
         env: {
           ...process.env,
           INIT_CWD: process.cwd()
         }
-      }, err => err ? reject(err) : resolve())
+      }, err => {
+
+        err ? reject(err) : resolve()
+      })
     )
-  ))
+    await fsp.writeFile(Path.join(x.local, '.sinpostinstall'), x.postinstall)
+    progress.splice(progress.indexOf(logId), 1)
+    p('✅ ' + logId)
+  }
+
+  skipped.length && p('⛔️', skipped.length + ' postinstall script' + (postInstalls.length === 1 ? '' : 's') + ' skipped' + c.dim(' use --trust-postinstall to run'))
+  skipped.forEach(x => p(c.yellow(' ∟ ' + x.name + ' ' + c.dim(x.version + ' - skipped postinstall'))))
 }
 
 async function writeLock() {
@@ -586,6 +608,7 @@ function readFromPackage(
   pkg,
   from
 ) {
+  from.scripts?.postinstall && (pkg.postinstall = from.scripts.postinstall)
   for (const x of lockFields)
     from[x] === undefined || (pkg[x] = from[x])
   return pkg
@@ -755,12 +778,6 @@ async function cleanup() {
     ...allRemove,
     ...binRemove
   ].map(rm))
-
-  const s = allRemove.length - topRemove.length
-      , l = topRemove.length
-
-  l && p('Removed', l, 'unused module folder' + (l === 1 ? '' : 's') + (s > 0 ? ' and ' + s + ' subdependenc' + (s === 1 ? 'y' : 'ies') : ''))
-  topRemove.forEach(x => p(c.red('- ' + x.slice(13))))
 }
 
 async function rm(x) {

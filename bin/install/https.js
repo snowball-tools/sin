@@ -1,4 +1,6 @@
 import tls from 'node:tls'
+import net from 'node:net'
+
 import zlib from 'node:zlib'
 import dns from 'node:dns/promises'
 
@@ -23,26 +25,26 @@ export function destroy() {
   }
 }
 
-export async function fetch(host, pathname, headers = {}) {
+export async function fetch(x, pathname, headers = {}) {
   let retries = 3
   while (true) {
-    const hosts = open[host]
-    const socket = hosts && hosts.pop() || (await create(host))
+    const hosts = open[x]
+    const socket = hosts && hosts.pop() || (await create(x))
     try {
       let body = await new Promise((resolve, reject) => {
         socket.resolve = resolve
         socket.reject = reject
-        socket.handler = handler(resolve, reject, host, pathname)
+        socket.handler = handler(resolve, reject, socket.hostname, pathname)
         socket.gzip =
         socket.pathname = pathname
-        socket.write('GET ' + pathname + ' HTTP/1.1\r\nHost: ' + host + '\r\n' + setHeaders(headers) + 'User-Agent: sin/0.0.1\r\n\r\n')
+        socket.write('GET ' + pathname + ' HTTP/1.1\r\nHost: ' + socket.hostname + '\r\n' + setHeaders(headers) + 'User-Agent: sin/0.0.1\r\n\r\n')
       })
       socket.done()
       headers['Accept-Encoding'] === 'gzip' && (body = await new Promise((resolve, reject) => zlib.gunzip(body, (err, x) => err ? reject(err) : resolve(x))))
       return body
     } catch(err) {
       socket.destroy()
-      fetch.retried.push(host + pathname)
+      fetch.retried.push(socket.hostname + pathname)
       if (retries-- === 0)
         throw err
     }
@@ -56,19 +58,20 @@ function setHeaders(xs) {
   return x
 }
 
-async function create(host) {
-  const xs = host in open
-    ? open[host]
-    : open[host] = Object.assign([], { count: 1, queue: [], secureContext: tls.createSecureContext() })
+async function create(x) {
+  const xs = x in open
+    ? open[x]
+    : open[x] = Object.assign([], { count: 1, queue: [], secureContext: tls.createSecureContext() })
 
   if (xs.count > 200)
     return new Promise(r => xs.queue.unshift(r))
 
   xs.count++
-  const socket = tls.connect({
-    port: 443,
-    host: await getIp(host),
-    servername: host,
+  const url = new URL(x)
+  const socket = (url.protocol === 'https:' ? tls : net).connect({
+    port: url.port ? url.port : url.protocol === 'https:' ? 443 : 80,
+    host: await getIp(url.hostname),
+    servername: url.hostname,
     highWaterMark,
     ALPNProtocols: ['http/1.1'],
     secureContext: xs.secureContext,
@@ -79,13 +82,14 @@ async function create(host) {
     }
   })
 
+  socket.hostname = url.hostname
   socket.setTimeout(10000)
   socket.on('timeout', () => socket.destroy(new Error('Timeout')))
 
   socket.done = done
   socket.on('error', x => socket.reject(x))
   socket.on('close', () => {
-    socket.reject(new Error('Premature close for ' + host + socket.pathname))
+    socket.reject(new Error('Premature close for ' + url.hostname + socket.pathname))
     xs.splice(xs.indexOf(socket), 1)
     xs.count--
   })

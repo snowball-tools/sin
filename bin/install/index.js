@@ -273,7 +273,7 @@ async function install([name, version], parent, force, route) {
       }
 
       pkg.tgz || (pkg = await resolve(name, version))
-      const body = await https.fetch(pkg.tgz.hostname, pkg.tgz.pathname, pkg.tgz.headers)
+      const body = await https.fetch(pkg.tgz.origin, pkg.tgz.pathname, pkg.tgz.headers)
       const [tar, sha512] = await gunzip(body)
       ensureIntegrity(pkg, 'sha512-' + sha512)
       await Promise.all([
@@ -488,14 +488,12 @@ async function resolveNpm(name, version) {
   }, x)
 
   pkg.tgz = {
-    port: registry.port || 443,
-    protocol: registry.protocol || 'https',
-    hostname: registry.hostname,
+    origin: registry.origin,
     pathname: registry.pathname + pkg.name + '/-/' + (pkg.name.split('/')[1] || pkg.name) + '-' + pkg.version.split('+')[0] + '.tgz',
     headers: registry.password ? { Authorization: 'Bearer ' + registry.password } : {}
   }
 
-  pkg.resolved = 'https://' + pkg.tgz.hostname + pkg.tgz.pathname
+  pkg.resolved = pkg.tgz.origin + pkg.tgz.pathname
 
   ensureIntegrity(pkg, x.dist?.integrity)
   addPaths(pkg)
@@ -602,7 +600,7 @@ async function resolveUrl(version) {
     resolved: version,
     tgz: new URL(version)
   }
-  const [tar, sha512] = await gunzip(await https.fetch(pkg.tgz.hostname, pkg.tgz.pathname, pkg.tgz.headers))
+  const [tar, sha512] = await gunzip(await https.fetch(pkg.tgz.origin, pkg.tgz.pathname, pkg.tgz.headers))
   await untar(pkg, tar, false)
   ensureIntegrity(pkg, 'sha512-' + sha512)
   addPaths(pkg)
@@ -688,19 +686,19 @@ async function resolveGithub(x) {
 
   const [repo, hash] = x.split('#')
   const auth = process.env.GITHUB_TOKEN ? { Authorization: 'token ' + process.env.GITHUB_TOKEN } : undefined
-  const info = JSON.parse(await https.fetch('api.github.com', '/repos/' + repo, auth))
+  const info = JSON.parse(await https.fetch('https://api.github.com', '/repos/' + repo, auth))
   const ref = hash || info.default_branch
 
-  const { sha } = JSON.parse(await https.fetch('api.github.com', '/repos/' + repo + '/commits/' + ref, auth))
+  const { sha } = JSON.parse(await https.fetch('https://api.github.com', '/repos/' + repo + '/commits/' + ref, auth))
   const pkg = auth
-    ? await https.fetch('api.github.com', '/repos/' + repo + '/contents/package.json?ref=' + sha, auth).then(x => JSON.parse(Buffer.from(JSON.parse(x).content, 'base64')))
-    : await https.fetch('raw.githubusercontent.com', '/' + repo + '/' + sha + '/package.json').then(x => JSON.parse(x))
+    ? await https.fetch('https://api.github.com', '/repos/' + repo + '/contents/package.json?ref=' + sha, auth).then(x => JSON.parse(Buffer.from(JSON.parse(x).content, 'base64')))
+    : await https.fetch('https://raw.githubusercontent.com', '/' + repo + '/' + sha + '/package.json').then(x => JSON.parse(x))
 
   pkg.version = 'github:' + repo + '#' + sha
   pkg.tgz = auth
-    ? { hostname: 'api.github.com', pathname: '/repos/' + repo + '/tarball/' + sha, headers: auth }
-    : { hostname: 'codeload.github.com', pathname: '/' + repo + '/tar.gz/' + sha }
-  pkg.resolved = 'https://' + pkg.tgz.hostname + pkg.tgz.pathname
+    ? { origin: 'https://api.github.com', pathname: '/repos/' + repo + '/tarball/' + sha, headers: auth }
+    : { origin: 'https://codeload.github.com', pathname: '/' + repo + '/tar.gz/' + sha }
+  pkg.resolved = pkg.tgz.origin + pkg.tgz.pathname
 
   addPaths(pkg)
 
@@ -842,7 +840,7 @@ async function getVersion({ name, version }) {
       const cached = await fsp.readFile(cachedPath).catch(() => 0)
       const headers = registry.password ? { Authorization: 'Bearer ' + registry.password } : {}
       headers['Accept-Encoding'] = 'gzip'
-      const x = cached || await https.fetch(registry.hostname, registry.pathname + name + '/' + version, headers)
+      const x = cached || await https.fetch(registry.origin, registry.pathname + name + '/' + version, headers)
       const json = JSON.parse(x)
       cached || await fsp.writeFile(cachedPath, x)
       json.version || (json.version = version)
@@ -897,7 +895,7 @@ async function findVersions(name) {
       const registry = getRegistry(name)
       const headers = registry.password ? { Authorization: 'Bearer ' + registry.password } : {}
       headers['Accept-Encoding'] = 'gzip'
-      const body = (await https.fetch(registry.hostname, registry.pathname + name, headers)).toString('utf8')
+      const body = (await https.fetch(registry.origin, registry.pathname + name, headers)).toString('utf8')
       return set(versions, name, {
         body,
         versions: (body.match(/(:{|},)"\d+\.\d+\.\d+[^"]*":{"/g) || []).map(x => x.slice(3, -4))

@@ -22,8 +22,6 @@ const argv = process.argv.slice(3)
     , noscript = !full && !script && await prompt('Only SSR (--noscript)?')
     , staticServe = !full && !script && !noscript && await prompt('Just serve static files (static)?')
     , server = !full && !script && !noscript && !staticServe && await prompt('Just HTTP?')
-    , npm = await new Promise(r => cp.exec('which pnpm', e => r(e ? 'npm' : 'pnpm')))
-    , run = npm + (npm === 'npm' ? ' run' : '')
     , git = !hasGit(cwd) && await prompt('Git?')
     , install = await prompt('Install?')
 
@@ -75,12 +73,12 @@ if (full) {
 mk(target, 'package.json', JSON.stringify(pkg, null, 2))
 
 git && (cp.execSync('git init', { stdio: 'inherit' }), mk(target, '.gitignore', 'node_modules\n.env'))
-install && cp.execSync(npm + ' install porsager/sin', { stdio: 'inherit' })
+install && cp.execSync('sin install porsager/sin', { stdio: 'inherit' })
 
 !global.print && console.log( // eslint-disable-line
   cd
-    ? '\nRun `cd ' + name + '` and then `' + run + ' dev` to start developing\n'
-    : '\nRun `' + run + ' dev` to start developing\n'
+    ? '\nRun `cd ' + name + '` and then `sin dev` to start developing\n'
+    : '\nRun `sin dev` to start developing\n'
 )
 
 rl.close()

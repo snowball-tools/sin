@@ -240,8 +240,10 @@ async function install([name, version], parent, force, route) {
             }
 
             const [tar, sha512] = await fsp.readFile(pkg.cache).then(gunzip).catch(() => [])
-            if (tar)
-              return (pkg.integrity = 'sha512-' + sha512, set(packages, lockedId, await installed(await untar(pkg, tar), parent, force, route)))
+            if (tar) {
+              ensureIntegrity(pkg, 'sha512-' + sha512)
+              return set(packages, lockedId, await installed(await untar(pkg, tar), parent, force, route))
+            }
           }
           version = lockVersion
         }
@@ -265,13 +267,15 @@ async function install([name, version], parent, force, route) {
         throw new Error('Could not find version for ' + pkg.name + ' exp ' + version)
 
       const cached = await fsp.readFile(pkg.cache).then(gunzip).catch(e => pkg.forceCache ? Promise.reject(new Error(e)) : [])
-      if (cached[0])
-        return (pkg.integrity = 'sha512-' + cached[1], set(packages, id, await installed(await untar(pkg, cached[0]), parent, force, route)))
+      if (cached[0]) {
+        ensureIntegrity(pkg, 'sha512-' + cached[1])
+        return set(packages, id, await installed(await untar(pkg, cached[0]), parent, force, route))
+      }
 
       pkg.tgz || (pkg = await resolve(name, version))
       const body = await https.fetch(pkg.tgz.hostname, pkg.tgz.pathname, pkg.tgz.headers)
       const [tar, sha512] = await gunzip(body)
-      pkg.integrity = 'sha512-' + sha512
+      ensureIntegrity(pkg, 'sha512-' + sha512)
       await Promise.all([
         then(mkdir(Path.dirname(pkg.cache)), () => fsp.writeFile(pkg.cache, body)),
         untar(pkg, tar).then(() => installed(pkg, parent, force, route))
@@ -492,7 +496,8 @@ async function resolveNpm(name, version) {
   }
 
   pkg.resolved = 'https://' + pkg.tgz.hostname + pkg.tgz.pathname
-  pkg.integrity = packageJson.dist?.integrity
+
+  ensureIntegrity(pkg, x.dist?.integrity)
   addPaths(pkg)
   return pkg
 }
@@ -585,7 +590,7 @@ async function resolveLocalTarball(version) {
   const [tar, sha512] = await gunzip(file)
 
   await untar(pkg, tar, false)
-  pkg.integrity = 'sha512-' + sha512
+  ensureIntegrity(pkg.integrity, 'sha512-' + sha512)
   addPaths(pkg)
   await fsp.writeFile(pkg.cache, file)
   return pkg
@@ -599,7 +604,7 @@ async function resolveUrl(version) {
   }
   const [tar, sha512] = await gunzip(await https.fetch(pkg.tgz.hostname, pkg.tgz.pathname, pkg.tgz.headers))
   await untar(pkg, tar, false)
-  pkg.integrity = 'sha512-' + sha512
+  ensureIntegrity(pkg, 'sha512-' + sha512)
   addPaths(pkg)
   return pkg
 }
@@ -647,8 +652,7 @@ async function resolveGit(x) {
 
     await $('git', ['archive', '--format=tgz', '--prefix=package/', '-o', temp + '.tgz', sha, ...files], { cwd })
 
-    pkg.version = repo
-    pkg.resolved = repo + '#' + sha
+    pkg.version = pkg.resolved = repo + '#' + sha
     pkg.forceCache = true
 
     addPaths(pkg)
@@ -977,4 +981,12 @@ function getScopes() {
 
 function getDefaultRegistry() {
   return new URL(process.env.npm_config_registry || 'https://registry.npmjs.org')
+}
+
+function ensureIntegrity(pkg, integrity) {
+  const old = oldLock.packages[pkg.name + '@' + pkg.version]
+  if (old && old.integrity !== integrity)
+    throw new Error('Integrity mismatch for ' + pkg.name + ' ' + c.dim(pkg.version) + ' ' + old.integrity + ' != ' + integrity)
+
+  pkg.integrity = integrity
 }

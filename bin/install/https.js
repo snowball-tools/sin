@@ -40,8 +40,9 @@ export async function fetch(x, pathname, headers = {}) {
         socket.write('GET ' + pathname + ' HTTP/1.1\r\nHost: ' + socket.hostname + '\r\n' + setHeaders(headers) + 'User-Agent: sin/0.0.1\r\n\r\n')
       })
       socket.done()
-      headers['Accept-Encoding'] === 'gzip' && (body = await new Promise((resolve, reject) => zlib.gunzip(body, (err, x) => err ? reject(err) : resolve(x))))
-      return body
+      return headers['Accept-Encoding'] === 'gzip' && body[0] === 0x1f && body[1] === 0x8b
+        ? new Promise((resolve, reject) => zlib.gunzip(body, (err, x) => err ? reject(err) : resolve(x)))
+        : body
     } catch(err) {
       socket.destroy()
       fetch.retried.push(socket.hostname + pathname)

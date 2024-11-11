@@ -128,6 +128,7 @@ async function fromArgs() {
       rm: 'remove',
       prod: 'start',
       ci: 'install',
+      init: 'create',
       '-g': '--global',
       '-D': '--save-dev',
       '-O': '--save-optional',

@@ -747,6 +747,9 @@ class Stack {
     )
 
     const update = (e, recreate, optimistic) => {
+      if (this.xs.indexOf(instance) === -1)
+          return
+
       beforeUpdates()
       e instanceof Event && (e.redraw = false)
       const keys = this.dom.first[$keys]

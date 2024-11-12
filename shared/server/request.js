@@ -101,7 +101,7 @@ export default class Request {
     return this[$.body] = this.onData(buffer => {
       known
         ? Buffer.from(buffer).copy(full, offset)
-        : full.push(buffer)
+        : full.push(Buffer.from(Buffer.from(buffer)))
       offset += buffer.byteLength
     }).then(() => {
       known || (full = Buffer.concat(full))

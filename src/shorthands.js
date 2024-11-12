@@ -18,7 +18,7 @@ export const popular = [
   'gap',
   'grid-area',
   'grid-gap',
-  'grid-template-area',
+  'grid-template-areas',
   'grid-template-columns',
   'grid-template-rows',
   'height',

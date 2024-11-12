@@ -336,7 +336,7 @@ A few popular properties have overlapping initials, Sin choose to support the mo
 | g | gap |
 | ga | grid-area |
 | gg | grid-gap |
-| gta | grid-template-area |
+| gta | grid-template-areas |
 | gtc | grid-template-columns |
 | gtr | grid-template-rows |
 | h | height |

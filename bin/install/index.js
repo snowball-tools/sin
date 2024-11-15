@@ -588,7 +588,7 @@ async function resolveLocalTarball(version) {
   const [tar, sha512] = await gunzip(file)
 
   await untar(pkg, tar, false)
-  ensureIntegrity(pkg.integrity, 'sha512-' + sha512)
+  ensureIntegrity(pkg, 'sha512-' + sha512)
   addPaths(pkg)
   await fsp.writeFile(pkg.cache, file)
   return pkg

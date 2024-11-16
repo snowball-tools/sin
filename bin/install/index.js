@@ -510,7 +510,7 @@ function cache({ name, version }) {
 }
 
 function localPath({ name, version }) {
-  return Path.join(root, 'node_modules', '.sin/', safeId({ name, version }), 'node_modules', ...name.split('/'))
+  return Path.join(root, 'node_modules', '.sin', safeId({ name, version }), 'node_modules', ...name.split('/'))
 }
 
 async function resolve(name, v = '') {

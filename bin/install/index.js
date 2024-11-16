@@ -310,7 +310,7 @@ async function finished(pkg, parent) {
     ? { [name.split('/').pop()]: pkg.bin }
     : pkg.bin || {}
   ).map(async([name, file]) => {
-    const target = Path.join(...(parent ? ['..', '..', '..'] : ['..']), pkg.local.split('node_modules/').pop(), file)
+    const target = Path.join(...(parent ? ['..', '..', '..'] : ['..']), pkg.local.split(/node_modules[/\\]/).pop(), file)
     const path = Path.join(parent ? parent.local : bins[name] = root, 'node_modules', '.bin', name)
     await symlink(target, path)
     config.global && !parent && await symlink(path, Path.join(config.binDir, name))

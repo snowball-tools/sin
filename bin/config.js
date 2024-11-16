@@ -119,7 +119,7 @@ async function fromArgs() {
       ci                : (x, xs) => x || argv[0] === 'ci' || false,
       production        : false,
       saveDev           : false,
-      trust             : false,
+      force             : false,
       coverage          : (x, xs) => (xs.nojail = true, x || false),
       script            : (_, xs) => xs.$[1] === 'script',
       static            : (_, xs) => xs.$[1] === 'static'

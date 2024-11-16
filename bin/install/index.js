@@ -983,7 +983,7 @@ function getDefaultRegistry() {
 
 function ensureIntegrity(pkg, integrity) {
   const old = oldLock.packages[pkg.name + '@' + pkg.version]
-  if (old && old.integrity !== integrity)
+  if (!config.force && old && old.integrity !== integrity)
     throw new Error('Integrity mismatch for ' + pkg.name + ' ' + c.dim(pkg.version) + ' ' + old.integrity + ' != ' + integrity)
 
   pkg.integrity = integrity

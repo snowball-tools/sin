@@ -10,7 +10,7 @@ function esbuild() {
 }
 
 export function safeId({ name, version }) {
-  return name[0] + name.slice(1).replace(/[#@!:/]+/g, '+') + '@' + version.replace(/[#@!:/]+/g, '+')
+  return name[0] + name.slice(1).replace(/[#@!:/\\]+/g, '+') + '@' + version.replace(/[#@!:/\\]+/g, '+')
 }
 
 export function isScript(x) {

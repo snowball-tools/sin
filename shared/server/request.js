@@ -482,8 +482,11 @@ async function readFile(r, file, type, compressor, o) {
   try {
     handle = await fsp.open(file)
     stat = await handle.stat()
-    if (!stat.isFile() && o.fallthrough)
-      return handle.close()
+    if (!stat.isFile()) {
+      if (o.fallthrough)
+        return handle.close()
+      throw new Error(file, ' is not a file')
+    }
   } catch (error) {
     handle && handle.close()
     if (o.fallthrough && error.code === 'ENOENT')

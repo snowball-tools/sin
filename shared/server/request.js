@@ -485,7 +485,7 @@ async function readFile(r, file, type, compressor, o) {
     if (!stat.isFile()) {
       if (o.fallthrough)
         return handle.close()
-      throw new Error(file, ' is not a file')
+      throw new Error(file + ' is not a file')
     }
   } catch (error) {
     handle && handle.close()

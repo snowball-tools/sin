@@ -5,6 +5,8 @@ import { existsSync } from 'node:fs'
 import config from '../config.js'
 import { safeId } from '../shared.js'
 
+const sinx = process.platform === 'win32' && Path.join(import.meta.dirname, 'sinx.exe')
+
 if (config._.length) {
   const pkg = JSON.parse(await fs.readFile('package.json'))
   for (const name of config._) {
@@ -30,6 +32,24 @@ if (config._.length) {
   const pkg = JSON.parse(await fs.readFile('package.json'))
   await fs.mkdir(config.linkDir, { recursive: true })
   await symlink(config.cwd, Path.join(config.linkDir, pkg.name))
+
+  await Promise.all(Object.entries(
+    typeof pkg.bin === 'string'
+    ? { [pkg.name.split('/').pop()]: pkg.bin }
+    : pkg.bin || {}
+  ).map(async([name, file]) => {
+    const target = Path.join(config.cwd, file)
+    const path = Path.join(config.binDir, name)
+    if (sinx) {
+      await fs.mkdir(config.binDir, { recursive: true })
+      await fs.writeFile(path, 'node "' + target + '"')
+      await fs.copyFile(sinx, Path.join(config.binDir, name + '.exe'))
+    } else {
+      await symlink(target, path)
+      await fs.chmod(target, 0o766)
+    }
+  }))
+
   console.log('🔥 Linked as ' + pkg.name)
 }
 

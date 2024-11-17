@@ -315,10 +315,10 @@ async function finished(pkg, parent) {
     if (sinx) {
       const target = Path.join(pkg.local, file)
       await mkdir(Path.dirname(path))
-      await fsp.writeFile(path, 'node ' + target)
+      await fsp.writeFile(path, 'node "' + target + '"')
       await fsp.copyFile(sinx, path + '.exe')
       config.global && !parent && await mkdir(config.binDir)
-      config.global && !parent && await fsp.writeFile(Path.join(config.binDir, name), 'node ' + target)
+      config.global && !parent && await fsp.writeFile(Path.join(config.binDir, name), 'node "' + target + '"')
       config.global && !parent && await fsp.copyFile(sinx, Path.join(config.binDir, name + '.exe'))
     } else {
       const target = Path.join(...(parent ? ['..', '..', '..'] : ['..']), pkg.local.split(/node_modules[/\\]/).pop(), file)

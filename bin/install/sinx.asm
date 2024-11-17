@@ -49,7 +49,7 @@ remove_ext:
     dec rsi
 search_dot:
     cmp rsi, rdi
-    jb open_file
+    jb build_cmd
     cmp byte [rsi], '.'
     je truncate_ext
     dec rsi
@@ -57,8 +57,7 @@ search_dot:
 truncate_ext:
     mov byte [rsi], 0
 
-open_file:
-
+build_cmd:
     lea rcx, [rel module_filename]
     mov edx, [rel access_read]
     mov r8d, [rel share_read]
@@ -108,8 +107,7 @@ open_file:
     mov ecx, eax
     rep movsb
 
-    mov byte [rdi], ' '
-    inc rdi
+    mov byte [rdi], 0
 
     call GetCommandLineA
     mov rsi, rax
@@ -117,41 +115,75 @@ open_file:
     mov al, [rsi]
     cmp al, '"'
     je skip_quoted
-skip_unquoted:
-    cmp al, 0
-    je end_args
-    cmp al, ' '
-    je skip_spaces
-    inc rsi
-    mov al, [rsi]
     jmp skip_unquoted
+
 skip_quoted:
     inc rsi
 skip_quoted_loop:
     mov al, [rsi]
     cmp al, 0
-    je end_args
+    je no_args
     cmp al, '"'
-    je skip_spaces
+    je after_exe_quote
     inc rsi
     jmp skip_quoted_loop
-skip_spaces:
-    mov al, [rsi]
-    cmp al, ' '
-    jne copy_args
+
+after_exe_quote:
     inc rsi
     jmp skip_spaces
+
+skip_unquoted:
+    cmp al, 0
+    je no_args
+skip_unquoted_loop:
+    cmp al, ' '
+    je after_exe_unquoted
+    cmp al, 0
+    je no_args
+    inc rsi
+    mov al, [rsi]
+    jmp skip_unquoted_loop
+
+after_exe_unquoted:
+    inc rsi
+
+skip_spaces:
+skip_spaces_loop:
+    mov al, [rsi]
+    cmp al, ' '
+    jne check_end_args
+    cmp al, 0
+    je no_args
+    inc rsi
+    jmp skip_spaces_loop
+
+check_end_args:
+    cmp al, 0
+    je no_args
+    jmp copy_args
+
 copy_args:
+    mov byte [rdi], ' '
+    inc rdi
+
+copy_args_loop:
     mov al, [rsi]
     cmp al, 0
     je end_args
     mov [rdi], al
     inc rdi
     inc rsi
-    jmp copy_args
+    jmp copy_args_loop
+
 end_args:
     mov byte [rdi], 0
+    jmp proceed_create_process
 
+no_args:
+    mov byte [rdi], 0
+    jmp proceed_create_process
+
+proceed_create_process:
     lea rdi, [rsp + 80]
     mov rcx, 16
     xor rax, rax
@@ -164,21 +196,16 @@ end_args:
     xor r8, r8
     xor r9, r9
 
-    sub rsp, 56
-
     mov qword [rsp + 32], 0
     mov qword [rsp + 40], 0
     mov qword [rsp + 48], 0
     mov qword [rsp + 56], 0
-
-    lea rax, [rsp + 144 + 56]
+    lea rax, [rsp + 144]
     mov [rsp + 64], rax
-    lea rax, [rsp + 80 + 56]
+    lea rax, [rsp + 80]
     mov [rsp + 72], rax
 
     call CreateProcessA
-
-    add rsp, 56
 
     test eax, eax
     je exit

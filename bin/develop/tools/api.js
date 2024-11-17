@@ -8,6 +8,7 @@ const api = {
   log        : s.event(),
   redraw     : s.event(),
   reload     : s.event(() => location.reload()),
+  hotload    : s.event(() => window.sindevhmr || location.reload()),
   editor     : s.event(x => send('editor', x)),
   color      : s.live([0, 0, 0]),
   inspect    : s.live(false, x => send('inspect', x)),

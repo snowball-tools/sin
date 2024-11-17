@@ -20,6 +20,7 @@ let peers = []
   , clock = ''
 
 const lockFields = 'name os cpu bin postinstall engines deprecated dependencies peerDependencies optionalDependencies peerDependenciesMeta'.split(' ')
+    , sinx = process.platform === 'win32' && Path.join(import.meta.dirname, 'sinx.exe')
     , then = (x, fn) => x && typeof x.then === 'function' ? x.then(fn) : fn(x)
     , splitNameVersion = x => (x.match(/^(@[a-z0-9-/]+|[a-z0-9-]+)$/) || x.match(/(?:(^@?[a-z0-9-/]+)@)?(.+)/i) || []).slice(1, 3)
     , set = (xs, id, x) => (xs.set(id, x), x)
@@ -310,11 +311,21 @@ async function finished(pkg, parent) {
     ? { [name.split('/').pop()]: pkg.bin }
     : pkg.bin || {}
   ).map(async([name, file]) => {
-    const target = Path.join(...(parent ? ['..', '..', '..'] : ['..']), pkg.local.split(/node_modules[/\\]/).pop(), file)
     const path = Path.join(parent ? parent.local : bins[name] = root, 'node_modules', '.bin', name)
-    await symlink(target, path)
-    config.global && !parent && await symlink(path, Path.join(config.binDir, name))
-    await fsp.chmod(Path.join(pkg.local, file), 0o766)
+    if (sinx) {
+      const target = Path.join(pkg.local, file)
+      await mkdir(Path.dirname(path))
+      await fsp.writeFile(path, 'node ' + target)
+      await fsp.copyFile(sinx, path + '.exe')
+      config.global && !parent && await mkdir(config.binDir)
+      config.global && !parent && await fsp.writeFile(Path.join(config.binDir, name), 'node ' + target)
+      config.global && !parent && await fsp.copyFile(sinx, Path.join(config.binDir, name + '.exe'))
+    } else {
+      const target = Path.join(...(parent ? ['..', '..', '..'] : ['..']), pkg.local.split(/node_modules[/\\]/).pop(), file)
+      await symlink(target, path)
+      config.global && !parent && await symlink(path, Path.join(config.binDir, name))
+      await fsp.chmod(Path.join(pkg.local, file), 0o766)
+    }
   }))
 
   if (!parent)

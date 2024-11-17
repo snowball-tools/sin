@@ -6,7 +6,8 @@ import { pipeline } from 'node:stream/promises'
 import { createRequire } from 'node:module'
 
 const version = 'v20.49.0'
-const base = 'uws_' + process.platform + '_' + process.arch + '_' + process.versions.modules
+const arch = process.platform === 'win32' ? 'x64' : process.arch
+const base = 'uws_' + process.platform + '_' + arch + '_' + process.versions.modules
 const remote = base + '.node'
 const binary = path.join(import.meta.dirname, base + '_' + version + '.node')
 

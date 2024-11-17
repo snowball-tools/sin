@@ -45,6 +45,11 @@ const editors = ({
       name: 'VSCode',
       path: '/Applications/Visual Studio Code.app/Contents/MacOS/Electron',
       args: x => ['--goto', stackLine(x)]
+    },
+    webstorm: {
+      name: 'WebStorm',
+      path: '/Applications/WebStorm.app/Contents/MacOS/webstorm',
+      args: ({ path, line, column }) => ['--line', line, '--column', column, path]
     }
   },
   win32: {
@@ -67,6 +72,11 @@ const editors = ({
       name: 'VSCode',
       path: process.env.LOCALAPPDATA + '\\Programs\\Microsoft VS Code\\Code.exe',
       args: x => ['--goto', stackLine(x)]
+    },
+    webstorm: {
+      name: 'WebStorm',
+      path: (process.env.PATH.split(';').find(x => x.match(/webstorm/i)) || 'C:\\Program Files\\JetBrains\\WebStorm 2024.3\\bin\\') + 'webstorm64.exe',
+      args: ({ path, line, column }) => ['--line', line, '--column', column, path]
     }
   },
   linux: {
@@ -98,7 +108,7 @@ function findEditor() {
     throw new Error('Could not find any editor')
 
   if (editor && !fs.existsSync(editor.path))
-    throw new Error('Could not find editor', name, 'at', editor.path)
+    throw new Error('Could not find editor', editor.name, 'at', editor.path)
 
   return editor
 }

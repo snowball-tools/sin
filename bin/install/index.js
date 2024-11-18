@@ -244,6 +244,8 @@ async function install([name, version], parent, force, route) {
             if (tar) {
               ensureIntegrity(pkg, 'sha512-' + sha512)
               return set(packages, lockedId, await installed(await untar(pkg, tar), parent, force, route))
+            } else {
+              pkg = null
             }
           }
           version = lockVersion

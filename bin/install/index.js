@@ -271,7 +271,7 @@ async function install([name, version], parent, force, route) {
 
       const cached = await fsp.readFile(pkg.cache).then(gunzip).catch(e => pkg.forceCache ? Promise.reject(new Error(e)) : [])
       if (cached[0]) {
-        ensureIntegrity(pkg, 'sha512-' + cached[1])
+        pkg.forceCache || ensureIntegrity(pkg, 'sha512-' + cached[1])
         return set(packages, id, await installed(await untar(pkg, cached[0]), parent, force, route))
       }
 

@@ -1,0 +1,363 @@
+{
+  "name": "sin",
+  "version": "1.0.0-rc.1",
+  "packages": {
+    "": {
+      "name": "sin",
+      "version": "1.0.0-rc.1",
+      "dependencies": {
+        "esbuild": "0.24.0"
+      }
+    },
+    "@esbuild/aix-ppc64@0.24.0": {
+      "name": "@esbuild/aix-ppc64",
+      "resolved": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.24.0.tgz",
+      "cpu": [
+        "ppc64"
+      ],
+      "os": [
+        "aix"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/android-arm64@0.24.0": {
+      "name": "@esbuild/android-arm64",
+      "resolved": "https://registry.npmjs.org/@esbuild/android-arm64/-/android-arm64-0.24.0.tgz",
+      "cpu": [
+        "arm64"
+      ],
+      "os": [
+        "android"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/android-arm@0.24.0": {
+      "name": "@esbuild/android-arm",
+      "resolved": "https://registry.npmjs.org/@esbuild/android-arm/-/android-arm-0.24.0.tgz",
+      "cpu": [
+        "arm"
+      ],
+      "os": [
+        "android"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/android-x64@0.24.0": {
+      "name": "@esbuild/android-x64",
+      "resolved": "https://registry.npmjs.org/@esbuild/android-x64/-/android-x64-0.24.0.tgz",
+      "cpu": [
+        "x64"
+      ],
+      "os": [
+        "android"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/darwin-arm64@0.24.0": {
+      "name": "@esbuild/darwin-arm64",
+      "resolved": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.24.0.tgz",
+      "integrity": "sha512-CKyDpRbK1hXwv79soeTJNHb5EiG6ct3efd/FTPdzOWdbZZfGhpbcqIpiD0+vwmpu0wTIL97ZRPZu8vUt46nBSw==",
+      "cpu": [
+        "arm64"
+      ],
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/darwin-x64@0.24.0": {
+      "name": "@esbuild/darwin-x64",
+      "resolved": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.24.0.tgz",
+      "cpu": [
+        "x64"
+      ],
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/freebsd-arm64@0.24.0": {
+      "name": "@esbuild/freebsd-arm64",
+      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-arm64/-/freebsd-arm64-0.24.0.tgz",
+      "cpu": [
+        "arm64"
+      ],
+      "os": [
+        "freebsd"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/freebsd-x64@0.24.0": {
+      "name": "@esbuild/freebsd-x64",
+      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-x64/-/freebsd-x64-0.24.0.tgz",
+      "cpu": [
+        "x64"
+      ],
+      "os": [
+        "freebsd"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/linux-arm64@0.24.0": {
+      "name": "@esbuild/linux-arm64",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.24.0.tgz",
+      "cpu": [
+        "arm64"
+      ],
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/linux-arm@0.24.0": {
+      "name": "@esbuild/linux-arm",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm/-/linux-arm-0.24.0.tgz",
+      "cpu": [
+        "arm"
+      ],
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/linux-ia32@0.24.0": {
+      "name": "@esbuild/linux-ia32",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-ia32/-/linux-ia32-0.24.0.tgz",
+      "cpu": [
+        "ia32"
+      ],
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/linux-loong64@0.24.0": {
+      "name": "@esbuild/linux-loong64",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.24.0.tgz",
+      "cpu": [
+        "loong64"
+      ],
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/linux-mips64el@0.24.0": {
+      "name": "@esbuild/linux-mips64el",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-mips64el/-/linux-mips64el-0.24.0.tgz",
+      "cpu": [
+        "mips64el"
+      ],
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/linux-ppc64@0.24.0": {
+      "name": "@esbuild/linux-ppc64",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-ppc64/-/linux-ppc64-0.24.0.tgz",
+      "cpu": [
+        "ppc64"
+      ],
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/linux-riscv64@0.24.0": {
+      "name": "@esbuild/linux-riscv64",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-riscv64/-/linux-riscv64-0.24.0.tgz",
+      "cpu": [
+        "riscv64"
+      ],
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/linux-s390x@0.24.0": {
+      "name": "@esbuild/linux-s390x",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-s390x/-/linux-s390x-0.24.0.tgz",
+      "cpu": [
+        "s390x"
+      ],
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/linux-x64@0.24.0": {
+      "name": "@esbuild/linux-x64",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.24.0.tgz",
+      "cpu": [
+        "x64"
+      ],
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/netbsd-x64@0.24.0": {
+      "name": "@esbuild/netbsd-x64",
+      "resolved": "https://registry.npmjs.org/@esbuild/netbsd-x64/-/netbsd-x64-0.24.0.tgz",
+      "cpu": [
+        "x64"
+      ],
+      "os": [
+        "netbsd"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/openbsd-arm64@0.24.0": {
+      "name": "@esbuild/openbsd-arm64",
+      "resolved": "https://registry.npmjs.org/@esbuild/openbsd-arm64/-/openbsd-arm64-0.24.0.tgz",
+      "cpu": [
+        "arm64"
+      ],
+      "os": [
+        "openbsd"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/openbsd-x64@0.24.0": {
+      "name": "@esbuild/openbsd-x64",
+      "resolved": "https://registry.npmjs.org/@esbuild/openbsd-x64/-/openbsd-x64-0.24.0.tgz",
+      "cpu": [
+        "x64"
+      ],
+      "os": [
+        "openbsd"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/sunos-x64@0.24.0": {
+      "name": "@esbuild/sunos-x64",
+      "resolved": "https://registry.npmjs.org/@esbuild/sunos-x64/-/sunos-x64-0.24.0.tgz",
+      "cpu": [
+        "x64"
+      ],
+      "os": [
+        "sunos"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/win32-arm64@0.24.0": {
+      "name": "@esbuild/win32-arm64",
+      "resolved": "https://registry.npmjs.org/@esbuild/win32-arm64/-/win32-arm64-0.24.0.tgz",
+      "cpu": [
+        "arm64"
+      ],
+      "os": [
+        "win32"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/win32-ia32@0.24.0": {
+      "name": "@esbuild/win32-ia32",
+      "resolved": "https://registry.npmjs.org/@esbuild/win32-ia32/-/win32-ia32-0.24.0.tgz",
+      "cpu": [
+        "ia32"
+      ],
+      "os": [
+        "win32"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "@esbuild/win32-x64@0.24.0": {
+      "name": "@esbuild/win32-x64",
+      "resolved": "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.24.0.tgz",
+      "cpu": [
+        "x64"
+      ],
+      "os": [
+        "win32"
+      ],
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "esbuild@0.24.0": {
+      "name": "esbuild",
+      "resolved": "https://registry.npmjs.org/esbuild/-/esbuild-0.24.0.tgz",
+      "integrity": "sha512-FuLPevChGDshgSicjisSooU0cemp/sGXR841D5LHMB7mTVOmsEHcAxaH3irL53+8YDIeVNQEySh4DaYU/iuPqQ==",
+      "engines": {
+        "node": ">=18"
+      },
+      "optionalDependencies": {
+        "@esbuild/aix-ppc64": "0.24.0",
+        "@esbuild/android-arm": "0.24.0",
+        "@esbuild/android-arm64": "0.24.0",
+        "@esbuild/android-x64": "0.24.0",
+        "@esbuild/darwin-arm64": "0.24.0",
+        "@esbuild/darwin-x64": "0.24.0",
+        "@esbuild/freebsd-arm64": "0.24.0",
+        "@esbuild/freebsd-x64": "0.24.0",
+        "@esbuild/linux-arm": "0.24.0",
+        "@esbuild/linux-arm64": "0.24.0",
+        "@esbuild/linux-ia32": "0.24.0",
+        "@esbuild/linux-loong64": "0.24.0",
+        "@esbuild/linux-mips64el": "0.24.0",
+        "@esbuild/linux-ppc64": "0.24.0",
+        "@esbuild/linux-riscv64": "0.24.0",
+        "@esbuild/linux-s390x": "0.24.0",
+        "@esbuild/linux-x64": "0.24.0",
+        "@esbuild/netbsd-x64": "0.24.0",
+        "@esbuild/openbsd-arm64": "0.24.0",
+        "@esbuild/openbsd-x64": "0.24.0",
+        "@esbuild/sunos-x64": "0.24.0",
+        "@esbuild/win32-arm64": "0.24.0",
+        "@esbuild/win32-ia32": "0.24.0",
+        "@esbuild/win32-x64": "0.24.0"
+      }
+    }
+  },
+  "dependencies": {
+    "esbuild": "0.24.0"
+  }
+}

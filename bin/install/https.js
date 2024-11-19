@@ -136,11 +136,11 @@ function handler(resolve, reject, host, pathname) {
     if (!redirect)
       return resolve(x)
 
-    const [_, host, pathname] = xs.toString('utf8').match(/\nlocation:\s*https:\/\/([^/]+)([^\r\n]+)?/i) || []
-    if (!host)
+    const [_, origin, pathname] = xs.toString('utf8').match(/\nlocation:\s*(https?:\/\/[^/]+)([^\r\n]+)?/i) || []
+    if (!origin)
       throw new Error('No location found in 302 redirect')
 
-    resolve(fetch(host, pathname || '/'))
+    resolve(fetch(origin, pathname || '/'))
   }
 
   function chunked(xs, start, end) {

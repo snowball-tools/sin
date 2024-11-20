@@ -796,8 +796,9 @@ async function cleanup() {
 }
 
 async function rm(x) {
+  x.startsWith(root) ? x : Path.join(root, x)
   // Removing stuff is always dangerous - being careful!
-  x.includes('node_modules') && await fsp.rm(Path.join(root, x), { recursive: true })
+  x.includes('node_modules') && await fsp.rm(x, { recursive: true })
 }
 
 function mkdir(x) {

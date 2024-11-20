@@ -78,7 +78,7 @@ export function buildRanges(x) {
   if (isVersion(x))
     return x
 
-  return x.replace(/\s-\s/g, '_').replace(/\s+([0-9])/g, '$1').split(/\s*\|\|\s*/).map(x =>
+  return x.replace(/\s-\s/g, '_').replace(/[\sv]+([0-9])/g, '$1').split(/\s*\|\|\s*/).map(x =>
     x.split(/\s+/).map(buildRange)
   )
 }

@@ -575,7 +575,7 @@ async function resolveLink(name) {
 }
 
 async function resolveLocal(version) {
-  const x = version.replace(/^file:/, '')
+  const x = Path.normalize(version.replace(/^file:/, ''))
   const pkg = readFromPackage({
     version,
     resolved: version
@@ -588,6 +588,7 @@ async function resolveLocal(version) {
 }
 
 async function resolveLocalTarball(version) {
+  version = Path.normalize(version)
   const pkg = {
     version,
     resolved: version

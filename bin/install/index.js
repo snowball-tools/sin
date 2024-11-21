@@ -771,10 +771,10 @@ async function cleanup() {
   ))
 
   for (const x of await fsp.readdir(Path.join(root, 'node_modules', '.sin')).catch(() => []))
-    all.has(x) || allRemove.push(Path.join('node_modules', '.sin', x))
+    all.has(x) || allRemove.push(Path.join(root, 'node_modules', '.sin', x))
 
   for (const x of await fsp.readdir(Path.join(root, 'node_modules', '.bin')).catch(() => []))
-    x in bins || binRemove.push(Path.join('node_modules', '.bin', x))
+    x.replace(/.exe$/, '') in bins || binRemove.push(Path.join(root, 'node_modules', '.bin', x))
 
   for (const x of await fsp.readdir(Path.join(root, 'node_modules')).catch(() => [])) {
     if (x === '.bin' || x === '.sin' || x === 'sin.lock')
@@ -785,7 +785,7 @@ async function cleanup() {
           top.has(Path.join(x, name)) || topRemove.push(Path.join(root, 'node_modules', x, name))
       }
     } else {
-      x[0] !== '.' && topRemove.push(Path.join('node_modules', x))
+      x[0] !== '.' && topRemove.push(Path.join(root, 'node_modules', x))
     }
   }
 

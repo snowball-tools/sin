@@ -70,12 +70,12 @@ async function fromArgs() {
       root        : getRoot,
       local       : getLocal,
       home        : getHome,
-      binDir      : (x, xs) => mkdir(x || path.join(xs.home, 'bin')),
-      linkDir     : (x, xs) => mkdir(x || path.join(xs.home, 'link')),
-      tempDir     : (x, xs) => mkdir(x || path.join(xs.home, 'temp')),
+      binDir      : (x, xs) => mkdir(x || path.join(xs.home, 'bin')),
+      linkDir     : (x, xs) => mkdir(x || path.join(xs.home, 'link')),
+      tempDir     : (x, xs) => mkdir(x || path.join(xs.home, 'temp')),
       cacheDir    : (x, xs) => mkdir(x || path.join(xs.home, 'cache')),
-      globalDir   : (x, xs) => mkdir(x || path.join(xs.home, 'global')),
-      projectsDir : (x, xs) => mkdir(x || path.join(xs.home, 'projects')),
+      globalDir   : (x, xs) => mkdir(x || path.join(xs.home, 'global')),
+      projectsDir : getProjects,
       port        : getPort,
       unsafe      : getUnsafe,
       sucrase     : getSucrase,
@@ -162,7 +162,7 @@ export function getEntry(x, config) {
   const dir = file ? path.dirname(x) : x
 
   if (!needsEntry(config)) {
-    config.create || config.acme || config.static || config.unlink || config.link || config.install || config.remove || config.run || process.chdir(env.PWD = dir)
+    config.create || config.acme || config.static || config.unlink || config.link || config.install || config.remove || config.run || process.chdir(env.PWD = dir)
     return ''
   }
 
@@ -265,6 +265,15 @@ function getUnsafe() {
   return x ? 'import.meta.env=' + JSON.stringify(x) + ';' : ''
 }
 
+function getProjects(x, xs) {
+  return mkdir(x
+    ? x
+    : process.env.WSL_DISTRO_NAME
+    ? process.env.PATH.match(/\/mnt\/c\/Users\/[^/]+\//)[0] + '/.sin/wsl_projects'
+    : path.join(xs.home, 'projects')
+  )
+}
+
 function getChromePath(x, xs) {
   if (x || env.CHROME_PATH)
     return (x || env.CHROME_PATH).trim()
@@ -274,6 +283,18 @@ function getChromePath(x, xs) {
       '/Applications/Chromium.app/Contents/MacOS/Chromium',
       '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
     ].find(fs.existsSync)
+  } else if (process.env.WSL_DISTRO_NAME) {
+    const [localAppData, programFiles, programFilesX86] = ['LOCALAPPDATA', 'PROGRAMFILES', 'PROGRAMFILES(X86)'].map(x =>
+      cp.execSync('cmd.exe /c echo "%' + x + '%"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] })
+        .trim().replace(/\r/g, '').replace(/\\/g, '/').replace(/^C:/, '/mnt/c')
+    )
+    return [
+      path.join(localAppData, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      path.join(programFiles, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      path.join(programFilesX86, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      path.join(programFiles, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+      path.join(programFilesX86, 'Microsoft', 'Edge', 'Application', 'msedge.exe')
+    ].find(x => fs.existsSync(x))
   } else if (process.platform === 'linux') {
     return cp.execSync('which google-chrome || which chromium || echo', { encoding: 'utf8' }).trim()
       || '/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe'    // wsl

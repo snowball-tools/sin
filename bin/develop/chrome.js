@@ -304,7 +304,7 @@ async function spawn() {
       '--disable-infobars',
       '--test-type', // Remove warning banner from --disable-web-security usage
       config.test ? '' : '--restore-last-session',
-      '--user-data-dir=' + config.project,
+      '--user-data-dir=' + userDataDir(config.project),
       '--remote-debugging-port=' + config.chromePort
     ].filter(x => x), {
       detached: true
@@ -324,6 +324,12 @@ async function spawn() {
     chrome.on('error', reject)
     chrome.on('close', x => x || reject('Chrome Closed with exit code: ' + x))
   })
+}
+
+function userDataDir(x) {
+  return process.env.WSL_DISTRO_NAME
+    ? 'C:' + x.slice(6).replace(/\//g, '\\')
+    : x
 }
 
 function ensurePrefs() {

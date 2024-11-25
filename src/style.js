@@ -66,8 +66,8 @@ const cache = new Map()
     , isPx = (prop, x) => prop === 'translate' || (x.indexOf('translate') === 0 || pxFunctions.indexOf(x) > -1)
     , isDeg = (prop, x) => prop === 'rotate' || x.indexOf('rotate') === 0 || x.indexOf('skew') === 0
     , isStartChar = x => x !== 32 && x !== 9 && x !== 10 && x !== 13 && x !== 59 // ws \t \n \r ;
-    , isNumber = x => (x >= 48 && x <= 57) || x === 46 // 0-9-.
-    , isLetter = x => (x >= 65 && x <= 90) || (x >= 97 && x <= 122) // a-z A-Z
+    , isNumber = x => (x >= 48 && x <= 57) || x === 46 // 0 9 .
+    , isCssVar = x => (x >= 65 && x <= 90) || (x >= 97 && x <= 122) || x ===  45 || x === 95 // azAZ-_
     , isUnit = x => x === 37 || (x >= 65 && x <= 90) || (x >= 97 && x <= 122) // % a-z A-Z
     , quoteChar = x => x === 34 || x === 39 // ' "
     , propEndChar = x => x === 32 || x === 58 || x === 9 // ws : \t
@@ -411,7 +411,7 @@ function handleValue(i) {
 function addCssVar(i) {
   if (x.charCodeAt(i) === 47) { // /
     cssVarAlpha = i
-  } else if (!isLetter(char)) {
+  } else if (!isCssVar(char)) {
     value = value + x.slice(valueStart, cssVar) + 'var(--' + x.slice(cssVar + 1, i) + ')'
     valueStart = i
     cssVar = -1

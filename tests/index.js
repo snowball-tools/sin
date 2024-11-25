@@ -47,6 +47,14 @@ t`CSS`(
       return ['72px', xStyle().width]
     }),
 
+    t.o`$ characters`(() => {
+      s.mount(() => s`#x
+        $with-dash 200px
+        width $with-dash
+      `)
+      return ['200px', xStyle().width]
+    }),
+
     t`Color /opacity`(() => {
       s.mount(() => s`#x $blue oklab(.5 .5 .5);c $blue/.3`)
       return ['oklab(0.5 0.5 0.5 / 0.3)', xStyle().color]

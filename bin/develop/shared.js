@@ -46,12 +46,16 @@ export function rewrite(x, file) {
 }
 
 function tryImportMap(x, file) {
-  const xs = file.split(path.sep)
-  const nmi = xs.lastIndexOf('node_modules')
-  const modulePath = nmi !== -1 && xs.slice(0, nmi + (xs[nmi + 1][0] === '@' ? 3 : 2))
-  const pkg = modulePath && readPkgJson(path.join(modulePath.join(path.sep), 'package.json'))
+  let pkg
+  let dir = path.dirname(file)
+  while (!(pkg = readPkgJson(path.join(dir, 'package.json')))) {
+    const next = path.dirname(dir)
+    if (dir === next)
+      return
+    dir = next
+  }
   const importPath = pkg && pkg.imports && firstString(pkg.imports, x, 'default')
-  return importPath && ('/' + modulePath.slice(nmi).join('/') + '/' + removeRelativePrefix(importPath))
+  return importPath && path.relative(config.cwd, dir) + '/' + removeRelativePrefix(importPath)
 }
 
 function readPkgJson(x) {

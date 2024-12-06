@@ -22,7 +22,7 @@ let peers = []
 const lockFields = 'name os cpu bin postinstall engines deprecated dependencies peerDependencies optionalDependencies peerDependenciesMeta'.split(' ')
     , sinx = process.platform === 'win32' && Path.join(import.meta.dirname, 'sinx.exe')
     , then = (x, fn) => x && typeof x.then === 'function' ? x.then(fn) : fn(x)
-    , splitNameVersion = x => (x.match(/^(@[a-z0-9-/]+|[a-z0-9-]+)$/) || x.match(/(?:(^@?[a-z0-9-/]+)@)?(.+)/i) || []).slice(1, 3)
+    , splitNameVersion = x => (x.match(/^(@[a-z0-9-_./]+|[a-z0-9-_.]+)$/) || x.match(/(?:(^@?[a-z0-9-_./]+)@)?(.+)/i) || []).slice(1, 3)
     , set = (xs, id, x) => (xs.set(id, x), x)
     , noop = () => { /* noop */ }
     , overwrite = () => process.stdout.write('\x1B[F\x1B[2K')

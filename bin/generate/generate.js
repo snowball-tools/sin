@@ -14,7 +14,7 @@ const generated = new Set()
 let files = 0
 config.noscript || await import('../build/index.js')
 const start = performance.now()
-await fs.cp(config.publicDir, config.outputDir, { recursive: true, force: true }).catch(e => e.code === 'ENOENT' || reject(e))
+await fs.cp(config.publicDir, config.outputDir, { recursive: true, force: true }).catch(e => e.code === 'ENOENT' || Promise.reject(e))
 await generate()
 console.log('Finished generating', files, 'files in', (performance.now() - start).toFixed(1) + 'ms') // eslint-disable-line
 process.exit(process.exitCode)

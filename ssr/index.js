@@ -24,7 +24,8 @@ import {
   mergeTag,
   noop,
   emptyObject,
-  emptyArray
+  emptyArray,
+  styleProp
 } from '../src/shared.js'
 
 class TimeoutError extends Error {}

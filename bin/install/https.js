@@ -27,7 +27,7 @@ export function destroy() {
 
 export async function fetch(x, pathname, headers = {}) {
   let retries = 3
-  while (true) {
+  while (true) { // eslint-disable-line
     const hosts = open[x]
     const socket = hosts && hosts.pop() || (await create(x))
     try {
@@ -43,7 +43,7 @@ export async function fetch(x, pathname, headers = {}) {
       return headers['Accept-Encoding'] === 'gzip' && body[0] === 0x1f && body[1] === 0x8b
         ? new Promise((resolve, reject) => zlib.gunzip(body, (err, x) => err ? reject(err) : resolve(x)))
         : body
-    } catch(err) {
+    } catch (err) {
       socket.destroy()
       fetch.retried.push(socket.hostname + pathname)
       if (retries-- === 0)

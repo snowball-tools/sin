@@ -28,7 +28,7 @@ await app.listen(config.devPort)
 
 api.browser.reload.observe(x => publish('reload', x))
 api.browser.redraw.observe(x => publish('redraw', x))
-api.browser.hotload.observe(x => publish('hotload'))
+api.browser.hotload.observe(x => publish('hotload', x))
 api.log.observe(x => publish('log', x))
 
 function publish(event, data) {

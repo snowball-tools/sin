@@ -25,7 +25,7 @@ try {
 } catch (e) {
   config.config && console.log(config) // eslint-disable-line
   config.debug
-    ? console.error(e)
-    : error(e) // eslint-disable-line
+    ? console.error(e) // eslint-disable-line
+    : error(e)
   prexit.exit(1)
 }

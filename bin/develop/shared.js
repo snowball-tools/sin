@@ -1,4 +1,3 @@
-import url from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
@@ -28,9 +27,9 @@ export function isModule(x) {
 export function rewrite(x, file) {
   const dir = path.dirname(file)
   if (file.endsWith('/sin/src/view.js'))
-    x = x.replace('// dev-stack', `hasOwn.call(window, stackTrace) && (this[stackTrace] = new Error().stack)`)
+    x = x.replace('// dev-stack', 'hasOwn.call(window, stackTrace) && (this[stackTrace] = new Error().stack)')
   if (file.endsWith('/sin/src/index.js'))
-    x = x.replace('// dev-stack', `hasOwn.call(view, stackTrace) && (dom[stackTrace] = view[stackTrace])`)
+    x = x.replace('// dev-stack', 'hasOwn.call(view, stackTrace) && (dom[stackTrace] = view[stackTrace])')
 
   return config.unsafe + rewriter(
     modify(x, file, config),
@@ -61,8 +60,8 @@ function tryImportMap(x, file) {
 function readPkgJson(x) {
   try {
     return pkgJsonCache[x] || (pkgJsonCache[x] = JSON.parse(fs.readFileSync(x)))
-  } catch(error) {
-    config.debug && console.error('Could not read package.json', error)
+  } catch (error) {
+    config.debug && console.error('Could not read package.json', error) // eslint-disable-line
     return null
   }
 }
@@ -184,7 +183,7 @@ export function Watcher(fn) {
     return x
   }
 
-  function changed(x, watcher, t) {
+  function changed(x, watcher) {
     const time = modified(x)
     if ((watcher.time && time - watcher.time < 5) || start > time)
       return

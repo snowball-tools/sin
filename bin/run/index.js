@@ -6,6 +6,8 @@ import prexit from '../prexit.js'
 import config from '../config.js'
 import c from '../color.js'
 
+const p = console.log // eslint-disable-line
+
 let pkg
 let dir = config.cwd
 while (!(pkg = await jsonRead(Path.join(dir, 'package.json')))) {
@@ -23,8 +25,8 @@ config._.length === 0
 
 function print(pkg) {
   for (const [name, script] of Object.entries(pkg.scripts)) {
-    console.log('  ' + name)
-    console.log('    ' + c.dim(script))
+    p('  ' + name)
+    p('    ' + c.dim(script))
   }
 }
 

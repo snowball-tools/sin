@@ -16,7 +16,7 @@ fs.existsSync(binary) || await download()
 let uws
 try {
   uws = createRequire(import.meta.url)(binary)
-} catch(e) {
+} catch (e) {
   await download()
   uws = createRequire(import.meta.url)(binary)
 }

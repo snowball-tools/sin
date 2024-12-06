@@ -23,7 +23,7 @@ let node
 
 export const closing = new Promise(r => closed = r)
 
-prexit((x, y) => {
+prexit(() => {
   close()
   closed()
 })
@@ -98,7 +98,7 @@ async function tryStart() {
 async function close() {
   if (ws && ws.coverage) {
     const { result } = await ws.request('Profiler.takePreciseCoverage')
-    console.log('Node Coverage', await coverage(result))
+    console.log('Node Coverage', await coverage(result)) // eslint-disable-line
   }
   node && (node.kill(), node.connected && await new Promise(r => node.on('close', r)))
 }
@@ -126,12 +126,12 @@ async function start() {
 
   node.stdout.setEncoding('utf8')
   node.stdout.on('data', x => {
-    config.debug && console.error('Node stdout: ' + x)
+    config.debug && console.error('Node stdout: ' + x) // eslint-disable-line
     api.log({ from: 'node', type: 'stdout', args: x })
   })
   node.stderr.setEncoding('utf8')
   node.stderr.on('data', async x => {
-    config.debug && console.error('Node stderr: ' + x)
+    config.debug && console.error('Node stderr: ' + x) // eslint-disable-line
     x.includes('Debugger listening on ws://127.0.0.1:' + config.nodePort)
       ? ws = connect(x.slice(22).split('\n')[0].trim())
       : x.includes('Waiting for the debugger to disconnect...')

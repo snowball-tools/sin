@@ -1,5 +1,10 @@
-import window from './window.js'
-import { hasOwn, stackTrace, emptyObject, emptyArray } from './shared.js'
+import window from './window.js' // eslint-disable-line
+import {
+  hasOwn,     // eslint-disable-line
+  stackTrace, // eslint-disable-line
+  emptyObject,
+  emptyArray
+} from './shared.js'
 
 export default class View {
   constructor(inline, component, tag = null, nesting = 0, attrs = emptyObject, children = emptyArray) {

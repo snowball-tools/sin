@@ -47,7 +47,7 @@ function exit(signal, code, error) {
     : process.exit()
 }
 
-function ondone(signal, error) {
+function ondone() {
   process.exit() // eslint-disable-line
 }
 

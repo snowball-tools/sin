@@ -15,7 +15,6 @@ const TypedArray = typeof Uint8Array === 'undefined' ? [] : [Object.getPrototype
 export default function http(x, {
   url = new URL(x, window.location.origin),
   method = 'GET',
-  redraw = true,
   responseType,
   json = 'application/json',
   query,

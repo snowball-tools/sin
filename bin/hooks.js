@@ -22,7 +22,7 @@ export async function load(url, context, nextLoad) {
       result.source = modify(result.source, url, config)
     } catch (e) {
       ts && (result.source = '')
-      console.error(e.message)
+      console.error(e.message) // eslint-disable-line
       return result
     }
   }

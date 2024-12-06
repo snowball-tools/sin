@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs'
 import config from '../config.js'
 import { safeId } from '../shared.js'
 
+const p = console.log // eslint-disable-line
 const sinx = process.platform === 'win32' && Path.join(import.meta.dirname, 'sinx.exe')
 
 if (config._.length) {
@@ -16,7 +17,7 @@ if (config._.length) {
     const path = Path.join('node_modules', '.sin', safeId({ name: name, version: 'link:' + name }), 'node_modules', name)
     await symlink(target, path)
     await symlink(path.slice(13), Path.join('node_modules', name))
-    console.log('🔥 Linked ' + name)
+    p('🔥 Linked ' + name)
     name in (pkg.devDependencies || {})
       ? pkg.devDependencies[name] = 'link:' + name
       : name in (pkg.optionalDependencies || {})
@@ -25,7 +26,7 @@ if (config._.length) {
       ? pkg.peerDependencies[name] = 'link:' + name
       : name in (pkg.dependencies || {})
       ? pkg.dependencies[name] = 'link:' + name
-      : pkg.dependencies = sort({ ...pkg.dependencies || {}, [name]: 'link:' + name })
+      : pkg.dependencies = sort({ ...pkg.dependencies || {}, [name]: 'link:' + name })
     await fs.writeFile('package.json', JSON.stringify(pkg, null, 2))
   }
 } else {
@@ -50,7 +51,7 @@ if (config._.length) {
     }
   }))
 
-  console.log('🔥 Linked as ' + pkg.name)
+  p('🔥 Linked as ' + pkg.name)
 }
 
 async function symlink(target, path) {

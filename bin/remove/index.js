@@ -17,7 +17,6 @@ config._.forEach(x => {
 })
 
 if (changed) {
-  console.log('changed')
   pkg && await fs.writeFile(Path.join(root, 'package.json'), JSON.stringify(pkg, null, 2))
   config._ = []
   await import('../install/index.js')

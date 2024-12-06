@@ -6,6 +6,7 @@ import fs from 'node:fs/promises'
 import prexit from '../prexit.js'
 import config from './config.js'
 
+const p = console.log // eslint-disable-line
 await fs.mkdir(config.project, { recursive: true })
 const empty = Buffer.alloc(21)
 empty[0] = 2
@@ -18,11 +19,11 @@ id.length !== 21 && (id = empty)
 connect(id, config.port, true).then(
   data => {
     fs.writeFile(idPath, data).catch(console.error) // eslint-disable-line
-    console.log('\n\nLive at https://' + data.readBigInt64BE(5).toString(36) + '.live.sinjs.com\n\n') // eslint-disable-line
+    p('\n\nLive at https://' + data.readBigInt64BE(5).toString(36) + '.live.sinjs.com\n\n') // eslint-disable-line
     for (let i = 0; i < 10; i++) connect(id, config.port).catch(() => {})
   },
   error => {
-    console.log('Could not start live', error)
+    p('Could not start live', error)
   }
 )
 
@@ -61,7 +62,7 @@ async function connect(id, port, main) {
         } else if (type === 0) {
           forward(client = x.readUInt32BE(5), x.slice(9))
         } else {
-          console.log('Protocol error', type, x)
+          p('Protocol error', type, x)
           return socket.end()
         }
 

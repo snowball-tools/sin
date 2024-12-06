@@ -4,6 +4,8 @@ import { fileURLToPath } from 'url'
 import { rewrite } from '../develop/shared.js'
 import config from '../config.js'
 
+const p = console.log // eslint-disable-line
+
 function resolve(x) {
   return x.startsWith('file:///')
     ? fileURLToPath(x)
@@ -40,7 +42,7 @@ export default async function(scripts) {
           continue
         }
 
-        const lines = (code.slice(0, range.startOffset).match(/\n/g) || []).length + 1
+        const lines = (code.slice(0, range.startOffset).match(/\n/g) || []).length + 1
         const last = code.slice(0, range.startOffset).lastIndexOf('\n')
         // p(fn.functionName + ' @ ' + './tests/index.js:' + lines +  ':' + (range.startOffset - last))
         // p(code.slice(range.startOffset, range.endOffset))

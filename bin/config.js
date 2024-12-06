@@ -54,7 +54,6 @@ async function fromArgs() {
       help      : 1,
       purge     : 1,
       remove    : 0,
-      run       : 1,
       start     : { $: true, script: 1, static: 1 },
       version   : 1,
       install   : 0,
@@ -97,7 +96,7 @@ async function fromArgs() {
       workers     : x => x ? x === 'cpus' ? os.cpus().length : parseInt(x) : 1,
       tsconfig    : (x, xs) => xs.cwd + '/tsconfig.json',
       tsconfigRaw : getTSConfigRaw,
-      coverage    : (x, xs) => (xs.nojail = true, x || false),
+      coverage    : (x, xs) => (xs.nojail = true, x || false)
     },
     flags: {
       version           : false,
@@ -116,7 +115,7 @@ async function fromArgs() {
       devtools          : false,
       config            : false,
       global            : false,
-      ci                : (x, xs) => x || argv[0] === 'ci' || false,
+      ci                : (x) => x || argv[0] === 'ci' || false,
       production        : false,
       saveDev           : false,
       force             : false,
@@ -274,7 +273,7 @@ function getProjects(x, xs) {
   )
 }
 
-function getChromePath(x, xs) {
+function getChromePath(x) {
   if (x || env.CHROME_PATH)
     return (x || env.CHROME_PATH).trim()
 

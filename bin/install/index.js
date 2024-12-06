@@ -363,7 +363,7 @@ function setDependency(pkg, parent) {
     postinstall: pkg.postinstall,
     dependencies: undefined,
     optionalDependencies: undefined,
-    peerDependencies: undefined,
+    peerDependencies: undefined
   })
 
   if (!parent)

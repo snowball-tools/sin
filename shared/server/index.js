@@ -283,7 +283,7 @@ function handler(fn) {
     return result
   }
 
-  function direct({ error, r, match }) {
+  function direct({ error, r }) {
     return error
       ? fn(error, r)
       : fn(r)

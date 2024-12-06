@@ -582,7 +582,7 @@ async function streamRaw(r, handle, highWaterMark, total, start) {
   }
 }
 
-async function streamCompressed(r, handle, compressor, highWaterMark, total, start) {
+async function streamCompressed(r, handle, compressor, highWaterMark) {
   const compressStream = streamingCompressors[compressor]({ chunkSize: highWaterMark })
   await pipeline(handle.createReadStream({ highWaterMark }), compressStream, r.writable)
 }

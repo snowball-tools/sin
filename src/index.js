@@ -494,7 +494,7 @@ function keyed(parent, context, as, bs, keys, after, ref) {
     }
   }
 
-  map.forEach((v, k) => remove(as[v].dom, parent))
+  map.forEach(v => remove(as[v].dom, parent))
 }
 
 function insertBefore(parent, { first, last }, before) {

@@ -132,7 +132,7 @@ function esbuildTS(x, debug, tsx, tsconfigRaw, file) {
   }).code
 }
 
-export function getLocal(x, xs) {
+export function getLocal(x) {
   if (x)
     return x
 

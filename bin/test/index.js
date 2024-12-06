@@ -1,6 +1,5 @@
 import fs from 'fs'
 import path from 'path'
-import config from '../config.js'
 import { isScript } from '../shared.js'
 
 await import('../develop/index.js')

@@ -15,15 +15,12 @@ t`CSS`(
   t`Variables`(
 
     t`Defining`(() => {
-      let dom
       s.mount(() => s`#x
         --a 1
         $b 2
         --1 3
         $2 4
-      `({
-        dom: x => dom = x
-      }))
+      `)
       return ['1234',
         xStyle().getPropertyValue('--a') +
         xStyle().getPropertyValue('--b') +
@@ -151,7 +148,7 @@ t`CSS`(
     t`transform deg`(() => ['matrix(1, 0, 0, 1, 0, 0)', s` transform rotate(360)`, 'transform']),
     t`rotate deg`(() => ['360deg', s` rotate 360`, 'rotate']),
     t`translate px`(() => ['1px', s` translate 1`, 'translate']),
-    t`translate two px`(() => ['1px 1px', s` translate 1 1`, 'translate']),
+    t`translate two px`(() => ['1px 1px', s` translate 1 1`, 'translate'])
   ),
 
   t`Scoping with &`(() => {
@@ -304,11 +301,11 @@ t`Rendering`(
   },
     t`tagged`(
       t`single`(() => ['<h1>yo</h1>', s.trust`<h1>yo</h1>`]),
-      t`multiple`(() => ['<h1>yo</h1><h2>no</h2>', s.trust`<h1>yo</h1><h2>no</h2>`]),
+      t`multiple`(() => ['<h1>yo</h1><h2>no</h2>', s.trust`<h1>yo</h1><h2>no</h2>`])
     ),
     t`string`(
       t`single`(() => ['<h1>yo</h1>', s.trust('<h1>yo</h1>')]),
-      t`multiple`(() => ['<h1>yo</h1><h2>no</h2>', s.trust('<h1>yo</h1><h2>no</h2>')]),
+      t`multiple`(() => ['<h1>yo</h1><h2>no</h2>', s.trust('<h1>yo</h1><h2>no</h2>')])
     ),
     t`array`(() => [
       '<h1>yo</h1><h2>no</h2>',

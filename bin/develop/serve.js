@@ -83,7 +83,7 @@ async function serve() {
 }
 
 async function build(r) {
-  if (r.url.endsWith('.js'))
+  if (r.url.endsWith('.js') && r.url.match(/\//g).length > 2)
     return r.file(path.join(config.cwd, r.url), hijack)
 
   const entry = resolveEntry(r.url.slice(14), true)

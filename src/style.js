@@ -1,6 +1,6 @@
 import window from './window.js'
 import { isFunction, snake, asCssVar, hasOwn, isObservable } from './shared.js'
-import { popular, initials } from './shorthands.js'
+import shorthands from './shorthands.js'
 
 let style
 
@@ -41,8 +41,6 @@ const properties = Array.from(
   Object.keys(hasOwn.call(div.style, 'width') ? div.style : Object.getPrototypeOf(div.style))
   .reduce((acc, x) => (acc.add(x.match(vendorRegex) ? '-' + snake(x) : snake(x)), acc), new Set(['float']))
 )
-
-const shorthands = Object.assign(properties.reduce(initials, {}), popular.reduce(initials, {}))
 
 const vendorMap = properties.reduce((acc, x) => {
   const vendor = x.match(/-(ms|o|webkit|moz)-/g)

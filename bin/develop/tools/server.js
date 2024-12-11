@@ -46,5 +46,6 @@ function inspect(x, ws) {
 }
 
 function tested(code) {
+  code && console.error('Testing failed with error code:', code)
   config.ci && prexit.exit(code)
 }

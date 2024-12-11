@@ -13,6 +13,7 @@ import c from '../color.js'
 let peers = []
   , detached = []
   , seen = new Set()
+  , removes = []
   , installs = new Set()
   , deprecated = []
   , clear = false
@@ -75,6 +76,13 @@ if (!config.ci) {
   xs.length && p('🚨', xs.length, 'deprecated package' + (xs.length === 1 ? ':' : 's') + (config.showDeprecated ? ':' : c.dim(' use --show-deprecated to see which')))
   config.showDeprecated && xs.forEach(x => p(x))
 }
+
+removes.length && p(
+  '🗑️ ',
+  'Removed',
+  removes.length,
+  'package' + (removes.length === 1 ? '' : 's')
+)
 
 p(
   '🔥',
@@ -438,7 +446,7 @@ async function writeLock() {
     return
   }
 
-  if (installs.size === 0)
+  if (removes.length === 0 && installs.size === 0)
     return
 
   lock.dependencies = packageJson.dependencies
@@ -758,9 +766,7 @@ async function untar(pkg, x, write = true) {
 }
 
 async function cleanup() {
-  const topRemove = []
-  const allRemove = []
-  const binRemove = []
+  const remove = []
 
   const top = new Set(Object.keys(lock.packages[''].dependencies).flatMap(x =>
     x.charCodeAt(0) === 64 ? [x.slice(0, x.indexOf('/')), Path.normalize(x)] : x // @
@@ -771,10 +777,10 @@ async function cleanup() {
   ))
 
   for (const x of await fsp.readdir(Path.join(root, 'node_modules', '.sin')).catch(() => []))
-    all.has(x) || allRemove.push(Path.join(root, 'node_modules', '.sin', x))
+    all.has(x) || removes.push(Path.join(root, 'node_modules', '.sin', x))
 
   for (const x of await fsp.readdir(Path.join(root, 'node_modules', '.bin')).catch(() => []))
-    x.replace(/.exe$/, '') in bins || binRemove.push(Path.join(root, 'node_modules', '.bin', x))
+    x.replace(/.exe$/, '') in bins || remove.push(Path.join(root, 'node_modules', '.bin', x))
 
   for (const x of await fsp.readdir(Path.join(root, 'node_modules')).catch(() => [])) {
     if (x === '.bin' || x === '.sin' || x === 'sin.lock')
@@ -782,18 +788,14 @@ async function cleanup() {
     if (top.has(x)) {
       if (x.charCodeAt(0) === 64) { // @
         for (const name of await fsp.readdir(Path.join(root, 'node_modules', x)).catch(() => []))
-          top.has(Path.join(x, name)) || topRemove.push(Path.join(root, 'node_modules', x, name))
+          top.has(Path.join(x, name)) || remove.push(Path.join(root, 'node_modules', x, name))
       }
     } else {
-      x[0] !== '.' && topRemove.push(Path.join(root, 'node_modules', x))
+      x[0] !== '.' && remove.push(Path.join(root, 'node_modules', x))
     }
   }
 
-  await Promise.all([
-    ...topRemove,
-    ...allRemove,
-    ...binRemove
-  ].map(rm))
+  await Promise.all([...removes, ...remove].map(rm))
 }
 
 async function rm(x) {

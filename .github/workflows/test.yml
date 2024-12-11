@@ -17,6 +17,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      - run: |
-          source <(curl -fsSL install.sinjs.com)
-          sin test
+
+      - run: powershell -c "irm install.sinjs.com | iex"
+        if: runner.os == 'Windows'
+
+      - run: source <(curl -fsSL install.sinjs.com)
+        if: runner.os != 'Windows'
+
+      - run: sin test
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

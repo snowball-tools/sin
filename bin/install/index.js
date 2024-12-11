@@ -13,7 +13,7 @@ import c from '../color.js'
 let peers = []
   , detached = []
   , seen = new Set()
-  , lockChanges = new Set()
+  , installs = new Set()
   , deprecated = []
   , clear = false
   , log = false
@@ -78,9 +78,9 @@ if (!config.ci) {
 
 p(
   '🔥',
-  ...(lockChanges.size
-    ? ['Installed', lockChanges.size, 'package' + (lockChanges.size === 1 ? '' : 's')]
-    : ['Checked', Object.keys(lock.packages).length, 'package' + (lockChanges.size === 1 ? '' : 's')]
+  ...(installs.size
+    ? ['Installed', installs.size, 'package' + (installs.size === 1 ? '' : 's')]
+    : ['Checked', Object.keys(lock.packages).length, 'package' + (Object.keys(lock.packages).length === 1 ? '' : 's')]
   ),
   'in',
   ...prettyTime(process.uptime())
@@ -379,7 +379,7 @@ async function installed(pkg, parent, force, route) {
   await finished(pkg, parent, force, route)
   detached.push(installDependencies({ ...pkg.optionalDependencies, ...pkg.dependencies }, pkg, force, route.concat(pkg.name + '@' + pkg.version)))
 
-  lockChanges.add(Date.now() + pkg.route + pkg.name + '@' + pkg.version + parent?.name + '@' + parent?.version)
+  installs.add(Date.now() + pkg.route + pkg.name + '@' + pkg.version + parent?.name + '@' + parent?.version)
 
   peers.push(...Object.entries(pkg.peerDependencies || {}).map(([name, range]) => ({
     name, range, parent: pkg, route, force, optional: pkg.peerDependenciesMeta?.[name]?.optional || false
@@ -438,7 +438,7 @@ async function writeLock() {
     return
   }
 
-  if (lockChanges.size === 0)
+  if (installs.size === 0)
     return
 
   lock.dependencies = packageJson.dependencies

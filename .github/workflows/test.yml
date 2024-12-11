@@ -18,16 +18,18 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
-      - run: 'irm install.sinjs.com | iex'
+      - run: |
+          irm install.sinjs.com | iex
+          sin test
         shell: powershell
         if: runner.os == 'Windows'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: 'curl -fsSL install.sinjs.com | source /dev/stdin'
+      - run: |
+          curl -fsSL install.sinjs.com | source /dev/stdin
+          sin test
         shell: bash
         if: runner.os != 'Windows'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - run: sin test --ci

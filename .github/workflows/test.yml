@@ -20,7 +20,6 @@ jobs:
 
       - run: |
           irm install.sinjs.com | iex
-          echo $env:path
           sin test
         shell: powershell
         if: runner.os == 'Windows'
@@ -29,7 +28,6 @@ jobs:
 
       - run: |
           curl -fsSL install.sinjs.com | source /dev/stdin
-          echo $PATH
           sin test
         shell: bash
         if: runner.os != 'Windows'

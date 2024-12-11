@@ -44,7 +44,7 @@ t`CSS`(
       return ['72px', xStyle().width]
     }),
 
-    t.o`$ characters`(() => {
+    t`$ characters`(() => {
       s.mount(() => s`#x
         $with-dash 200px
         width $with-dash

@@ -9,7 +9,7 @@
     "start": "sin start",
     "test": "sin test --headless --ci",
     "lint": "eslint . --ignore-pattern dist.js",
-    "build": "npm run build:eyedropper && npm run build:dev",
+    "build": "sin run build:eyedropper && sin run build:dev",
     "build:min": "esbuild src/index.js --minify --format=esm --bundle --outfile=sin.min.js",
     "build:bundle": "esbuild src/index.js --format=esm --bundle --outfile=sin.js",
     "build:gzip": "gzip -c sin.min.js > sin.min.js.gz && ls -l sin.min.js.gz && rm sin.min.js.gz",

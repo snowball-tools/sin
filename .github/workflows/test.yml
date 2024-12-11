@@ -18,6 +18,5 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: |
-          npm i
-          npm link
-          npm test
+          source <(curl -fsSL install.sinjs.com)
+          sin test

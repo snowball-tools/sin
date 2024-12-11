@@ -41,8 +41,9 @@ async function run(xs, pkg) {
       let dir = config.cwd
       let prev
       while (dir !== prev) {
-        if (fs.existsSync(Path.join(dir, 'node_modules', '.bin')))
-          bins.unshift(dir)
+        const binDir = Path.join(dir, 'node_modules', '.bin')
+        if (fs.existsSync(binDir))
+          bins.unshift(binDir)
         prev = dir
         dir = Path.dirname(dir)
       }

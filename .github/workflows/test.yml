@@ -18,11 +18,11 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
-      - shell: powershell
-        run: |
+      - run: |
           irm install.sinjs.com | iex
           echo $env:path
           sin test
+        shell: powershell
         if: runner.os == 'Windows'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

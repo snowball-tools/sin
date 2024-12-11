@@ -19,11 +19,13 @@ jobs:
           node-version: ${{ matrix.node }}
 
       - run: powershell -c "irm install.sinjs.com | iex"
+           | echo $env:path
         if: runner.os == 'Windows'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - run: source <(curl -fsSL install.sinjs.com)
+           | echo $PATH
         if: runner.os != 'Windows'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

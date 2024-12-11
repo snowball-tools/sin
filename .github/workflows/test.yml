@@ -20,11 +20,12 @@ jobs:
 
       - run: powershell -c "irm install.sinjs.com | iex"
         if: runner.os == 'Windows'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - run: source <(curl -fsSL install.sinjs.com)
         if: runner.os != 'Windows'
-
-      - run: sin test
-
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: sin test

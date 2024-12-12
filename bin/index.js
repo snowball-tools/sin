@@ -11,7 +11,7 @@ import config, { error } from './config.js'
 const [major, minor] = process.versions.node.split('.').map(Number)
 
 if (major < 20 || major === 20 && minor <= 10)
-  throw error('Sins minimum Node.js support is 20.11, please upgrade')
+  throw error('Sins minimum Node.js support is 20.11, please upgrade from v' + process.versions.node)
 
 try {
   if (config.develop && major < 22 && typeof WebSocket === 'undefined') {

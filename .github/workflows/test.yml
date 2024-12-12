@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   test-windows:
-    name: Node v${{ matrix.node }} on Windows
+    name: windows-latest w. Node v${{ matrix.node }}
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -16,17 +16,13 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: |
-          powershell -c "irm install.sinjs.com | iex"
-          echo %PATH%
-          echo yoyoyoyoyo
-          echo %path%
+          irm install.sinjs.com | iex
           sin test
-        shell: cmd
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test-other:
-    name: Node v${{ matrix.node }} on ${{ matrix.os }}
+    name: ${{ matrix.os }} w. Node v${{ matrix.node }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -38,10 +34,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      - shell: bash
-        run: |
-          set +o pipefail
-          curl -fsSL install.sinjs.com | source /dev/stdin
+      - run: |
+          curl -fsSL install.sinjs.com > installer.sh
+          cat installer.sh
+          source installer.sh
           echo $PATH
           sin test
         env:

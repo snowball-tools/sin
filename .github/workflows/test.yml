@@ -23,7 +23,7 @@ jobs:
       - run: |
           source <(curl -fsSL install.sinjs.com)
           sin test -d
-        shell: zsh
+        shell: zsh {0}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -115,7 +115,7 @@ async function fromArgs() {
       devtools          : false,
       config            : false,
       global            : false,
-      ci                : (x) => x || argv[0] === 'ci' || false,
+      ci                : (x) => x || argv[0] === 'ci' || env.CI || false,
       production        : false,
       saveDev           : false,
       force             : false,
@@ -150,7 +150,7 @@ async function fromArgs() {
 }
 
 function needsEntry(config) {
-  return !config.static && (process.env.SIN_BUILD || config.build || config.generate || config.develop || config.start || config.test)
+  return !config.static && (env.SIN_BUILD || config.build || config.generate || config.develop || config.start || config.test)
 }
 
 export function getEntry(x, config) {
@@ -267,8 +267,8 @@ function getUnsafe() {
 function getProjects(x, xs) {
   return mkdir(x
     ? x
-    : process.env.WSL_DISTRO_NAME
-    ? process.env.PATH.match(/\/mnt\/c\/Users\/[^/]+\//)[0] + '/.sin/wsl_projects'
+    : env.WSL_DISTRO_NAME
+    ? env.PATH.match(/\/mnt\/c\/Users\/[^/]+\//)[0] + '/.sin/wsl_projects'
     : path.join(xs.home, 'projects')
   )
 }
@@ -282,7 +282,7 @@ function getChromePath(x) {
       '/Applications/Chromium.app/Contents/MacOS/Chromium',
       '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
     ].find(fs.existsSync)
-  } else if (process.env.WSL_DISTRO_NAME) {
+  } else if (env.WSL_DISTRO_NAME) {
     const [localAppData, programFiles, programFilesX86] = ['LOCALAPPDATA', 'PROGRAMFILES', 'PROGRAMFILES(X86)'].map(x =>
       cp.execSync('cmd.exe /c echo "%' + x + '%"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] })
         .trim().replace(/\r/g, '').replace(/\\/g, '/').replace(/^C:/, '/mnt/c')

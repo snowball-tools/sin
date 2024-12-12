@@ -9,27 +9,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ['20', '22']
+        node: ['22']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
       - run: |
-          irm install.sinjs.com | iex
-          echo $env:path
+          powershell -c "irm install.sinjs.com | iex"
           sin test
-        shell: powershell
+        shell: cmd
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test-other:
-    name: Node v${{ matrix.node }} on Linux & macOS
+    name: Node v${{ matrix.node }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        node: ['20', '22']
+        node: ['22']
         os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4

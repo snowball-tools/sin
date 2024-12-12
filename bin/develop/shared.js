@@ -61,7 +61,6 @@ function readPkgJson(x) {
   try {
     return pkgJsonCache[x] || (pkgJsonCache[x] = JSON.parse(fs.readFileSync(x)))
   } catch (error) {
-    config.debug && console.error('Could not read package.json', error) // eslint-disable-line
     return null
   }
 }

@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: |
-          irm install.sinjs.com | iex
+          iex (irm install.sinjs.com)
           sin test
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

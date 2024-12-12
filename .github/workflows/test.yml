@@ -8,17 +8,11 @@ jobs:
     runs-on: windows-latest
     strategy:
       fail-fast: false
-      matrix:
-        node: ['22']
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
       - run: |
-          $script = Invoke-RestMethod install.sinjs.com
-          Write-Host $script
           iex (irm install.sinjs.com)
+          echo $env:path
           sin test
         shell: pwsh
         env:
@@ -30,13 +24,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ['22']
         os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
       - run: |
           curl -fsSL install.sinjs.com > installer.sh
           cat installer.sh

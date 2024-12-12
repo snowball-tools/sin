@@ -44,7 +44,7 @@ export function resolve(x, context, nextResolve) {
             : null // is bare import
 
   if (x === 'sin' && process.env.SIN_LOCAL)
-    x = path.join(process.env.SIN_LOCAL, 'src', 'index.js')
+    x = '' + pathToFileURL(path.join(process.env.SIN_LOCAL, 'src', 'index.js'))
 
   return nextResolve(url ? '' + pathToFileURL(extensionless('' + url) || fileURLToPath(url)) : x, context)
 }

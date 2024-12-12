@@ -6,8 +6,6 @@ jobs:
   test-windows:
     name: windows-latest
     runs-on: windows-latest
-    strategy:
-      fail-fast: false
     steps:
       - uses: actions/checkout@v4
       - run: |
@@ -17,18 +15,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  test-other:
-    name: ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+  test-macos:
+    name: macos-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - run: |
           source <(curl -fsSL install.sinjs.com)
           sin test -d
-        shell: bash
+        shell: zsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test-linux:
+    name: ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          source <(curl -fsSL install.sinjs.com)
+          sin test -d
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -16,8 +16,11 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: |
-          iex (irm install.sinjs.com)
+          $script = Invoke-RestMethod install.sinjs.com
+          Write-Host $script
+          iex (irm install.sinjs.com -Raw)
           sin test
+        shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

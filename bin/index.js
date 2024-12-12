@@ -18,7 +18,7 @@ try {
     const x = cp.spawnSync(process.argv[0], ['--experimental-websocket', '--no-warnings', ...process.argv.slice(1)], { stdio: 'inherit' })
     process.exitCode = x.status
   } else {
-    await import(URL.pathToFileURL(path.join(config.local, 'bin', config.$[0], 'index.js')))
+    await import('./' + config.$[0] + '/index.js')
   }
   config.config && console.log(config) // eslint-disable-line
   prexit.exit()

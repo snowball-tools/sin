@@ -3,35 +3,43 @@ name: test
 on: [push, pull_request]
 
 jobs:
-  test:
-    name: Node v${{ matrix.node }} on ${{ matrix.os }}
-    timeout-minutes: 5
+  test-windows:
+    name: Node v${{ matrix.node }} on Windows
+    runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
         node: ['20', '22']
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-
       - run: |
           irm install.sinjs.com | iex
           echo $env:path
           sin test
         shell: powershell
-        if: runner.os == 'Windows'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  test-other:
+    name: Node v${{ matrix.node }} on Linux & macOS
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22']
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
       - shell: bash
         run: |
           curl -fsSL install.sinjs.com | source /dev/stdin
           echo $PATH
           sin test
-        if: runner.os != 'Windows'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

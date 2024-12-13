@@ -49,7 +49,7 @@ const editors = ({
     webstorm: {
       name: 'WebStorm',
       path: '/Applications/WebStorm.app/Contents/MacOS/webstorm',
-      args: ({ path, line, column }) => ['--line', line, '--column', column, path]
+      args: ({ path, line, column }) => ['--line', line, '--column', column - 1, path]
     }
   },
   win32: {
@@ -76,7 +76,7 @@ const editors = ({
     webstorm: {
       name: 'WebStorm',
       path: (process.env.PATH.split(';').find(x => x.match(/webstorm/i)) || 'C:\\Program Files\\JetBrains\\WebStorm 2024.3\\bin\\') + 'webstorm64.exe',
-      args: ({ path, line, column }) => ['--line', line, '--column', column, path]
+      args: ({ path, line, column }) => ['--line', line, '--column', column - 1, path]
     }
   },
   linux: {
@@ -108,13 +108,13 @@ function findEditor() {
     throw new Error('Could not find any editor')
 
   if (editor && !fs.existsSync(editor.path))
-    throw new Error('Could not find editor', editor.name, 'at', editor.path)
+    throw new Error('Could not find editor: ' + editor.name + ' at ' + editor.path)
 
   return editor
 }
 
 function envEditor() {
-  const editor = editors[Object.keys(editors).find(e => editors[e].path === process.env.EDITOR)] || editors[path.basename(process.env.EDITOR)]
+  const editor = editors[Object.keys(editors).find(x => process.env.EDITOR.toLowerCase().includes(x) || process.env.EDITOR.toLowerCase().includes(x))]
   return fs.existsSync(process.env.EDITOR)
     ? { args: editor ? editor.args : x => x.file, path: process.env.EDITOR }
     : editor

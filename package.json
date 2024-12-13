@@ -24,6 +24,7 @@
     "./build": "./shared/build/index.js",
     "./server": "./shared/server/index.js",
     "./server/window": "./ssr/window.js",
+    "./ssr": "./ssr/index.js",
     "./test": "./bin/test/test.js",
     "./mimes": "./shared/server/mimes.js"
   },

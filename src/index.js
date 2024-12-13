@@ -247,7 +247,7 @@ function mount(dom, view, attrs = {}, context = {}) {
   hasOwn.call(context, 'error') || (context.error = s.error)
 
   if (s.is.server)
-    return { view, attrs, context, View }
+    return { view, attrs, context }
 
   dom[stackTrace] = new Error().stack
   s.scroll && scrollRestoration(context)

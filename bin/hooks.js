@@ -4,6 +4,7 @@ import { URL, fileURLToPath, pathToFileURL } from 'node:url'
 
 import { modify, extensionless, getSucrase, getTSConfigRaw, getPkgs } from './shared.js'
 
+const pkg = JSON.parse(fs.readFileSync(path.join(process.env.SIN_LOCAL, 'package.json')))
 const cwd = process.cwd()
 
 const config = {
@@ -34,17 +35,35 @@ export function resolve(x, context, nextResolve) {
   const c = x.charCodeAt(0)
   const cwd = process.cwd()
   const isRelative = c === 46 // .
-  const isAbsolute = !isRelative && path.isAbsolute(x)
+  const isSin = !isRelative && (x === 'sin' || x.startsWith('sin/'))
+  const isAbsolute = !isSin && path.isAbsolute(x)
   const isRoot = isAbsolute && x.startsWith(cwd)
   const isURL = !isRelative && !isAbsolute && c === 102 && x.indexOf('file://') === 0 // f
+
   const url = isURL      ? x
+            : isSin      ? pathToFileURL(resolveSin(x))
             : isRelative ? pathToFileURL(path.join(path.dirname(fileURLToPath(context.parentURL)), x))
             : isRoot     ? pathToFileURL(x)
             : isAbsolute ? pathToFileURL(path.join(cwd, x))
             : null // is bare import
 
-  if (x === 'sin' && process.env.SIN_LOCAL)
-    x = '' + pathToFileURL(path.join(process.env.SIN_LOCAL, 'src', 'index.js'))
-
   return nextResolve(url ? '' + pathToFileURL(extensionless('' + url) || fileURLToPath(url)) : x, context)
+}
+
+function resolveSin(x) {
+  x = '.' + x.slice(3)
+  return path.join(
+    process.env.SIN_LOCAL,
+    firstString(pkg, 'exports', x, 'import') || (x === '.' && firstString(pkg, 'exports', 'import')) || x
+  )
+}
+
+function firstString(x, ...props) {
+  for (const prop of props) {
+    const type = typeof x[prop]
+    if (type === 'object')
+      x = x[prop]
+    else if (type === 'string')
+      return x[prop]
+  }
 }

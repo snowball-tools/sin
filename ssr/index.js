@@ -2,7 +2,7 @@ import process from 'node:process'
 
 import window from './window.js'
 
-import s from '../src/index.js'
+import s from 'sin'
 import query from '../src/query.js'
 import router from '../src/router.js'
 import mimes from '../shared/server/mimes.js'
@@ -64,14 +64,14 @@ export default function(mount, serverAttrs = {}, serverContext = {}) {
   if (!mount)
     return {}
 
-  let { view, attrs, context, View } = mount
+  let { view, attrs, context } = mount
   serverContext.location = window.location = asLocation(
     typeof serverContext.location === 'string'
       ? new URL(serverContext.location, 'http://localhost/')
       : serverContext.location
   )
 
-  serverContext.View = View
+  serverContext.View = s.View
   serverContext.query = query(s, window.location)
 
   const headers = {

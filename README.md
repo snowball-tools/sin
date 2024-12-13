@@ -27,9 +27,12 @@ If you understand html, css and javascript you will understand sin. You're not l
 
 #### Global install
 
-
 ```bash
-npm install -g sin
+source <(curl -fsSL install.sinjs.com)
+```
+
+```powershell
+iex (irm install.sinjs.com)
 ```
 
 #### Just import and go!

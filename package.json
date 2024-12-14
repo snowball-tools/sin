@@ -17,7 +17,11 @@
     "build:eyedropper": "pushd bin/develop/tools/eyedropper && node-gyp configure && node-gyp build && cp build/Release/eyedropper.node eyedropper.node && node-gyp clean;popd"
   },
   "exports": {
-    ".": "./src/index.js",
+    ".": {
+      "node": "./ssr/sin.js",
+      "import": "./src/index.js",
+      "default": "./src/index.js"
+    },
     "./bin/color": "./bin/color.js",
     "./env": "./bin/env.js",
     "./acme": "./bin/acme/core.js",

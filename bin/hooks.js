@@ -51,19 +51,9 @@ export function resolve(x, context, nextResolve) {
 }
 
 function resolveSin(x) {
-  x = '.' + x.slice(3)
+  const exp = pkg.exports['.' + x.slice(3)]
   return path.join(
     process.env.SIN_LOCAL,
-    firstString(pkg, 'exports', x, 'import') || (x === '.' && firstString(pkg, 'exports', 'import')) || x
+    exp?.node || exp?.import || exp?.default || exp || x
   )
-}
-
-function firstString(x, ...props) {
-  for (const prop of props) {
-    const type = typeof x[prop]
-    if (type === 'object')
-      x = x[prop]
-    else if (type === 'string')
-      return x[prop]
-  }
 }

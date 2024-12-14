@@ -5,7 +5,6 @@ import window from './window.js'
 import s from 'sin'
 import query from '../src/query.js'
 import router from '../src/router.js'
-import mimes from '../shared/server/mimes.js'
 import { asLocation, wrap } from './shared.js'
 import { formatValue, cssRules } from '../src/style.js'
 import {
@@ -29,11 +28,6 @@ import {
 } from '../src/shared.js'
 
 class TimeoutError extends Error {}
-
-s.is = { server: s.isServer = window.isServerSin = true }
-s.title = process.env.SIN_TITLE
-s.mimes = mimes
-s.trust = trust
 
 let lastWasText = false
   , wasText = false
@@ -326,17 +320,6 @@ function escapeAttrValue(x = '') {
     c === 38 && (s += x.slice(l + 1, l = i) + '&amp;') // &
   }
   return s || x
-}
-
-function trust(strings, ...values) {
-  const html = String.raw({ raw: Array.isArray(strings.raw) ? strings.raw : [strings] }, ...values)
-      , count = rootNodeCount(html) + 1
-
-  return new window.Node(
-      (noscript ? '' : '<!--[' + count + '-->')
-    + html.trim()
-    + (noscript ? '' : '<!--trust-->')
-  )
 }
 
 function rootNodeCount(x) {

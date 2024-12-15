@@ -104,8 +104,8 @@ function pkgLookup(name, version, pathname, pkgPath, urlPath, force) {
 }
 
 function resolveExports(x, subPath) {
-  return firstString(x, 'exports', subPath, 'browser', 'import')
-      || firstString(x, 'exports', subPath, 'import')
+  return firstString(x, 'exports', subPath, 'browser', 'import', 'default')
+      || firstString(x, 'exports', subPath, 'import', 'default')
 }
 
 function resolveLegacy(pkg) {

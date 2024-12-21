@@ -1,5 +1,6 @@
 export default {
   ai: 'align-items',
+  as: 'align-self',
   b: 'bottom',
   bc: 'background-color',
   br: 'border-radius',
@@ -22,6 +23,7 @@ export default {
   gtr: 'grid-template-rows',
   h: 'height',
   jc: 'justify-content',
+  js: 'justify-self',
   l: 'left',
   lh: 'line-height',
   ls: 'letter-spacing',
